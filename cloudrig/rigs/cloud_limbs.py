@@ -21,6 +21,7 @@
 import bpy
 from bpy.props import *
 from itertools import count
+from mets_tools.armature_nodes.driver import *
 
 from rigify.utils.layers import DEF_LAYER
 from rigify.utils.errors import MetarigError
@@ -29,6 +30,7 @@ from rigify.utils.naming import make_derived_name
 from rigify.utils.widgets_basic import create_bone_widget
 from rigify.utils.bones import BoneDict, BoneUtilityMixin, put_bone
 from rigify.utils.misc import map_list
+from rigify.utils.mechanism import make_property
 
 from rigify.base_rig import BaseRig, stage
 
@@ -129,8 +131,8 @@ class Rig(BaseRig):
 		hng_name = "HNG-"+fk_name
 		self.bones.mch.fk_hinge = self.copy_bone(fk_name, hng_name)
 		hng_bone = self.get_bone(hng_name)
-		fk_bone.parent = hng_bone #TODO: This needs to be an Armature constraint with a driver.
-		hng_bone.parent = self.get_bone(self.bones.ctrl.root)
+		fk_bone.parent = hng_bone
+		#hng_bone.parent = self.get_bone(self.bones.ctrl.root)
 
 	@stage.configure_bones
 	def configure_rot_modes(self):
@@ -140,10 +142,42 @@ class Rig(BaseRig):
 	
 	@stage.configure_bones
 	def configure_fk(self):
+		# TODO: Copy Transforms constraints with drivers for the ORG- bones.
+
+
+		### Hinge Setup ###
 		hng = self.bones.mch.fk_hinge
+		con_arm = self.make_constraint(hng, 'ARMATURE')
+		target1 = con_arm.targets.new()
+		target2 = con_arm.targets.new()
+		target1.target = target2.target = self.obj
+		target1.subtarget = 'root'
+		target2.subtarget = self.get_bone(self.base_bone).parent.name
 
-		pass
+		# TODO: Create UI for custom property, and maybe store it elsewhere. 
+		# I think I like it when all options are displayed all the time, but it can be limiting, 
+		# if we're adding snapping options, and more per-limb options, it can easily become UI overload.
 
+		prop_name = 'FK_Hinge'
+		make_property(self.get_bone(self.base_bone), prop_name, 0.0)
+
+		drv = Driver()
+		drv.expression = "var"
+		var = drv.make_var("var")
+		var.type = 'SINGLE_PROP'
+		var.targets[0].id_type='OBJECT'
+		var.targets[0].id = self.obj
+		var.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.base_bone, prop_name)
+
+		drv.make_real(target1, "weight")
+
+		drv.expression = "1-var"
+		drv.make_real(target2, "weight")
+
+		con_copyloc = self.make_constraint(hng, 'COPY_LOCATION')
+		con_copyloc.target = self.obj
+		con_copyloc.subtarget = self.get_bone(self.base_bone).parent.name
+		con_copyloc.head_tail = 1
 
 	@stage.finalize
 	def configure_display(self):
