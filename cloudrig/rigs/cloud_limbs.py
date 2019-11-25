@@ -44,6 +44,7 @@ from .cloud_utils import load_widget, make_name, slice_name
 # And then I guess we would have to do the same for constraints.
 # There could also be an Armature abstraction, just for the sake of storing a list of bones. That way, armature.make_real() can make the bones real without switching between edit and pose mode multiple times.
 
+# Constraints should be automagically initialized with more sensible defaults, unless explicitly told to initialize with Blender's defaults(which are BAADDDD)
 
 # Registerable rig template classes MUST be called exactly "Rig"!!!
 # (This class probably shouldn't be registered in the future)
@@ -144,7 +145,6 @@ class Rig(BaseRig):
 		self.copy_bone(self.bones.mch.ik[0], str_name)
 		str_bone = self.get_bone(str_name)
 		str_bone.tail = ik_bone.head
-		str_bone.bbone_x = 20
 
 		sliced[0].append("TIP")
 		tip_name = self.bones.mch.ik_stretch_tip = make_name(*sliced)
@@ -213,7 +213,6 @@ class Rig(BaseRig):
 	def configure_fk(self):
 		# TODO: Copy Transforms constraints with drivers for the ORG- bones.
 
-
 		### Hinge Setup ###
 		hng = self.bones.mch.fk_hinge
 		con_arm = self.make_constraint(hng, 'ARMATURE')
@@ -251,17 +250,36 @@ class Rig(BaseRig):
 	@stage.configure_bones
 	def configure_ik(self):
 		ik_bone_name = self.bones.mch.ik[-1]
-		con_ik = self.make_constraint(ik_bone_name, 'IK')
-		con_ik.target = self.obj
-		con_ik.subtarget = self.bones.ctrl.ik[0] # TODO: This target would actually be a MCH bone that's parented to the IK-STR MCH bone.
-		# TODO pole target.
 
-		str_bone = self.get_bone(self.bones.mch.ik_stretch)
+		stretch = self.bones.mch.ik_stretch
+		str_bone = self.get_bone(stretch)
+		tip = self.bones.mch.ik_stretch_tip
 		tip_bone = self.get_bone(self.bones.mch.ik_stretch_tip)
+
+		for ik in self.bones.mch.ik:
+			ik_bone = self.get_bone(ik)
+			ik_bone.ik_stretch = 0.1
+
+		con_ik = self.make_constraint(ik_bone_name, 'IK')
+		con_ik.chain_count = 2
+		con_ik.target = self.obj
+		con_ik.subtarget = tip
+		# TODO pole target.
 
 		con_str = self.make_constraint(str_bone.name, 'STRETCH_TO')
 		con_str.target = self.obj
-		con_str.subtarget = tip_bone.name
+		con_str.subtarget = self.bones.ctrl.ik[0]
+
+		con_limitscale = self.make_constraint(str_bone.name, 'LIMIT_SCALE')
+		con_limitscale.use_max_y = True
+		con_limitscale.max_y = 1.05 # TODO: How to calculate this correctly?
+		con_limitscale.owner_space = 'LOCAL'
+		con_limitscale.influence = 0 # TODO: Put driver on this, driven by IK stretch toggle custom property.
+
+		con_copyloc = self.make_constraint(tip, 'COPY_LOCATION')
+		con_copyloc.target = self.obj
+		con_copyloc.subtarget = stretch
+		con_copyloc.head_tail = 1
 
 	@stage.finalize
 	def configure_display(self):
