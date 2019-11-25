@@ -22,6 +22,23 @@ def load_widget(name):
 	if wgt_ob: return wgt_ob
 	print("WARNING: Failed to load bone shape: " + wgt_name)
 
+def make_name(prefixes=[], base="", suffixes=[]):
+	# In our naming convention, prefixes are separated by dashes and suffixes by periods, eg: DSP-FK-UpperArm_Parent.L.001
+	# Trailing zeroes should be avoided though, but that's not done by this function(for now?)
+	name = ""
+	for pre in prefixes:
+		name += pre+"-"
+	name += base
+	for suf in suffixes:
+		name += "."+suf
+	return name
+
+def slice_name(name):
+	prefixes = name.split("-")[:-1]
+	suffixes = name.split(".")[1:]
+	base = name.split("-")[-1].split(".")[0]
+	return [prefixes, base, suffixes]
+
 def make_dsp_bone(obj, parent):
 	# Create a new bone.
 	# Name is the original bone in full prefixed with DSP-.

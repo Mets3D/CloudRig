@@ -32,7 +32,7 @@ from rigify.utils.misc import map_list
 
 from rigify.base_rig import BaseRig, stage
 
-from .cloud_utils import load_widget
+from .cloud_utils import load_widget, make_name, slice_name
 
 # Registerable rig template classes MUST be called exactly "Rig"!!!
 # (This class probably shouldn't be registered in the future)
@@ -54,6 +54,8 @@ class Rig(BaseRig):
 		"""Gather and validate data about the rig."""
 		self.type = self.params.type
 
+		assert len(self.bones.org.main)==3, "Limb bone chain must consist of exactly 3 connected bones."
+
 	# DSP bones - Display bones at the mid-point of each bone to use as display transforms for FK.
 	# TODO: This should be in a shared place like utils or something.
 	def create_dsp_bone(self, parent):
@@ -73,9 +75,20 @@ class Rig(BaseRig):
 	# FK Controls
 	@stage.generate_bones
 	def generate_everything(self):
-		self.generate_fk_controls(self.bones.org.main)
+		# Let's create a root bone for the rig, for giggles and sanity.
+		root_name = "Root_Arm" if self.params.type=='ARM' else "Root_Leg"
+		root_name = make_name( base=root_name, suffixes=slice_name(self.base_bone)[2] )
+		self.bones.ctrl.root = self.copy_bone(self.base_bone, root_name)
+		root_bone = self.get_bone(self.bones.ctrl.root)
+		root_bone.parent = self.get_bone(self.base_bone).parent
 
-	def generate_fk_controls(self, chain):
+		self.generate_fk(self.bones.org.main)
+		self.generate_ik_controls(self.bones.org.main)
+
+	def generate_ik_controls(self, chain):
+		pass
+
+	def generate_fk(self, chain):
 		for i, bn in enumerate(chain):
 			fk_name = bn.replace("ORG", "FK")
 			self.copy_bone(bn, fk_name)
@@ -85,25 +98,78 @@ class Rig(BaseRig):
 				self.bones.ctrl.fk = []
 			self.bones.ctrl.fk.append(fk_name)
 
+			if i == 0 and self.params.double_first_control:
+				# Make a parent for the first control. TODO: This should be shared code.
+				sliced_name = slice_name(fk_name)
+				sliced_name[1] += "_Parent"
+				fk_parent_name = make_name(*sliced_name)
+				self.copy_bone(fk_name, fk_parent_name)
+
+				# Parent FK bone to the new parent bone.
+				fk_parent_bone = self.get_bone(fk_parent_name)
+				fk_bone.parent = fk_parent_bone
+
+				# Setup DSP bone for the new parent bone.
+				self.create_dsp_bone(fk_parent_bone)
+				
+				# Store in the beginning of the FK list.
+				self.bones.ctrl.fk.insert(0, fk_parent_name)
 			if i > 0:
+				# Parent FK bone to previous FK bone.
 				parent_bone = self.get_bone(self.bones.ctrl.fk[-2])
 				fk_bone.parent = parent_bone
 
 			if i < 2:
+				# Setup DSP bone for all but last bone.
 				self.create_dsp_bone(fk_bone)
+		
+		# Create Hinge helper
+		fk_name = self.bones.ctrl.fk[0]
+		fk_bone = self.get_bone(fk_name)
+		hng_name = "HNG-"+fk_name
+		self.bones.mch.fk_hinge = self.copy_bone(fk_name, hng_name)
+		hng_bone = self.get_bone(hng_name)
+		fk_bone.parent = hng_bone #TODO: This needs to be an Armature constraint with a driver.
+		hng_bone.parent = self.get_bone(self.bones.ctrl.root)
+
+	@stage.configure_bones
+	def configure_rot_modes(self):
+		for ctb in self.bones.ctrl.flatten():
+			bone = self.get_bone(ctb)
+			bone.rotation_mode='XYZ'
+	
+	@stage.configure_bones
+	def configure_fk(self):
+		hng = self.bones.mch.fk_hinge
+
+		pass
+
 
 	@stage.finalize
-	def configure_everything(self):
-		for i, fk_name in enumerate(self.bones.ctrl.fk):
-			fk_bone = self.get_bone(fk_name)
-			fk_bone.custom_shape = load_widget("FK_Limb")
-			if i < 2:
-				fk_bone.custom_shape_transform = self.get_bone("DSP-"+fk_name)
+	def configure_display(self):
+		# DSP bones
+		if self.params.display_middle:
+			for i, fk_name in enumerate(self.bones.ctrl.fk):
+				fk_bone = self.get_bone(fk_name)
+				fk_bone.custom_shape = load_widget("FK_Limb")
+				try:
+					dsp_name = "DSP-"+fk_name
+					dsp_bone = self.get_bone(dsp_name)
+					dsp_bone.bone.bbone_x = dsp_bone.bone.bbone_z = 0.05	# For some reason this can apparently only be set from finalize??
+					if i != len(self.bones.ctrl.fk):
+						fk_bone.custom_shape_transform = dsp_bone
+				except MetarigError: 
+					# If bone was not found, do nothing.
+					pass
+
+				if i == 0 and self.params.double_first_control:
+					fk_bone.custom_shape_scale = 1.1
 		
-		for dsp in self.bones.mch.dsp:
-			dsp_bone = self.get_bone(dsp)
-			dsp_bone.bone.bbone_x = dsp_bone.bone.bbone_z = 0.05	# For some reason this can apparently only be set from finalize??
-		
+		root_bone = self.get_bone(self.bones.ctrl.root)
+		root_bone.custom_shape = load_widget("Cube")
+		root_bone.custom_shape_scale = 0.5
+
+		# Armature display settings
 		self.obj.display_type = 'SOLID'
 		self.obj.data.display_type = 'BBONE'
 
@@ -139,5 +205,7 @@ class Rig(BaseRig):
 		"""
 		r = layout.row()
 		r.prop(params, "type")
+		r = layout.row()
+		r.prop(params, "double_first_control")
 		r = layout.row()
 		r.prop(params, "display_middle")
