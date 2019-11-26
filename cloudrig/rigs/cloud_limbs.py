@@ -255,10 +255,38 @@ class Rig(BaseRig):
 		con_copyloc.subtarget = stretch
 		con_copyloc.head_tail = 1
 
-	def generate_stretchy(self):
-		pass
-
+	@stage.generate_bones
 	def generate_deform(self):
+		chain = self.bones.org.main
+		# What we need:
+		# Two bendy deform bones per limb piece, surrounded by STR- controls. 
+		# BBone properties are hooked up to the STR controls' transforms via drivers.
+		# limb pieces connected in some funky way so that the bending of the second part doesn't affect the BBone of the first part.
+		self.bones.deform = []
+		for i, bn in enumerate(chain):
+			for i in range(0, self.params.deform_segments):
+				def_name = bn.replace("ORG", "DEF")
+				sliced = slice_name(def_name)
+				sliced[1] += str(i+1)
+				def_name = make_name(*sliced)
+
+				self.copy_bone(bn, def_name)
+				self.bones.deform.append(def_name)
+				def_bone = self.get_bone(def_name)
+
+				# Move head and tail into correct places
+				org_bone = self.get_bone(bn)
+				org_vec = org_bone.tail - org_bone.head
+				unit = org_vec / self.params.deform_segments
+				def_bone.head = org_bone.head + (unit * i)
+				def_bone.tail = org_bone.head + (unit * (i+1))
+
+				# TODO: Create STR- controls with shapes, assign them as bbone tangent
+				# drivers
+				# parenting
+				# constraints
+
+	def generate_stretchy(self):
 		pass
 
 	@stage.configure_bones
@@ -324,6 +352,20 @@ class Rig(BaseRig):
 			name="Display Centered", 
 			description="Display FK controls on the center of the bone, instead of at its root", 
 			default=True,
+		)
+		params.deform_segments = IntProperty(
+			name="Deform Segments",
+			description="Number of deform bones per limb piece",
+			default=2,
+			min=1,
+			max=9
+		)
+		params.bbone_segments = IntProperty(
+			name="BBone Segments",
+			description="BBone segments of deform bones",
+			default=10,
+			min=1,
+			max=32
 		)
 
 	@classmethod
