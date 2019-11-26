@@ -21,7 +21,10 @@
 import bpy
 from bpy.props import *
 from itertools import count
+from mathutils import *
+
 from mets_tools.armature_nodes.driver import *
+from mets_tools.armature_nodes.bone import BoneDataContainer
 
 from rigify.utils.layers import DEF_LAYER
 from rigify.utils.errors import MetarigError
@@ -51,6 +54,7 @@ from .cloud_utils import load_widget, make_name, slice_name
 class Rig(BaseRig):
 	""" Base for CloudRig arms and legs.
 	"""
+
 	# overrides BaseRig.find_org_bones.
 	def find_org_bones(self, bone):
 		"""Populate self.bones.org."""
@@ -63,6 +67,8 @@ class Rig(BaseRig):
 		super().initialize()
 		"""Gather and validate data about the rig."""
 		assert len(self.bones.org.main)==3, "Limb bone chain must consist of exactly 3 connected bones."
+
+		self.bone_datas = BoneDataContainer()
 
 		self.bones.parent = self.get_bone(self.base_bone).parent.name
 		self.type = self.params.type
@@ -83,7 +89,27 @@ class Rig(BaseRig):
 			self.bones.mch.dsp = []
 		self.bones.mch.dsp.append(dsp_name)
 
-	@stage.generate_bones
+	@stage.prepare_bones
+	def prepare_everything(self):
+		new_bone = self.bone_datas.new("Test Bone")
+		new_bone.head = Vector((5, 5, 5))
+	
+	def generate_bones(self):
+		for bd in self.bone_datas.bone_datas:
+			self.new_bone(bd.name)
+	
+	def parent_bones(self):
+		for bd in self.bone_datas.bone_datas:
+			edit_bone = self.get_bone(bd.name)
+			bd.write_edit_data(self.obj, edit_bone)
+	
+	def rig_bones(self):
+		for bd in self.bone_datas.bone_datas:
+			pose_bone = self.get_bone(bd.name)
+			bd.write_pose_data(self.obj, pose_bone)
+
+
+	#@stage.generate_bones
 	def generate_fk(self):
 		for i, bn in enumerate(self.bones.org.main):
 			fk_name = bn.replace("ORG", "FK")
@@ -128,7 +154,7 @@ class Rig(BaseRig):
 		fk_bone.parent = hng_bone
 		#hng_bone.parent = self.get_bone(self.bones.ctrl.root)
 
-	@stage.configure_bones
+	#@stage.configure_bones
 	def configure_fk(self):
 		# TODO: Copy Transforms constraints with drivers for the ORG- bones.
 
@@ -166,7 +192,7 @@ class Rig(BaseRig):
 		con_copyloc.subtarget = self.bones.parent
 		con_copyloc.head_tail = 1
 
-	@stage.generate_bones
+	#@stage.generate_bones
 	def generate_ik(self):
 		# What we need:
 		# IK Chain (equivalents to ORG, so 3 of these) - Make sure IK Stretch is enabled on first two, and they are parented and connected to each other.
@@ -221,7 +247,7 @@ class Rig(BaseRig):
 		tip_bone = self.get_bone(tip_name)
 		tip_bone.parent = ik_bone
 
-	@stage.configure_bones
+	#@stage.configure_bones
 	def configure_ik(self):
 		ik_bone_name = self.bones.mch.ik[-1]
 
@@ -255,7 +281,7 @@ class Rig(BaseRig):
 		con_copyloc.subtarget = stretch
 		con_copyloc.head_tail = 1
 
-	@stage.generate_bones
+	#@stage.generate_bones
 	def generate_deform(self):
 		chain = self.bones.org.main
 		# What we need:
@@ -303,13 +329,13 @@ class Rig(BaseRig):
 	def generate_stretchy(self):
 		pass
 
-	@stage.configure_bones
+	#@stage.configure_bones
 	def configure_rot_modes(self):
 		for ctb in self.bones.ctrl.flatten():
 			bone = self.get_bone(ctb)
 			bone.rotation_mode='XYZ'
 
-	@stage.finalize
+	#@stage.finalize
 	def configure_display(self):
 		# DSP bones
 		for i, fk_name in enumerate(self.bones.ctrl.fk):
@@ -337,6 +363,14 @@ class Rig(BaseRig):
 		# Armature display settings
 		self.obj.display_type = 'SOLID'
 		self.obj.data.display_type = 'BBONE'
+
+	@stage.finalize
+	def do_everything(self):
+		new_bone = self.bone_datas.new("Test Bone")
+		new_rigify_bone = self.bones.whatever = "Test Bone"
+		new_bone.head = Vector((5, 5, 5))
+		self.bone_datas.create_all_bones(self.obj)
+
 
 	##############################
 	# Parameters
