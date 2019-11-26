@@ -90,69 +90,75 @@ class Rig(BaseRig):
 		self.bones.mch.dsp.append(dsp_name)
 
 	@stage.prepare_bones
-	def prepare_everything(self):
-		new_bone = self.bone_datas.new("Test Bone")
-		new_bone.head = Vector((5, 5, 5))
-	
-	def generate_bones(self):
-		for bd in self.bone_datas.bone_datas:
-			self.new_bone(bd.name)
-	
-	def parent_bones(self):
-		for bd in self.bone_datas.bone_datas:
-			edit_bone = self.get_bone(bd.name)
-			bd.write_edit_data(self.obj, edit_bone)
-	
-	def rig_bones(self):
-		for bd in self.bone_datas.bone_datas:
-			pose_bone = self.get_bone(bd.name)
-			bd.write_pose_data(self.obj, pose_bone)
-
-
-	#@stage.generate_bones
-	def generate_fk(self):
+	def prepare_fk(self):
+		fk_bones = []
+		fk_name = ""
 		for i, bn in enumerate(self.bones.org.main):
+			edit_bone = self.get_bone(bn)
 			fk_name = bn.replace("ORG", "FK")
-			self.copy_bone(bn, fk_name)
-			fk_bone = self.get_bone(fk_name)
-
-			if 'fk' not in self.bones.ctrl:
-				self.bones.ctrl.fk = []
-			self.bones.ctrl.fk.append(fk_name)
+			############################### TODO: SPECIFYING SOURCE BREAKS SOMETHING, AND I CAN'T FIND WHAAAATTTT.
+			fk_bone = self.bone_datas.new(fk_name, armature=self.obj, source=edit_bone)
+			fk_bone.head = edit_bone.head
+			fk_bone.tail = edit_bone.tail
+			
+			fk_bones.append(fk_bone)
 
 			if i == 0 and self.params.double_first_control:
 				# Make a parent for the first control. TODO: This should be shared code.
 				sliced_name = slice_name(fk_name)
 				sliced_name[1] += "_Parent"
 				fk_parent_name = make_name(*sliced_name)
-				self.copy_bone(fk_name, fk_parent_name)
+				fk_parent_bone = self.bone_datas.new(fk_parent_name, source=fk_bone)
 
 				# Parent FK bone to the new parent bone.
-				fk_parent_bone = self.get_bone(fk_parent_name)
 				fk_bone.parent = fk_parent_bone
 
 				# Setup DSP bone for the new parent bone.
-				self.create_dsp_bone(fk_parent_bone)
+				#self.create_dsp_bone(fk_parent_bone)
 				
 				# Store in the beginning of the FK list.
-				self.bones.ctrl.fk.insert(0, fk_parent_name)
+				fk_bones.insert(0, fk_parent_bone)
 			if i > 0:
 				# Parent FK bone to previous FK bone.
-				parent_bone = self.get_bone(self.bones.ctrl.fk[-2])
-				fk_bone.parent = parent_bone
+				fk_bone.parent = fk_bones[-2]
 
 			if i < 2:
 				# Setup DSP bone for all but last bone.
-				self.create_dsp_bone(fk_bone)
-		
+				#self.create_dsp_bone(fk_bone)
+				pass
+		print("fk bones:")
+		for fkb in fk_bones:
+			print(fkb.name)
 		# Create Hinge helper
-		fk_name = self.bones.ctrl.fk[0]
-		fk_bone = self.get_bone(fk_name)
-		hng_name = "HNG-"+fk_name
-		self.bones.mch.fk_hinge = self.copy_bone(fk_name, hng_name)
-		hng_bone = self.get_bone(hng_name)
-		fk_bone.parent = hng_bone
+		hng_name = self.base_bone.replace("ORG", "FK-HNG")	# Name it after the first bone in the chain.
+		hng_bone = self.bone_datas.new(hng_name, source=fk_bones[0])
+		fk_bones[0].parent = hng_bone
 		#hng_bone.parent = self.get_bone(self.bones.ctrl.root)
+	
+	@stage.generate_bones
+	def generate_my_fucking_bones(self):
+		self.bones.ctrl.everything = []
+		for bd in self.bone_datas.bone_datas:
+			bone_name = self.copy_bone(self.base_bone, bd.name)
+			self.bones.ctrl.everything.append(bone_name)
+			print("New bone:")
+			print(bone_name)
+		
+		print("ALL BONES:")
+		for b in self.obj.data.edit_bones:
+			print(b.name)
+	
+	@stage.parent_bones
+	def parent_my_fucking_bones(self):
+		for bd in self.bone_datas.bone_datas:
+			edit_bone = self.get_bone(bd.name)
+			bd.write_edit_data(self.obj, edit_bone)
+	
+	@stage.configure_bones
+	def rig_my_fucking_bones(self):
+		for bd in self.bone_datas.bone_datas:
+			pose_bone = self.get_bone(bd.name)
+			bd.write_pose_data(self.obj, pose_bone)
 
 	#@stage.configure_bones
 	def configure_fk(self):
@@ -363,14 +369,6 @@ class Rig(BaseRig):
 		# Armature display settings
 		self.obj.display_type = 'SOLID'
 		self.obj.data.display_type = 'BBONE'
-
-	@stage.finalize
-	def do_everything(self):
-		new_bone = self.bone_datas.new("Test Bone")
-		new_rigify_bone = self.bones.whatever = "Test Bone"
-		new_bone.head = Vector((5, 5, 5))
-		self.bone_datas.create_all_bones(self.obj)
-
 
 	##############################
 	# Parameters
