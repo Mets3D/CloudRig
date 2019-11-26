@@ -263,8 +263,10 @@ class Rig(BaseRig):
 		# BBone properties are hooked up to the STR controls' transforms via drivers.
 		# limb pieces connected in some funky way so that the bending of the second part doesn't affect the BBone of the first part.
 		self.bones.deform = []
+		self.bones.ctrl.str = []
 		for i, bn in enumerate(chain):
 			for i in range(0, self.params.deform_segments):
+				## Deform
 				def_name = bn.replace("ORG", "DEF")
 				sliced = slice_name(def_name)
 				sliced[1] += str(i+1)
@@ -280,6 +282,18 @@ class Rig(BaseRig):
 				unit = org_vec / self.params.deform_segments
 				def_bone.head = org_bone.head + (unit * i)
 				def_bone.tail = org_bone.head + (unit * (i+1))
+
+				## Stretchy controls
+				str_name = def_name.replace("DEF", "STR")
+				self.copy_bone(def_name, str_name)
+				self.bones.ctrl.str.append(str_name)
+				# Create at the tail of the DEF bone we're currently iterating over. 
+				# TODO This means the first bone(at the head of the first DEF) will need to be handled separately.
+				str_bone = self.get_bone(str_name)
+				str_bone.head = def_bone.tail
+				str_bone.tail = str_bone.head + org_vec
+				str_bone.length = 0.1
+
 
 				# TODO: Create STR- controls with shapes, assign them as bbone tangent
 				# drivers
