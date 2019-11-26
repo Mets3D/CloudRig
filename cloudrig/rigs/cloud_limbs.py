@@ -83,29 +83,98 @@ class Rig(BaseRig):
 			self.bones.mch.dsp = []
 		self.bones.mch.dsp.append(dsp_name)
 
-	# FK Controls
 	@stage.generate_bones
-	def generate_everything(self):
-		# Let's create a root bone for the rig, for giggles and sanity.
-		# TODO: This might've been pointless. We'll keep it around for now.
-		# root_name = "Root_Arm" if self.params.type=='ARM' else "Root_Leg"
-		# root_name = make_name( base=root_name, suffixes=slice_name(self.base_bone)[2] )
-		# self.bones.ctrl.root = self.copy_bone(self.base_bone, root_name)
-		# root_bone = self.get_bone(self.bones.ctrl.root)
-		# root_bone.parent = self.get_bone(self.base_bone).parent
+	def generate_fk(self):
+		for i, bn in enumerate(self.bones.org.main):
+			fk_name = bn.replace("ORG", "FK")
+			self.copy_bone(bn, fk_name)
+			fk_bone = self.get_bone(fk_name)
 
-		self.generate_fk(self.bones.org.main)
-		self.generate_ik(self.bones.org.main)
-		self.generate_stretchy(self.bones.org.main)
-		self.generate_deform(self.bones.org.main)
+			if 'fk' not in self.bones.ctrl:
+				self.bones.ctrl.fk = []
+			self.bones.ctrl.fk.append(fk_name)
 
-	def generate_ik(self, chain):
+			if i == 0 and self.params.double_first_control:
+				# Make a parent for the first control. TODO: This should be shared code.
+				sliced_name = slice_name(fk_name)
+				sliced_name[1] += "_Parent"
+				fk_parent_name = make_name(*sliced_name)
+				self.copy_bone(fk_name, fk_parent_name)
+
+				# Parent FK bone to the new parent bone.
+				fk_parent_bone = self.get_bone(fk_parent_name)
+				fk_bone.parent = fk_parent_bone
+
+				# Setup DSP bone for the new parent bone.
+				self.create_dsp_bone(fk_parent_bone)
+				
+				# Store in the beginning of the FK list.
+				self.bones.ctrl.fk.insert(0, fk_parent_name)
+			if i > 0:
+				# Parent FK bone to previous FK bone.
+				parent_bone = self.get_bone(self.bones.ctrl.fk[-2])
+				fk_bone.parent = parent_bone
+
+			if i < 2:
+				# Setup DSP bone for all but last bone.
+				self.create_dsp_bone(fk_bone)
+		
+		# Create Hinge helper
+		fk_name = self.bones.ctrl.fk[0]
+		fk_bone = self.get_bone(fk_name)
+		hng_name = "HNG-"+fk_name
+		self.bones.mch.fk_hinge = self.copy_bone(fk_name, hng_name)
+		hng_bone = self.get_bone(hng_name)
+		fk_bone.parent = hng_bone
+		#hng_bone.parent = self.get_bone(self.bones.ctrl.root)
+
+	@stage.configure_bones
+	def configure_fk(self):
+		# TODO: Copy Transforms constraints with drivers for the ORG- bones.
+
+		### Hinge Setup ###
+		hng = self.bones.mch.fk_hinge
+		con_arm = self.make_constraint(hng, 'ARMATURE')
+		target1 = con_arm.targets.new()
+		target2 = con_arm.targets.new()
+		target1.target = target2.target = self.obj
+		target1.subtarget = 'root'
+		target2.subtarget = self.bones.parent
+
+		# TODO: Create UI for custom property, and maybe store it elsewhere. 
+		# I think I like it when all options are displayed all the time, but it can be limiting, 
+		# if we're adding snapping options, and more per-limb options, it can easily become UI overload.
+
+		prop_name = 'FK_Hinge'
+		make_property(self.get_bone(self.base_bone), prop_name, 0.0)
+
+		drv = Driver()
+		drv.expression = "var"
+		var = drv.make_var("var")
+		var.type = 'SINGLE_PROP'
+		var.targets[0].id_type='OBJECT'
+		var.targets[0].id = self.obj
+		var.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.base_bone, prop_name)
+
+		drv.make_real(target1, "weight")
+
+		drv.expression = "1-var"
+		drv.make_real(target2, "weight")
+
+		con_copyloc = self.make_constraint(hng, 'COPY_LOCATION')
+		con_copyloc.target = self.obj
+		con_copyloc.subtarget = self.bones.parent
+		con_copyloc.head_tail = 1
+
+	@stage.generate_bones
+	def generate_ik(self):
 		# What we need:
 		# IK Chain (equivalents to ORG, so 3 of these) - Make sure IK Stretch is enabled on first two, and they are parented and connected to each other.
 		# IK Controls: Wrist, Wrist Parent(optional)
 		# IK-STR- bone with its Limit Scale constraint set automagically somehow.
 		# IK Pole target and line, somehow automagically placed.
 		
+		chain = self.bones.org.main
 		# Create IK Chain (first two bones)
 		for i, bn in enumerate(chain[:-1]):
 			ik_name = bn.replace("ORG", "IK")
@@ -152,101 +221,6 @@ class Rig(BaseRig):
 		tip_bone = self.get_bone(tip_name)
 		tip_bone.parent = ik_bone
 
-
-	def generate_fk(self, chain):
-		for i, bn in enumerate(chain):
-			fk_name = bn.replace("ORG", "FK")
-			self.copy_bone(bn, fk_name)
-			fk_bone = self.get_bone(fk_name)
-
-			if 'fk' not in self.bones.ctrl:
-				self.bones.ctrl.fk = []
-			self.bones.ctrl.fk.append(fk_name)
-
-			if i == 0 and self.params.double_first_control:
-				# Make a parent for the first control. TODO: This should be shared code.
-				sliced_name = slice_name(fk_name)
-				sliced_name[1] += "_Parent"
-				fk_parent_name = make_name(*sliced_name)
-				self.copy_bone(fk_name, fk_parent_name)
-
-				# Parent FK bone to the new parent bone.
-				fk_parent_bone = self.get_bone(fk_parent_name)
-				fk_bone.parent = fk_parent_bone
-
-				# Setup DSP bone for the new parent bone.
-				self.create_dsp_bone(fk_parent_bone)
-				
-				# Store in the beginning of the FK list.
-				self.bones.ctrl.fk.insert(0, fk_parent_name)
-			if i > 0:
-				# Parent FK bone to previous FK bone.
-				parent_bone = self.get_bone(self.bones.ctrl.fk[-2])
-				fk_bone.parent = parent_bone
-
-			if i < 2:
-				# Setup DSP bone for all but last bone.
-				self.create_dsp_bone(fk_bone)
-		
-		# Create Hinge helper
-		fk_name = self.bones.ctrl.fk[0]
-		fk_bone = self.get_bone(fk_name)
-		hng_name = "HNG-"+fk_name
-		self.bones.mch.fk_hinge = self.copy_bone(fk_name, hng_name)
-		hng_bone = self.get_bone(hng_name)
-		fk_bone.parent = hng_bone
-		#hng_bone.parent = self.get_bone(self.bones.ctrl.root)
-
-	def generate_stretchy(self, chain):
-		pass
-
-	def generate_deform(self, chain):
-		pass
-
-	@stage.configure_bones
-	def configure_rot_modes(self):
-		for ctb in self.bones.ctrl.flatten():
-			bone = self.get_bone(ctb)
-			bone.rotation_mode='XYZ'
-	
-	@stage.configure_bones
-	def configure_fk(self):
-		# TODO: Copy Transforms constraints with drivers for the ORG- bones.
-
-		### Hinge Setup ###
-		hng = self.bones.mch.fk_hinge
-		con_arm = self.make_constraint(hng, 'ARMATURE')
-		target1 = con_arm.targets.new()
-		target2 = con_arm.targets.new()
-		target1.target = target2.target = self.obj
-		target1.subtarget = 'root'
-		target2.subtarget = self.bones.parent
-
-		# TODO: Create UI for custom property, and maybe store it elsewhere. 
-		# I think I like it when all options are displayed all the time, but it can be limiting, 
-		# if we're adding snapping options, and more per-limb options, it can easily become UI overload.
-
-		prop_name = 'FK_Hinge'
-		make_property(self.get_bone(self.base_bone), prop_name, 0.0)
-
-		drv = Driver()
-		drv.expression = "var"
-		var = drv.make_var("var")
-		var.type = 'SINGLE_PROP'
-		var.targets[0].id_type='OBJECT'
-		var.targets[0].id = self.obj
-		var.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.base_bone, prop_name)
-
-		drv.make_real(target1, "weight")
-
-		drv.expression = "1-var"
-		drv.make_real(target2, "weight")
-
-		con_copyloc = self.make_constraint(hng, 'COPY_LOCATION')
-		con_copyloc.target = self.obj
-		con_copyloc.subtarget = self.bones.parent
-		con_copyloc.head_tail = 1
-
 	@stage.configure_bones
 	def configure_ik(self):
 		ik_bone_name = self.bones.mch.ik[-1]
@@ -281,6 +255,18 @@ class Rig(BaseRig):
 		con_copyloc.subtarget = stretch
 		con_copyloc.head_tail = 1
 
+	def generate_stretchy(self):
+		pass
+
+	def generate_deform(self):
+		pass
+
+	@stage.configure_bones
+	def configure_rot_modes(self):
+		for ctb in self.bones.ctrl.flatten():
+			bone = self.get_bone(ctb)
+			bone.rotation_mode='XYZ'
+
 	@stage.finalize
 	def configure_display(self):
 		# DSP bones
@@ -305,10 +291,6 @@ class Rig(BaseRig):
 			ik_bone = self.get_bone(ik)
 			ik_bone.custom_shape = load_widget("Hand_IK")
 			ik_bone.custom_shape_scale = 1 + 0.1*i
-		
-		# root_bone = self.get_bone(self.bones.ctrl.root)
-		# root_bone.custom_shape = load_widget("Cube")
-		# root_bone.custom_shape_scale = 0.5
 
 		# Armature display settings
 		self.obj.display_type = 'SOLID'
@@ -322,7 +304,6 @@ class Rig(BaseRig):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
 		"""
-		print(".......add params")
 		params.type = EnumProperty(name="Type",
 		items = (
 			("ARM", "Arm", "Arm"),
