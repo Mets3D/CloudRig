@@ -24,7 +24,7 @@ from itertools import count
 from mathutils import *
 
 from mets_tools.armature_nodes.driver import *
-from mets_tools.armature_nodes.bone import BoneDataContainer
+from mets_tools.armature_nodes.bone import BoneInfoContainer
 
 from rigify.utils.layers import DEF_LAYER
 from rigify.utils.errors import MetarigError
@@ -51,6 +51,7 @@ from .cloud_utils import load_widget, make_name, slice_name
 
 # Registerable rig template classes MUST be called exactly "Rig"!!!
 # (This class probably shouldn't be registered in the future)
+
 class Rig(BaseRig):
 	""" Base for CloudRig arms and legs.
 	"""
@@ -67,9 +68,7 @@ class Rig(BaseRig):
 		super().initialize()
 		"""Gather and validate data about the rig."""
 		assert len(self.bones.org.main)==3, "Limb bone chain must consist of exactly 3 connected bones."
-
-		self.bone_datas = BoneDataContainer()
-
+		self.bone_infos = BoneInfoContainer()
 		self.bones.parent = self.get_bone(self.base_bone).parent.name
 		self.type = self.params.type
 
@@ -93,70 +92,68 @@ class Rig(BaseRig):
 	def prepare_fk(self):
 		fk_bones = []
 		fk_name = ""
+		print("START")
 		for i, bn in enumerate(self.bones.org.main):
 			edit_bone = self.get_bone(bn)
+			print(edit_bone.name)
 			fk_name = bn.replace("ORG", "FK")
-			############################### TODO: SPECIFYING SOURCE BREAKS SOMETHING, AND I CAN'T FIND WHAAAATTTT.
-			fk_bone = self.bone_datas.new(fk_name, armature=self.obj, source=edit_bone)
-			fk_bone.head = edit_bone.head
-			fk_bone.tail = edit_bone.tail
-			
+			fk_bone = self.bone_infos.new(fk_name, armature=self.obj, source=edit_bone)
 			fk_bones.append(fk_bone)
-
+			
 			if i == 0 and self.params.double_first_control:
 				# Make a parent for the first control. TODO: This should be shared code.
 				sliced_name = slice_name(fk_name)
 				sliced_name[1] += "_Parent"
 				fk_parent_name = make_name(*sliced_name)
-				fk_parent_bone = self.bone_datas.new(fk_parent_name, source=fk_bone)
+				fk_parent_bone = self.bone_infos.new(fk_parent_name, armature=self.obj, source=fk_bone)
 
 				# Parent FK bone to the new parent bone.
 				fk_bone.parent = fk_parent_bone
 
 				# Setup DSP bone for the new parent bone.
-				#self.create_dsp_bone(fk_parent_bone)
+				#self.create_dsp_bone(fk_parent_name)
 				
 				# Store in the beginning of the FK list.
 				fk_bones.insert(0, fk_parent_bone)
 			if i > 0:
 				# Parent FK bone to previous FK bone.
 				fk_bone.parent = fk_bones[-2]
-
 			if i < 2:
 				# Setup DSP bone for all but last bone.
 				#self.create_dsp_bone(fk_bone)
 				pass
-		print("fk bones:")
-		for fkb in fk_bones:
-			print(fkb.name)
+		
 		# Create Hinge helper
 		hng_name = self.base_bone.replace("ORG", "FK-HNG")	# Name it after the first bone in the chain.
-		hng_bone = self.bone_datas.new(hng_name, source=fk_bones[0])
+		hng_bone = self.bone_infos.new(hng_name, armature=self.obj, source=fk_bones[0])
 		fk_bones[0].parent = hng_bone
-		#hng_bone.parent = self.get_bone(self.bones.ctrl.root)
+		#hng_bone.parent = self.get_bone(self.bones.ctrl.root)"""
 	
 	@stage.generate_bones
-	def generate_my_fucking_bones(self):
-		self.bones.ctrl.everything = []
-		for bd in self.bone_datas.bone_datas:
-			bone_name = self.copy_bone(self.base_bone, bd.name)
-			self.bones.ctrl.everything.append(bone_name)
-			print("New bone:")
-			print(bone_name)
-		
+	def generate_my_bones(self):
+		self.bones.everything = []
+		print("")
+		for bd in self.bone_infos.bones:
+			print(bd.name)
+			print("BD.NAME: " + str(bd.name))
+			bone_name = self.new_bone(bd.name)
+
+			self.bones.everything.append(bone_name)
+				
 		print("ALL BONES:")
 		for b in self.obj.data.edit_bones:
 			print(b.name)
 	
 	@stage.parent_bones
-	def parent_my_fucking_bones(self):
-		for bd in self.bone_datas.bone_datas:
+	def parent_my_bones(self):
+		print("")
+		for bd in self.bone_infos.bones:
 			edit_bone = self.get_bone(bd.name)
 			bd.write_edit_data(self.obj, edit_bone)
 	
-	@stage.configure_bones
-	def rig_my_fucking_bones(self):
-		for bd in self.bone_datas.bone_datas:
+	#@stage.configure_bones
+	def rig_my_bones(self):
+		for bd in self.bone_infos.bones:
 			pose_bone = self.get_bone(bd.name)
 			bd.write_pose_data(self.obj, pose_bone)
 
