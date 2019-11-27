@@ -77,16 +77,9 @@ class Rig(BaseRig):
 	def create_dsp_bone(self, parent):
 		if not self.params.display_middle: return
 		dsp_name = "DSP-" + parent.name
-		dsp = self.copy_bone(parent.name, dsp_name, parent=True, length=0.05)
-		dsp_bone = self.get_bone(dsp_name)
+		dsp_bone = self.bone_infos.new(dsp_name, source=parent)
 		dsp_bone.parent = parent
-		
-		loc = parent.head + (parent.tail-parent.head)/2
-		put_bone(self.obj, dsp_name, loc)
-		
-		if 'dsp' not in self.bones.mch:
-			self.bones.mch.dsp = []
-		self.bones.mch.dsp.append(dsp_name)
+		dsp_bone.put(parent.center, 0.1, 0.1)
 
 	@stage.prepare_bones
 	def prepare_fk(self):
@@ -109,7 +102,7 @@ class Rig(BaseRig):
 				fk_bone.parent = fk_parent_bone
 
 				# Setup DSP bone for the new parent bone.
-				#self.create_dsp_bone(fk_parent_name)
+				self.create_dsp_bone(fk_parent_bone)
 				
 				# Store in the beginning of the FK list.
 				fk_bones.insert(0, fk_parent_bone)
