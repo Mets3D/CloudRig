@@ -68,7 +68,13 @@ class Rig(BaseRig):
 		super().initialize()
 		"""Gather and validate data about the rig."""
 		assert len(self.bones.org.main)==3, "Limb bone chain must consist of exactly 3 connected bones."
-		self.bone_infos = BoneInfoContainer()
+		
+		self.defaults = {
+			"bbone_x" : 0.05,
+			"bbone_z" : 0.05,
+			"rotation_mode" : "XYZ"
+		}
+		self.bone_infos = BoneInfoContainer(self.defaults)
 		self.bones.parent = self.get_bone(self.base_bone).parent.name
 		self.type = self.params.type
 
@@ -77,9 +83,10 @@ class Rig(BaseRig):
 	def create_dsp_bone(self, parent):
 		if not self.params.display_middle: return
 		dsp_name = "DSP-" + parent.name
-		dsp_bone = self.bone_infos.new(dsp_name, parent, custom_shape=None)
-		dsp_bone.parent = parent
+		dsp_bone = self.bone_infos.new(dsp_name, parent, custom_shape=None, parent=parent)
 		dsp_bone.put(parent.center, 0.1, 0.1)
+		parent.custom_shape_transform = dsp_bone
+		return dsp_bone
 
 	@stage.prepare_bones
 	def prepare_fk(self):
@@ -93,18 +100,20 @@ class Rig(BaseRig):
 			fk_bones.append(fk_bone)
 			
 			if i == 0 and self.params.double_first_control:
-				# Make a parent for the first control. TODO: This should be shared code.
+				# TODO: This should be shared code, because fingers are going to need it as well.
+
+				# Make a parent for the first control.
 				sliced_name = slice_name(fk_name)
 				sliced_name[1] += "_Parent"
 				fk_parent_name = make_name(*sliced_name)
-				fk_parent_bone = self.bone_infos.new(fk_parent_name, fk_bone)
+				fk_parent_bone = self.bone_infos.new(fk_parent_name, fk_bone, only_transform=True, custom_shape_scale=1.1, **self.defaults)
+				fk_parent_bone.custom_shape = load_widget("FK_Limb")
+				
+				# Setup DSP bone for the new parent bone.
+				self.create_dsp_bone(fk_parent_bone)
 
 				# Parent FK bone to the new parent bone.
 				fk_bone.parent = fk_parent_bone
-
-				# Setup DSP bone for the new parent bone.
-				dsp_bone = self.create_dsp_bone(fk_parent_bone)
-				fk_bone.custom_shape_transform = dsp_bone
 				
 				# Store in the beginning of the FK list.
 				fk_bones.insert(0, fk_parent_bone)
@@ -113,16 +122,13 @@ class Rig(BaseRig):
 				fk_bone.parent = fk_bones[-2]
 			if i < 2:
 				# Setup DSP bone for all but last bone.
-				#self.create_dsp_bone(fk_bone)
+				self.create_dsp_bone(fk_bone)
 				pass
 		
 		# Create Hinge helper
 		hng_name = self.base_bone.replace("ORG", "FK-HNG")	# Name it after the first bone in the chain.
-		hng_bone = self.bone_infos.new(hng_name, fk_bones[0])
-		hng_bone.custom_shape = load_widget("FK_Limb")
-		hng_bone.custom_shape_scale = 1.1
+		hng_bone = self.bone_infos.new(hng_name, fk_bones[0], only_transform=True)
 		fk_bones[0].parent = hng_bone
-		#hng_bone.parent = self.get_bone(self.bones.ctrl.root)"""
 	
 	@stage.generate_bones
 	def generate_my_bones(self):
