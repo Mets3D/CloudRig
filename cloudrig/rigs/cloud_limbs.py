@@ -77,7 +77,7 @@ class Rig(BaseRig):
 	def create_dsp_bone(self, parent):
 		if not self.params.display_middle: return
 		dsp_name = "DSP-" + parent.name
-		dsp_bone = self.bone_infos.new(dsp_name, source=parent)
+		dsp_bone = self.bone_infos.new(dsp_name, parent, custom_shape=None)
 		dsp_bone.parent = parent
 		dsp_bone.put(parent.center, 0.1, 0.1)
 
@@ -88,7 +88,8 @@ class Rig(BaseRig):
 		for i, bn in enumerate(self.bones.org.main):
 			edit_bone = self.get_bone(bn)
 			fk_name = bn.replace("ORG", "FK")
-			fk_bone = self.bone_infos.new(fk_name, armature=self.obj, source=edit_bone)
+			fk_bone = self.bone_infos.new(fk_name, edit_bone)
+			fk_bone.custom_shape = load_widget("FK_Limb")
 			fk_bones.append(fk_bone)
 			
 			if i == 0 and self.params.double_first_control:
@@ -96,13 +97,14 @@ class Rig(BaseRig):
 				sliced_name = slice_name(fk_name)
 				sliced_name[1] += "_Parent"
 				fk_parent_name = make_name(*sliced_name)
-				fk_parent_bone = self.bone_infos.new(fk_parent_name, armature=self.obj, source=fk_bone)
+				fk_parent_bone = self.bone_infos.new(fk_parent_name, fk_bone)
 
 				# Parent FK bone to the new parent bone.
 				fk_bone.parent = fk_parent_bone
 
 				# Setup DSP bone for the new parent bone.
-				self.create_dsp_bone(fk_parent_bone)
+				dsp_bone = self.create_dsp_bone(fk_parent_bone)
+				fk_bone.custom_shape_transform = dsp_bone
 				
 				# Store in the beginning of the FK list.
 				fk_bones.insert(0, fk_parent_bone)
@@ -116,7 +118,9 @@ class Rig(BaseRig):
 		
 		# Create Hinge helper
 		hng_name = self.base_bone.replace("ORG", "FK-HNG")	# Name it after the first bone in the chain.
-		hng_bone = self.bone_infos.new(hng_name, armature=self.obj, source=fk_bones[0])
+		hng_bone = self.bone_infos.new(hng_name, fk_bones[0])
+		hng_bone.custom_shape = load_widget("FK_Limb")
+		hng_bone.custom_shape_scale = 1.1
 		fk_bones[0].parent = hng_bone
 		#hng_bone.parent = self.get_bone(self.bones.ctrl.root)"""
 	
@@ -134,7 +138,7 @@ class Rig(BaseRig):
 			edit_bone = self.get_bone(bd.name)
 			bd.write_edit_data(self.obj, edit_bone)
 	
-	#@stage.configure_bones
+	@stage.configure_bones
 	def rig_my_bones(self):
 		for bd in self.bone_infos.bones:
 			pose_bone = self.get_bone(bd.name)
