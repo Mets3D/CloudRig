@@ -92,10 +92,8 @@ class Rig(BaseRig):
 	def prepare_fk(self):
 		fk_bones = []
 		fk_name = ""
-		print("START")
 		for i, bn in enumerate(self.bones.org.main):
 			edit_bone = self.get_bone(bn)
-			print(edit_bone.name)
 			fk_name = bn.replace("ORG", "FK")
 			fk_bone = self.bone_infos.new(fk_name, armature=self.obj, source=edit_bone)
 			fk_bones.append(fk_bone)
@@ -132,21 +130,13 @@ class Rig(BaseRig):
 	@stage.generate_bones
 	def generate_my_bones(self):
 		self.bones.everything = []
-		print("")
 		for bd in self.bone_infos.bones:
-			print(bd.name)
-			print("BD.NAME: " + str(bd.name))
 			bone_name = self.new_bone(bd.name)
 
 			self.bones.everything.append(bone_name)
-				
-		print("ALL BONES:")
-		for b in self.obj.data.edit_bones:
-			print(b.name)
 	
 	@stage.parent_bones
 	def parent_my_bones(self):
-		print("")
 		for bd in self.bone_infos.bones:
 			edit_bone = self.get_bone(bd.name)
 			bd.write_edit_data(self.obj, edit_bone)
