@@ -24,15 +24,14 @@ from itertools import count
 from mathutils import *
 
 from mets_tools.armature_nodes.driver import *
+from mets_tools.armature_nodes.custom_props import CustomProp
 from mets_tools.armature_nodes.bone import BoneInfoContainer
 
-from rigify.utils.layers import DEF_LAYER
 from rigify.utils.errors import MetarigError
 from rigify.utils.rig import connected_children_names
 from rigify.utils.naming import make_derived_name
 from rigify.utils.widgets_basic import create_bone_widget
-from rigify.utils.bones import BoneDict, BoneUtilityMixin, put_bone
-from rigify.utils.misc import map_list
+from rigify.utils.bones import BoneDict
 from rigify.utils.mechanism import make_property
 
 from rigify.base_rig import BaseRig, stage
@@ -108,7 +107,7 @@ class Rig(BaseRig):
 				fk_parent_name = make_name(*sliced_name)
 				fk_parent_bone = self.bone_infos.new(fk_parent_name, fk_bone, only_transform=True, custom_shape_scale=1.1, **self.defaults)
 				fk_parent_bone.custom_shape = load_widget("FK_Limb")
-				
+
 				# Setup DSP bone for the new parent bone.
 				self.create_dsp_bone(fk_parent_bone)
 
@@ -128,24 +127,23 @@ class Rig(BaseRig):
 		# Create Hinge helper
 		hng_name = self.base_bone.replace("ORG", "FK-HNG")	# Name it after the first bone in the chain.
 		hng_bone = self.bone_infos.new(hng_name, fk_bones[0], only_transform=True)
+		hng_prop_name = "fk_hinge_left_arm" #TODO: How do we know what limb it belongs to? Maybe we don't care, if we're storing the property locally on the relevant bone anyways.
+		hng_bone.custom_props[hng_prop_name] = CustomProp(hng_prop_name, default=0.0)
 		fk_bones[0].parent = hng_bone
 	
-	@stage.generate_bones
-	def generate_my_bones(self):
+	def generate_bones(self):
 		self.bones.everything = []
 		for bd in self.bone_infos.bones:
 			bone_name = self.new_bone(bd.name)
 
 			self.bones.everything.append(bone_name)
 	
-	@stage.parent_bones
-	def parent_my_bones(self):
+	def parent_bones(self):
 		for bd in self.bone_infos.bones:
 			edit_bone = self.get_bone(bd.name)
 			bd.write_edit_data(self.obj, edit_bone)
 	
-	@stage.configure_bones
-	def rig_my_bones(self):
+	def configure_bones(self):
 		for bd in self.bone_infos.bones:
 			pose_bone = self.get_bone(bd.name)
 			bd.write_pose_data(self.obj, pose_bone)
@@ -334,23 +332,6 @@ class Rig(BaseRig):
 	#@stage.finalize
 	def configure_display(self):
 		# DSP bones
-		for i, fk_name in enumerate(self.bones.ctrl.fk):
-			fk_bone = self.get_bone(fk_name)
-			fk_bone.custom_shape = load_widget("FK_Limb")
-			if self.params.display_middle:
-				try:
-					dsp_name = "DSP-"+fk_name
-					dsp_bone = self.get_bone(dsp_name)
-					dsp_bone.bone.bbone_x = dsp_bone.bone.bbone_z = 0.05	# For some reason this can apparently only be set from finalize??
-					if i != len(self.bones.ctrl.fk):
-						fk_bone.custom_shape_transform = dsp_bone
-				except MetarigError: 
-					# If bone was not found, do nothing.
-					pass
-
-			if i == 0 and self.params.double_first_control:
-				fk_bone.custom_shape_scale = 1.1
-		
 		for i, ik in enumerate(self.bones.ctrl.ik):
 			ik_bone = self.get_bone(ik)
 			ik_bone.custom_shape = load_widget("Hand_IK")
