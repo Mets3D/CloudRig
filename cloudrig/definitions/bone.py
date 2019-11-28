@@ -44,6 +44,8 @@ def get_defaults(contype, armature):
 	elif contype == 'ARMATURE':
 		# Create two targets in armature constraints.
 		ret["targets"] = [{"target" : armature}, {"target" : armature}]
+	
+	return ret
 
 class BoneInfoContainer(ID):
 	# TODO: implement __iter__ and such.
@@ -59,8 +61,13 @@ class BoneInfoContainer(ID):
 				return bd
 		return None
 	
-	def new(self, name="Bone", source=None, armature=None, **kwargs):
+	def bone(self, name="Bone", source=None, armature=None, **kwargs):
+		"""Define a bone and add it to the list of bones. If a bone with the same name already existed, OVERWRITE IT."""
 		bi = BoneInfo(self, name, source, armature, **kwargs)
+		for b in self.bones:
+			if b.name==name:
+				b = bi
+				return b
 		self.bones.append(bi)
 		return bi
 
@@ -84,7 +91,7 @@ class BoneInfoContainer(ID):
 		bpy.ops.object.mode_set(mode='POSE')
 		for bd in bones:
 			pose_bone = armature.pose.bones.get(bd.name)
-			bd.write_pose_data(armature, pose_bone)
+			bd.write_pose_data(pose_bone)
 		
 		bpy.ops.object.mode_set(mode=org_mode)
 
@@ -99,18 +106,24 @@ class BoneInfoContainer(ID):
 class BoneInfo(ID):
 	"""Container of all info relating to a Bone."""
 	def __init__(self, container, name="Bone", source=None, armature=None, only_transform=False, **kwargs):
-		self.container = container # Need a reference to what BoneInfoContainer this BoneInfo belongs to.
-		
-		# All of the following store abstractions, not the real thing.
-		self.custom_props = {}		# PoseBone custom properties.
-		self.custom_props_edit = {}	# EditBone custom properties.
+		# Need a reference to what BoneInfoContainer this BoneInfo belongs to.
+		self.container = container
+
+		### All of the following store abstractions, not the real thing. ###
+		# PoseBone custom properties.
+		self.custom_props = {}
+		# EditBone custom properties.
+		self.custom_props_edit = {}
+		# data_path:Driver dictionary, where data_path is from the bone. Only for drivers that are directly on a bone property! Not a sub-ID like constraints.
 		self.drivers = {}
-		self.constraints = []	# List of (Type, attribs{}) tuples where attribs{} is a dictionary with the attributes of the constraint. I'm too lazy to implement a container for every constraint type...
+		# List of (Type, attribs{}) tuples where attribs{} is a dictionary with the attributes of the constraint.
+		# "drivers" is a valid attribute which expects the same content as self.drivers, and it holds the constraints for constraint properties.
+		# I'm too lazy to implement a container for every constraint type, or even a universal one, but maybe I should.
+		self.constraints = []
 		
-		# TODO: Let us specify Custom Properties, for both EditBone and PoseBone.
 		self.name = name
 		self.head = Vector((0,0,0))
-		self.tail = Vector((0,1,0))
+		self.tail = Vector((0,0,1))
 		self.roll = 0
 		self.rotation_mode = 'QUATERNION'
 		self.bbone_curveinx = 0
@@ -184,14 +197,14 @@ class BoneInfo(ID):
 	def length(self):
 		return (self.tail-self.head).size
 
-	@property
-	def center(self):
-		return self.head + self.vec/2
-
 	@length.setter
 	def length(self, value):
 		assert value > 0, "Length cannot be 0!"
 		self.tail = self.head + self.vec.normalized() * value
+
+	@property
+	def center(self):
+		return self.head + self.vec/2
 
 	def put(self, loc, length=None, width=None):
 		offset = loc-self.head
@@ -217,23 +230,20 @@ class BoneInfo(ID):
 		my_dict = self.__dict__
 		skip = ['name', 'constraints', 'bl_rna', 'type', 'rna_type', 'error_location', 'error_rotation', 'is_proxy_local', 'is_valid']
 		
-		for attr in my_dict.keys():
-			if attr in skip: continue
-			if(hasattr(edit_bone, attr)):
-				value = getattr(edit_bone, attr)
-				# EDIT BONE CLASSES CANNOT BE SAVED SO EASILY. THEY NEED TO BE DEEPCOPIED. OTHERWISE THEY ARE DESTROYED WHEN RIGIFY LEAVES EDIT MODE. FURTHER ACCESS TO THEM SHOULD, IDEALLY, CAUSE A CRASH. BUT SOMETIMES IT JUST SO HAPPENS TO LAND CONSISTENTLY ON SOME OTHER VECTOR'S MEMORY ADDRESS, THEREFORE FAILING COMPLETELY SILENTLY. NEVER SAVE REFERENCES TO EDIT BONE PROPERTIES!
-				if attr in bone_attribs and value:
+		for key, value in my_dict.items():
+			if key in skip: continue
+			if(hasattr(edit_bone, key)):
+				target_bone = getattr(edit_bone, key)
+				if key in bone_attribs and target_bone:
 					# TODO: Instead of just saving the name as a string, we should check if our BoneInfoContainer has a bone with this name, and if not, even go as far as to create it.
 					# Look for the BoneInfo object corresponding to this bone in our BoneInfoContainer.
-					bone_info = self.container.find(value.name)
-					if not bone_info:
-						# If it doesn't exist, create it.
-						bone_info = self.container.new(name=value.name, armature=armature, source=value)
+					bone_info = self.container.bone(name=target_bone.name, armature=armature, source=target_bone)
 					value = bone_info
 				else:
-					value = copy.deepcopy(getattr(edit_bone, attr))
-				setattr(self, attr, value)
-				skip.append(attr)
+					# EDIT BONE PROPERTIES MUST BE DEEPCOPIED SO THEY AREN'T DESTROYED WHEN LEAVEING EDIT MODE. OTHERWISE IT FAILS SILENTLY!
+					value = copy.deepcopy(getattr(edit_bone, key))
+				setattr(self, key, value)
+				skip.append(key)
 
 		# Read Pose Bone data (only if armature was passed)
 		if not armature: return
@@ -257,7 +267,7 @@ class BoneInfo(ID):
 
 			self.constraints.append(constraint_data)
 
-	def add_constraint(self, contype, props={}, armature=None, true_defaults=False):
+	def add_constraint(self, armature, contype, props={}, true_defaults=False):
 		"""Add a constraint to this bone.
 		contype: Type of constraint, eg. 'STRETCH_TO'.
 		props: Dictionary of properties and values.
@@ -266,9 +276,9 @@ class BoneInfo(ID):
 		
 		# Override defaults with better ones.
 		if not true_defaults:
-			new_props = get_defaults(contype)
-			for k in props.keys():
-				new_props[k] = props[k]
+			new_props = get_defaults(contype, armature)
+			for key, value in props.items():
+				new_props[key] = value
 			props = new_props
 		
 		self.constraints.append((contype, props))
@@ -284,38 +294,35 @@ class BoneInfo(ID):
 		if (self.head - self.tail).length == 0:
 			print("WARNING: Skpping 0-length bone: " + self.name)
 			return
-
+		
 		# Edit Bone Properties.
-		my_dict = self.__dict__
-		for attr in my_dict.keys():
-			if(hasattr(edit_bone, attr)):
-				if(attr in bone_attribs):
-					self_value = self.__dict__[attr]
-					if not self_value: continue
-
+		for key, value in self.__dict__.items():
+			if(hasattr(edit_bone, key)):
+				if key in bone_attribs:
 					real_bone = None
-					if(type(self_value) == str):
-						real_bone = armature.data.edit_bones.get(self_value)
-					elif(type(self_value) == BoneInfo):
-						real_bone = self_value.get_real(armature)
+					if(type(value) == str):
+						real_bone = armature.data.edit_bones.get(value)
+					elif(type(value) == BoneInfo):
+						real_bone = value.get_real(armature)
 						if not real_bone:
 							print("WARNING: Parent %s not found for bone: %s" % (self.parent.name, self.name))
-					else:
+					elif value != None:
 						# TODO: Maybe this should be raised when assigning the parent to the variable in the first place(via @property setter/getter)
-						assert False, "ERROR: Unsupported parent type: " + str(type(self_value))
+						assert False, "ERROR: Unsupported parent type: " + str(type(value))
 					
-					if(real_bone):
-						setattr(edit_bone, attr, real_bone)
+					setattr(edit_bone, key, real_bone)
 				else:
 					# We don't want Blender to destroy my object references(particularly vectors) when leaving edit mode, so pass in a deepcopy instead.
-					setattr(edit_bone, attr, copy.deepcopy(my_dict[attr]))
+					setattr(edit_bone, key, copy.deepcopy(value))
 		
 		# Custom Properties.
 		for key, prop in self.custom_props_edit.items():
 			prop.make_real(edit_bone)
 
-	def write_pose_data(self, armature, pose_bone):
+	def write_pose_data(self, pose_bone):
 		"""Write relevant data into a PoseBone and its (Data)Bone."""
+		armature = pose_bone.id_data
+
 		assert armature.mode != 'EDIT', "Armature cannot be in Edit Mode when writing pose data"
 
 		data_bone = armature.data.bones.get(pose_bone.name)
@@ -346,15 +353,30 @@ class BoneInfo(ID):
 		
 		# Constraints.
 		for cd in self.constraints:
-			name = cd[1]['name'] if 'name' in cd[1] else None
-			c = find_or_create_constraint(pose_bone, cd[0], name)
-			for attr in cd[1].keys():
-				if(hasattr(c, attr)):
-					setattr(c, attr, cd[1][attr])
+			con_type = cd[0]
+			cinfo = cd[1]
+			name = cinfo['name'] if 'name' in cinfo else None
+			c = find_or_create_constraint(pose_bone, con_type, name)
+			for key, value in cinfo.items():
+				if con_type == 'ARMATURE' and key=='targets':
+					# Armature constraint targets need special treatment. D'oh!
+					# We assume the value is a list of dictionaries describing a target.
+					for t in value:
+						target = c.targets.new()
+						# Set armature as the target by default so we don't have to always specify it.
+						target.target = armature
+						for t_key, t_value in t.items():
+							setattr(target, t_key, t_value)	
+				elif(hasattr(c, key)):
+					setattr(c, key, value)
 		
 		# Custom Properties.
 		for key, prop in self.custom_props.items():
 			prop.make_real(pose_bone)
+		
+		# Bone Property Drivers.
+		for path, d in self.drivers.items():
+			driv = d.make_real(pose_bone.id_data, path)
 	
 	def make_real(self, armature):
 		# Create a single bone and its constraints. Needs to switch between object modes.
@@ -369,7 +391,7 @@ class BoneInfo(ID):
 
 		bpy.ops.object.mode_set(mode='POSE')
 		pose_bone = armature.pose.bones.get(self.name)
-		self.write_pose_data(armature, pose_bone)
+		self.write_pose_data(pose_bone)
 
 		bpy.ops.object.mode_set(mode=org_mode)
 	

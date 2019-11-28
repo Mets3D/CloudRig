@@ -11,3 +11,4 @@ class ID:
 
 	def make_real(self, target, skip=[], recursive=False):
 		utils.copy_attributes(self, target, skip, recursive)
+		return target

@@ -1,6 +1,7 @@
 import bpy
 from .id import *
 from mets_tools import utils
+import copy
 
 # Data Container and utilities for de-coupling driver management from BPY.
 # Lets us easily apply similar drivers to many properties.
@@ -17,8 +18,9 @@ class Driver(ID):
 		if source:
 			if type(source) == Driver:
 				# Make this a copy of the source Driver object.
-				utils.copy_attributes(source, self, recursive=True)
-			
+				copy.deepcopy(source)
+				# By my understanding of deepcopy, this shouldn't be neccessary, but for some reason it is...?
+				self.variables = copy.deepcopy(source.variables)
 			if type(source) == bpy.types.FCurve:
 				# Allow passing FCurves, even though we don't care about any fields from here.
 				source = source.driver
@@ -47,6 +49,7 @@ class Driver(ID):
 		driver = Driver(BPY_driver)
 		driver.make_real(obj, data_path, index)
 
+	# TODO: Isn't this redundant? I think there's a builtin find() function for this.
 	@staticmethod
 	def get_driver_by_data_path(obj, data_path):
 		if not obj.animation_data: return
@@ -66,8 +69,9 @@ class Driver(ID):
 		# Flip variable target bones.
 		pass
 
-
 	def make_var(self, name="var"):
+		"""Shorthand for creating a variable with a name and add it to the driver. 
+		You can always add variable definitions to the driver's variable list directly."""
 		new_var = DriverVariable(name)
 		self.variables.append(new_var)
 		return new_var
@@ -80,10 +84,14 @@ class Driver(ID):
 		self.last_data_path = BPY_fcurve.data_path
 		BPY_driver = BPY_fcurve.driver
 
-		super().make_real(BPY_driver)
+		BPY_driver.expression = self.expression
+		BPY_driver.use_self = self.use_self
+		BPY_driver.type = self.type
 
 		for v in self.variables:
 			v.make_real(BPY_driver)
+		
+		return BPY_driver
 	
 	def __str__(self):
 		return "Driver Object last applied to: " + self.last_data_path
@@ -122,6 +130,11 @@ class DriverVariableTarget(ID):
 			super().make_real(BPY_variable.targets[index], skip)
 		else:
 			pass
+	
+	def __deepcopy__(self, memo):
+		# We want to halt deepcopies here, since we don't store any compound objects beside a reference to an ID, which we cannot deepcopy.
+		return copy.copy(self)
+
 	
 	def __str__(self):
 		return "DriverVariableTarget " + str(self.id) + " " + self.bone_target + " " + self.transform_type

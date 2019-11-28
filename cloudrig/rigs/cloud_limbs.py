@@ -83,7 +83,7 @@ class Rig(BaseRig):
 	def create_dsp_bone(self, parent):
 		if not self.params.display_middle: return
 		dsp_name = "DSP-" + parent.name
-		dsp_bone = self.bone_infos.new(dsp_name, parent, custom_shape=None, parent=parent)
+		dsp_bone = self.bone_infos.bone(dsp_name, parent, custom_shape=None, parent=parent)
 		dsp_bone.put(parent.center, 0.1, 0.1)
 		parent.custom_shape_transform = dsp_bone
 		return dsp_bone
@@ -95,7 +95,7 @@ class Rig(BaseRig):
 		for i, bn in enumerate(self.bones.org.main):
 			edit_bone = self.get_bone(bn)
 			fk_name = bn.replace("ORG", "FK")
-			fk_bone = self.bone_infos.new(
+			fk_bone = self.bone_infos.bone(
 				fk_name, 
 				edit_bone,
 				custom_shape = load_widget("FK_Limb"),
@@ -110,7 +110,7 @@ class Rig(BaseRig):
 				sliced_name = slice_name(fk_name)
 				sliced_name[1] += "_Parent"
 				fk_parent_name = make_name(*sliced_name)
-				fk_parent_bone = self.bone_infos.new(
+				fk_parent_bone = self.bone_infos.bone(
 					fk_parent_name, 
 					fk_bone, 
 					only_transform=True, 
@@ -137,16 +137,55 @@ class Rig(BaseRig):
 		
 		# Create Hinge helper
 		hng_name = self.base_bone.replace("ORG", "FK-HNG")	# Name it after the first bone in the chain.
-		hng_bone = self.bone_infos.new(
+		hng_bone = self.bone_infos.bone(
 			hng_name, 
 			fk_bones[0], 
 			only_transform=True,
-			**self.defaults
+			**self.defaults,
+			parent=None	# TODO: This gets overridden by Rigify, as it forces parentless bones to be parented to the "root" bone, which I'm not a big fan of.
 		)
-		hng_prop_name = "fk_hinge_left_arm" #TODO: How do we know what limb it belongs to? Maybe we don't care, if we're storing the property locally on the relevant bone anyways.
-		hng_bone.custom_props[hng_prop_name] = CustomProp(hng_prop_name, default=0.0)
-		hng_bone.custom_props_edit["edit_bone_property"] = CustomProp("edit bone property", default=1.2)
 		fk_bones[0].parent = hng_bone
+
+		con_arm = {
+			"name" : "Armature",
+			"targets" : [
+				{
+					"subtarget" : 'root'
+				},
+				{
+					"subtarget" : self.bones.parent
+				}
+			]
+		}
+
+		hng_bone.add_constraint(self.obj, 'ARMATURE', con_arm)
+
+		# Custom property tests.
+		hng_prop_name = "fk_hinge_left_arm" #TODO: How do we know what limb it belongs to? Maybe we don't care, if we're storing the property locally on the relevant bone anyways.
+		hinge_prop = hng_bone.custom_props[hng_prop_name] = CustomProp(hng_prop_name, default=0.0)
+		hng_bone.custom_props_edit["edit_bone_property"] = CustomProp("edit bone property", default=1.2)
+
+		drv1 = Driver()
+		drv1.expression = "var"
+		var1 = drv1.make_var("var")
+		var1.type = 'SINGLE_PROP'
+		var1.targets[0].id_type='OBJECT'
+		var1.targets[0].id = self.obj
+		var1.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (hng_bone.name, hng_prop_name)
+
+		drv2 = Driver(drv1)
+		drv2.expression = "1-var"
+
+		data_path1 = 'pose.bones["%s"].constraints["%s"].targets[0].weight' %(hng_name, con_arm['name'])
+		data_path2 = 'pose.bones["%s"].constraints["%s"].targets[1].weight' %(hng_name, con_arm['name'])
+		
+		hng_bone.drivers[data_path1] = drv1
+		hng_bone.drivers[data_path2] = drv2
+
+		# con_copyloc = self.make_constraint(hng, 'COPY_LOCATION')
+		# con_copyloc.target = self.obj
+		# con_copyloc.subtarget = self.bones.parent
+		# con_copyloc.head_tail = 1
 	
 	def generate_bones(self):
 		self.bones.everything = []
@@ -159,11 +198,12 @@ class Rig(BaseRig):
 		for bd in self.bone_infos.bones:
 			edit_bone = self.get_bone(bd.name)
 			bd.write_edit_data(self.obj, edit_bone)
+			edit_bone.parent = None
 	
 	def configure_bones(self):
 		for bd in self.bone_infos.bones:
 			pose_bone = self.get_bone(bd.name)
-			bd.write_pose_data(self.obj, pose_bone)
+			bd.write_pose_data(pose_bone)
 
 	#@stage.configure_bones
 	def configure_fk(self):
