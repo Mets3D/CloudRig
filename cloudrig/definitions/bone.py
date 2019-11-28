@@ -345,7 +345,7 @@ class BoneInfo(ID):
 			if(hasattr(data_bone, attr)):
 				value = my_dict[attr]
 				if attr in skip: continue
-				# TODO: It should be more explicitly defined what properties we want to be setting here exactly, because I don't even know. Same for Pose and Edit data.
+				# TODO: It should be more explicitly defined what properties we want to be setting here exactly, because I don't even know. Same for Pose and Edit data tbh.
 				if attr in ['bbone_custom_handle_start', 'bbone_custom_handle_end']:
 					if(type(value)==str):
 						value = armature.data.bones.get(value)

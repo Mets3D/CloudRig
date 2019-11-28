@@ -25,7 +25,8 @@ from mathutils import *
 
 from ..definitions.driver import *
 from ..definitions.custom_props import CustomProp
-from ..definitions.bone import BoneInfoContainer
+from ..definitions.bone import BoneInfoContainer, BoneInfo
+from .. import shared
 
 from rigify.utils.errors import MetarigError
 from rigify.utils.rig import connected_children_names
@@ -39,18 +40,12 @@ from rigify.base_rig import BaseRig, stage
 from .cloud_utils import load_widget, make_name, slice_name
 
 # Ideas:
-# I'd rather abstract bones in a way where I don't have to worry about being in pose or edit mode at all. Ie, store all bone properties in an abstract class that mimics Blender's internal bone data structures(while combining them all)
-# But I'm not sure if it's worth the hassle or if I would run into any headaches.
-# (This is the same idea that we arleady did for managing Drivers, which worked out pretty well, and these could also be combined)
-# (We would add a "drivers" field to our ID class, which would store a list of drivers, or whatever extra info a driver would need to be realized on that ID when it is made into a real one.)
-# And then I guess we would have to do the same for constraints.
-# There could also be an Armature abstraction, just for the sake of storing a list of bones. That way, armature.make_real() can make the bones real without switching between edit and pose mode multiple times.
+# Should probably turn constraints into a class.
+# I really need to make sure I can justify abstracting the entire blender rigging datastructures... it feels really silly.
 
-# Constraints should be automagically initialized with more sensible defaults, unless explicitly told to initialize with Blender's defaults(which are BAADDDD)
 
 # Registerable rig template classes MUST be called exactly "Rig"!!!
 # (This class probably shouldn't be registered in the future)
-
 class Rig(BaseRig):
 	""" Base for CloudRig arms and legs.
 	"""
@@ -74,19 +69,13 @@ class Rig(BaseRig):
 			"rotation_mode" : "XYZ",
 			"use_custom_shape_bone_size" : True
 		}
+		# Bone Info container used for storing new bone info created by the script.
 		self.bone_infos = BoneInfoContainer(self.defaults)
+		# Bone Info container used for storing existing bone info from the meta-rig, which should overwrite anything done by the script.
+		# TODO:  I still don't hate this idea, but we need to define how various properties are handled - eg, transforms would be overwritten, sure, but constraints? I guess figure this out when we have a use case.
+		self.overriding_bone_infos = BoneInfoContainer()
 		self.bones.parent = self.get_bone(self.base_bone).parent.name
 		self.type = self.params.type
-
-	# DSP bones - Display bones at the mid-point of each bone to use as display transforms for FK.
-	# TODO: This should be in a shared place like utils or something.
-	def create_dsp_bone(self, parent):
-		if not self.params.display_middle: return
-		dsp_name = "DSP-" + parent.name
-		dsp_bone = self.bone_infos.bone(dsp_name, parent, custom_shape=None, parent=parent)
-		dsp_bone.put(parent.center, 0.1, 0.1)
-		parent.custom_shape_transform = dsp_bone
-		return dsp_bone
 
 	@stage.prepare_bones
 	def prepare_fk(self):
@@ -104,35 +93,20 @@ class Rig(BaseRig):
 			fk_bones.append(fk_bone)
 			
 			if i == 0 and self.params.double_first_control:
-				# TODO: This should be shared code, because fingers are going to need it as well.
-
 				# Make a parent for the first control.
-				sliced_name = slice_name(fk_name)
-				sliced_name[1] += "_Parent"
-				fk_parent_name = make_name(*sliced_name)
-				fk_parent_bone = self.bone_infos.bone(
-					fk_parent_name, 
-					fk_bone, 
-					only_transform=True, 
-					custom_shape_scale=1.1, 
-					custom_shape = load_widget("FK_Limb"),
-					**self.defaults
-				)
+				fk_parent_bone = shared.create_parent_bone(self, fk_bone)
+				fk_parent_bone.custom_shape = load_widget("FK_Limb")
+				shared.create_dsp_bone(self, fk_parent_bone)
 
-				# Setup DSP bone for the new parent bone.
-				self.create_dsp_bone(fk_parent_bone)
-
-				# Parent FK bone to the new parent bone.
-				fk_bone.parent = fk_parent_bone
-				
-				# Store in the beginning of the FK list.
+				# Store in the beginning of the FK list, since it's the new root of the FK chain.
 				fk_bones.insert(0, fk_parent_bone)
-			if i > 0:
+			else:
 				# Parent FK bone to previous FK bone.
 				fk_bone.parent = fk_bones[-2]
+			
 			if i < 2:
 				# Setup DSP bone for all but last bone.
-				self.create_dsp_bone(fk_bone)
+				shared.create_dsp_bone(self, fk_bone)
 				pass
 		
 		# Create Hinge helper
@@ -188,17 +162,19 @@ class Rig(BaseRig):
 		# con_copyloc.head_tail = 1
 	
 	def generate_bones(self):
-		self.bones.everything = []
+		for bn in self.bones.flatten():
+			bone = self.get_bone(bn)
+			self.overriding_bone_infos.bone(bn, bone)
+
 		for bd in self.bone_infos.bones:
 			bone_name = self.new_bone(bd.name)
-
-			self.bones.everything.append(bone_name)
 	
 	def parent_bones(self):
 		for bd in self.bone_infos.bones:
 			edit_bone = self.get_bone(bd.name)
 			bd.write_edit_data(self.obj, edit_bone)
-			edit_bone.parent = None
+			
+			overriding_bone = self.overriding_bone_infos.find(bd.name)
 	
 	def configure_bones(self):
 		for bd in self.bone_infos.bones:
