@@ -23,9 +23,9 @@ from bpy.props import *
 from itertools import count
 from mathutils import *
 
-from mets_tools.armature_nodes.driver import *
-from mets_tools.armature_nodes.custom_props import CustomProp
-from mets_tools.armature_nodes.bone import BoneInfoContainer
+from ..definitions.driver import *
+from ..definitions.custom_props import CustomProp
+from ..definitions.bone import BoneInfoContainer
 
 from rigify.utils.errors import MetarigError
 from rigify.utils.rig import connected_children_names
@@ -71,7 +71,8 @@ class Rig(BaseRig):
 		self.defaults = {
 			"bbone_x" : 0.05,
 			"bbone_z" : 0.05,
-			"rotation_mode" : "XYZ"
+			"rotation_mode" : "XYZ",
+			"use_custom_shape_bone_size" : True
 		}
 		self.bone_infos = BoneInfoContainer(self.defaults)
 		self.bones.parent = self.get_bone(self.base_bone).parent.name
@@ -94,8 +95,12 @@ class Rig(BaseRig):
 		for i, bn in enumerate(self.bones.org.main):
 			edit_bone = self.get_bone(bn)
 			fk_name = bn.replace("ORG", "FK")
-			fk_bone = self.bone_infos.new(fk_name, edit_bone)
-			fk_bone.custom_shape = load_widget("FK_Limb")
+			fk_bone = self.bone_infos.new(
+				fk_name, 
+				edit_bone,
+				custom_shape = load_widget("FK_Limb"),
+				**self.defaults
+			)
 			fk_bones.append(fk_bone)
 			
 			if i == 0 and self.params.double_first_control:
@@ -105,8 +110,14 @@ class Rig(BaseRig):
 				sliced_name = slice_name(fk_name)
 				sliced_name[1] += "_Parent"
 				fk_parent_name = make_name(*sliced_name)
-				fk_parent_bone = self.bone_infos.new(fk_parent_name, fk_bone, only_transform=True, custom_shape_scale=1.1, **self.defaults)
-				fk_parent_bone.custom_shape = load_widget("FK_Limb")
+				fk_parent_bone = self.bone_infos.new(
+					fk_parent_name, 
+					fk_bone, 
+					only_transform=True, 
+					custom_shape_scale=1.1, 
+					custom_shape = load_widget("FK_Limb"),
+					**self.defaults
+				)
 
 				# Setup DSP bone for the new parent bone.
 				self.create_dsp_bone(fk_parent_bone)
@@ -126,9 +137,15 @@ class Rig(BaseRig):
 		
 		# Create Hinge helper
 		hng_name = self.base_bone.replace("ORG", "FK-HNG")	# Name it after the first bone in the chain.
-		hng_bone = self.bone_infos.new(hng_name, fk_bones[0], only_transform=True)
+		hng_bone = self.bone_infos.new(
+			hng_name, 
+			fk_bones[0], 
+			only_transform=True,
+			**self.defaults
+		)
 		hng_prop_name = "fk_hinge_left_arm" #TODO: How do we know what limb it belongs to? Maybe we don't care, if we're storing the property locally on the relevant bone anyways.
 		hng_bone.custom_props[hng_prop_name] = CustomProp(hng_prop_name, default=0.0)
+		hng_bone.custom_props_edit["edit_bone_property"] = CustomProp("edit bone property", default=1.2)
 		fk_bones[0].parent = hng_bone
 	
 	def generate_bones(self):
