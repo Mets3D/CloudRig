@@ -20,13 +20,7 @@
 
 import bpy
 from bpy.props import *
-from itertools import count
 from mathutils import *
-
-from ..definitions.driver import *
-from ..definitions.custom_props import CustomProp
-from ..definitions.bone import BoneInfoContainer, BoneInfo
-from .. import shared
 
 from rigify.utils.errors import MetarigError
 from rigify.utils.rig import connected_children_names
@@ -37,10 +31,16 @@ from rigify.utils.mechanism import make_property
 
 from rigify.base_rig import BaseRig, stage
 
+from ..definitions.driver import *
+from ..definitions.custom_props import CustomProp
+from ..definitions.bone import BoneInfoContainer, BoneInfo
+from .. import shared
 from .cloud_utils import load_widget, make_name, slice_name
 
 # Ideas:
-# Should probably turn constraints into a class.
+# Should probably turn constraints into a class. At least it would let us more easily add drivers to them.
+# I should implement a CollectionProperty-like class, for ID collections, similar to BoneInfoContainer.
+# BoneInfo and other ID classes could perhaps live without all their values pre-assigned in __init__. The only ones that need to be pre-assigned are the ones that other things rely on, like how the length property relies on head and tail existing.
 # I really need to make sure I can justify abstracting the entire blender rigging datastructures... it feels really silly.
 
 
@@ -119,19 +119,16 @@ class Rig(BaseRig):
 		)
 		fk_bones[0].parent = hng_bone
 
-		con_arm = {
-			"name" : "Armature",
-			"targets" : [
+		hng_bone.add_constraint(self.obj, 'ARMATURE', 
+			targets = [
 				{
 					"subtarget" : 'root'
 				},
 				{
 					"subtarget" : self.bones.parent
 				}
-			]
-		}
-
-		hng_bone.add_constraint(self.obj, 'ARMATURE', con_arm)
+			],
+		)
 
 		# Custom property tests.
 		hng_prop_name = "fk_hinge_left_arm" #TODO: How do we know what limb it belongs to? Maybe we don't care, if we're storing the property locally on the relevant bone anyways.
@@ -149,25 +146,89 @@ class Rig(BaseRig):
 		drv2 = Driver(drv1)
 		drv2.expression = "1-var"
 
-		data_path1 = 'pose.bones["%s"].constraints["%s"].targets[0].weight' %(hng_name, con_arm['name'])
-		data_path2 = 'pose.bones["%s"].constraints["%s"].targets[1].weight' %(hng_name, con_arm['name'])
+		data_path1 = 'pose.bones["%s"].constraints["Armature"].targets[0].weight' %(hng_name)
+		data_path2 = 'pose.bones["%s"].constraints["Armature"].targets[1].weight' %(hng_name)
 		
 		hng_bone.drivers[data_path1] = drv1
 		hng_bone.drivers[data_path2] = drv2
 
-		con_copyloc = {
-			"subtarget" : self.bones.parent,
-			"head_tail" : 1,
-			"target_space" : 'WORLD',
-			"owner_space" : 'WORLD',
-			"use_offset" : False
-		}
-
-		hng_bone.add_constraint(self.obj, 'COPY_LOCATION', con_copyloc)
+		hng_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True,
+			subtarget=self.bones.parent,
+			head_tail=1
+		)
 	
 	@stage.prepare_bones
 	def prepare_ik(self):
-		pass
+		# What we need:
+		# IK Chain (equivalents to ORG, so 3 of these) - Make sure IK Stretch is enabled on first two, and they are parented and connected to each other.
+		# IK Controls: Wrist, Wrist Parent(optional)
+		# IK-STR- bone with its Limit Scale constraint set automagically somehow.
+		# IK Pole target and line, somehow automagically placed.
+		
+		chain = self.bones.org.main
+
+		# Create IK control(s) (Wrist/Ankle)
+		bn = chain[-1]
+		org_bone = self.get_bone(bn)
+		ik_name = bn.replace("ORG", "IK")
+		ik_bone = self.bone_infos.bone(
+			ik_name, 
+			org_bone, 
+			custom_shape = load_widget("Hand_IK")
+		)
+		# Parent control
+		if self.params.double_ik_control:
+			sliced = slice_name(ik_name)
+			sliced[0].append("P")
+			parent_name = make_name(*sliced)
+			parent_bone = self.bone_infos.bone(
+				parent_name, 
+				ik_bone, 
+				custom_shape_scale=1.1
+			)
+			ik_bone.parent = parent_bone
+		
+		# Stretch mechanism
+		eb = self.get_bone(chain[0])
+		sliced = slice_name(ik_name)
+		sliced[0].append("STR")
+		str_name = make_name(*sliced)
+		str_bone = self.bone_infos.bone(
+			str_name, 
+			eb,
+			tail=Vector(ik_bone.head[:])
+		)
+		
+		str_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=ik_bone.name)
+		str_bone.add_constraint(self.obj, 'LIMIT_SCALE', 
+			use_max_t = True,
+			max_y = 1.05, # TODO: How to calculate this correctly?
+			influence = 0 # TODO: Put a driver on this, controlled by IK Stretch switch.
+		)
+
+		sliced[0].append("TIP")
+		tip_name = make_name(*sliced)
+		tip_bone = self.bone_infos.bone(tip_name, ik_bone, parent=ik_bone)
+
+		# Create IK Chain (first two bones)
+		ik_chain = []
+		for i, bn in enumerate(chain[:-1]):
+			org_bone = self.get_bone(bn)
+			ik_name = bn.replace("ORG", "IK")
+			ik_bone = self.bone_infos.bone(ik_name, org_bone, ik_stretch=0.1)
+			ik_chain.append(ik_bone)
+			
+			if i > 0:
+				ik_bone.parent = ik_chain[-2]
+			else:
+				ik_bone.parent = self.bone_infos.bone(self.bones.parent)
+			
+			if i == len(chain)-2:
+				# Add the IK constraint to the 2nd-to-last bone.
+				ik_bone.add_constraint(self.obj, 'IK', 
+					pole_target=None,	# TODO pole target.
+					subtarget=tip_bone.name
+				)
 
 	def generate_bones(self):
 		# for bn in self.bones.flatten():
@@ -198,95 +259,6 @@ class Rig(BaseRig):
 				if c.type=='ARMATURE':
 					eb.parent = None
 					break
-
-	#@stage.generate_bones
-	def generate_ik(self):
-		# What we need:
-		# IK Chain (equivalents to ORG, so 3 of these) - Make sure IK Stretch is enabled on first two, and they are parented and connected to each other.
-		# IK Controls: Wrist, Wrist Parent(optional)
-		# IK-STR- bone with its Limit Scale constraint set automagically somehow.
-		# IK Pole target and line, somehow automagically placed.
-		
-		chain = self.bones.org.main
-		# Create IK Chain (first two bones)
-		for i, bn in enumerate(chain[:-1]):
-			ik_name = bn.replace("ORG", "IK")
-			self.copy_bone(bn, ik_name)
-			ik_bone = self.get_bone(ik_name)
-
-			if 'ik' not in self.bones.mch:
-				self.bones.mch.ik = []
-			
-			if i > 0:
-				ik_bone.parent = self.get_bone(self.bones.mch.ik[-1])
-			else:
-				ik_bone.parent = self.get_bone(self.bones.parent)
-			
-			self.bones.mch.ik.append(ik_name)
-
-		# Create IK control(s) (Wrist/Ankle)
-		self.bones.ctrl.ik = []
-		bn = chain[-1]
-		ik_name = bn.replace("ORG", "IK")
-		self.copy_bone(bn, ik_name)
-		ik_bone = self.get_bone(ik_name)
-		self.bones.ctrl.ik.append(ik_name)
-		if self.params.double_ik_control:
-			sliced = slice_name(ik_name)
-			sliced[0].append("P")
-			parent_name = make_name(*sliced)
-			self.copy_bone(ik_name, parent_name)
-			self.bones.ctrl.ik.append(parent_name)
-			parent_bone = self.get_bone(parent_name)
-			ik_bone.parent = parent_bone
-		
-		# Stretch mechanism
-		sliced = slice_name(ik_name)
-		sliced[0].append("STR")
-		str_name = self.bones.mch.ik_stretch = make_name(*sliced)
-		self.copy_bone(self.bones.mch.ik[0], str_name)
-		str_bone = self.get_bone(str_name)
-		str_bone.tail = ik_bone.head
-
-		sliced[0].append("TIP")
-		tip_name = self.bones.mch.ik_stretch_tip = make_name(*sliced)
-		self.copy_bone(ik_name, tip_name)
-		tip_bone = self.get_bone(tip_name)
-		tip_bone.parent = ik_bone
-
-	#@stage.configure_bones
-	def configure_ik(self):
-		ik_bone_name = self.bones.mch.ik[-1]
-
-		stretch = self.bones.mch.ik_stretch
-		str_bone = self.get_bone(stretch)
-		tip = self.bones.mch.ik_stretch_tip
-		tip_bone = self.get_bone(self.bones.mch.ik_stretch_tip)
-
-		for ik in self.bones.mch.ik:
-			ik_bone = self.get_bone(ik)
-			ik_bone.ik_stretch = 0.1
-
-		con_ik = self.make_constraint(ik_bone_name, 'IK')
-		con_ik.chain_count = 2
-		con_ik.target = self.obj
-		con_ik.subtarget = tip
-		# TODO pole target.
-
-		con_str = self.make_constraint(str_bone.name, 'STRETCH_TO')
-		con_str.target = self.obj
-		con_str.subtarget = self.bones.ctrl.ik[0]
-
-		con_limitscale = self.make_constraint(str_bone.name, 'LIMIT_SCALE')
-		con_limitscale.use_max_y = True
-		con_limitscale.max_y = 1.05 # TODO: How to calculate this correctly?
-		con_limitscale.owner_space = 'LOCAL'
-		con_limitscale.influence = 0 # TODO: Put driver on this, driven by IK stretch toggle custom property.
-
-		con_copyloc = self.make_constraint(tip, 'COPY_LOCATION')
-		con_copyloc.target = self.obj
-		con_copyloc.subtarget = stretch
-		con_copyloc.head_tail = 1
 
 	#@stage.generate_bones
 	def generate_deform(self):
@@ -336,20 +308,8 @@ class Rig(BaseRig):
 	def generate_stretchy(self):
 		pass
 
-	#@stage.configure_bones
-	def configure_rot_modes(self):
-		for ctb in self.bones.ctrl.flatten():
-			bone = self.get_bone(ctb)
-			bone.rotation_mode='XYZ'
-
-	#@stage.finalize
+	@stage.finalize
 	def configure_display(self):
-		# DSP bones
-		for i, ik in enumerate(self.bones.ctrl.ik):
-			ik_bone = self.get_bone(ik)
-			ik_bone.custom_shape = load_widget("Hand_IK")
-			ik_bone.custom_shape_scale = 1 + 0.1*i
-
 		# Armature display settings
 		self.obj.display_type = 'SOLID'
 		self.obj.data.display_type = 'BBONE'

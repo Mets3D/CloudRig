@@ -146,7 +146,7 @@ class BoneInfo(ID):
 		self.custom_shape_scale = 1.0
 		self.use_custom_shape_bone_size = False
 		self.use_endroll_as_inroll = False
-		# self.use_connect = False
+		self.use_connect = False
 		self.use_deform = False
 		self.use_inherit_rotation = True
 		self.use_inherit_scale = True
@@ -164,8 +164,8 @@ class BoneInfo(ID):
 		
 		if only_transform:
 			assert source, "If only_transform==True, source cannot be None!"
-			self.head=source.head
-			self.tail=source.tail
+			self.head=copy.copy(source.head)
+			self.tail=copy.copy(source.tail)
 			self.roll=source.roll
 			self.bbone_x=source.bbone_x
 			self.bbone_z=source.bbone_z
@@ -175,7 +175,11 @@ class BoneInfo(ID):
 			elif(source and type(source)==bpy.types.EditBone):
 				self.copy_bone(armature, source)
 		
-		# Override copied properties with arbitrary keyword arguments if any were passed.
+		# Apply property values from container's defaults
+		for key, value in self.container.defaults.items():
+			setattr(self, key, value)
+
+		# Apply property values from arbitrary keyword arguments if any were passed.
 		for key, value in kwargs.items():
 			setattr(self, key, value)
 
@@ -267,21 +271,22 @@ class BoneInfo(ID):
 
 			self.constraints.append(constraint_data)
 
-	def add_constraint(self, armature, contype, props={}, true_defaults=False):
+	def add_constraint(self, armature, contype, true_defaults=False, **kwargs):
 		"""Add a constraint to this bone.
 		contype: Type of constraint, eg. 'STRETCH_TO'.
 		props: Dictionary of properties and values.
 		true_defaults: When False, we use a set of arbitrary default values that I consider better than Blender's defaults.
 		"""
-		
+		props = kwargs
 		# Override defaults with better ones.
 		if not true_defaults:
 			new_props = get_defaults(contype, armature)
-			for key, value in props.items():
+			for key, value in kwargs.items():
 				new_props[key] = value
 			props = new_props
 		
 		self.constraints.append((contype, props))
+		return props
 
 	def clear_constraints(self):
 		self.constraints = []
@@ -298,6 +303,7 @@ class BoneInfo(ID):
 		# Edit Bone Properties.
 		for key, value in self.__dict__.items():
 			if(hasattr(edit_bone, key)):
+				if key == 'use_connect': continue	# TODO why does this break everything?
 				if key in bone_attribs:
 					real_bone = None
 					if(type(value) == str):
@@ -371,7 +377,9 @@ class BoneInfo(ID):
 							if prop in tinfo:
 								setattr(target, prop, tinfo[prop])
 				elif(hasattr(c, key)):
-					if con_type=='ARMATURE' and key in ['target_space', 'owner_space']: continue
+					if con_type in ['IK', 'STRETCH_TO', 'ARMATURE'] and \
+						key in ['target_space', 'owner_space']: 
+						continue
 					setattr(c, key, value)
 		
 		# Custom Properties.
