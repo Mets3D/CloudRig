@@ -156,15 +156,20 @@ class Rig(BaseRig):
 		hng_bone.drivers[data_path1] = drv1
 		hng_bone.drivers[data_path2] = drv2
 
-		# con_copyloc = self.make_constraint(hng, 'COPY_LOCATION')
-		# con_copyloc.target = self.obj
-		# con_copyloc.subtarget = self.bones.parent
-		# con_copyloc.head_tail = 1
+		con_copyloc = {
+			"subtarget" : self.bones.parent,
+			"head_tail" : 1,
+			"target_space" : 'WORLD',
+			"owner_space" : 'WORLD',
+			"use_offset" : False
+		}
+
+		hng_bone.add_constraint(self.obj, 'COPY_LOCATION', con_copyloc)
 	
 	def generate_bones(self):
-		for bn in self.bones.flatten():
-			bone = self.get_bone(bn)
-			self.overriding_bone_infos.bone(bn, bone)
+		# for bn in self.bones.flatten():
+		# 	bone = self.get_bone(bn)
+		# 	self.overriding_bone_infos.bone(bn, bone)
 
 		for bd in self.bone_infos.bones:
 			bone_name = self.new_bone(bd.name)
@@ -174,50 +179,12 @@ class Rig(BaseRig):
 			edit_bone = self.get_bone(bd.name)
 			bd.write_edit_data(self.obj, edit_bone)
 			
-			overriding_bone = self.overriding_bone_infos.find(bd.name)
+			# overriding_bone = self.overriding_bone_infos.find(bd.name)
 	
 	def configure_bones(self):
 		for bd in self.bone_infos.bones:
 			pose_bone = self.get_bone(bd.name)
 			bd.write_pose_data(pose_bone)
-
-	#@stage.configure_bones
-	def configure_fk(self):
-		# TODO: Copy Transforms constraints with drivers for the ORG- bones.
-
-		### Hinge Setup ###
-		hng = self.bones.mch.fk_hinge
-		con_arm = self.make_constraint(hng, 'ARMATURE')
-		target1 = con_arm.targets.new()
-		target2 = con_arm.targets.new()
-		target1.target = target2.target = self.obj
-		target1.subtarget = 'root'
-		target2.subtarget = self.bones.parent
-
-		# TODO: Create UI for custom property, and maybe store it elsewhere. 
-		# I think I like it when all options are displayed all the time, but it can be limiting, 
-		# if we're adding snapping options, and more per-limb options, it can easily become UI overload.
-
-		prop_name = 'FK_Hinge'
-		make_property(self.get_bone(self.base_bone), prop_name, 0.0)
-
-		drv = Driver()
-		drv.expression = "var"
-		var = drv.make_var("var")
-		var.type = 'SINGLE_PROP'
-		var.targets[0].id_type='OBJECT'
-		var.targets[0].id = self.obj
-		var.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.base_bone, prop_name)
-
-		drv.make_real(target1, "weight")
-
-		drv.expression = "1-var"
-		drv.make_real(target2, "weight")
-
-		con_copyloc = self.make_constraint(hng, 'COPY_LOCATION')
-		con_copyloc.target = self.obj
-		con_copyloc.subtarget = self.bones.parent
-		con_copyloc.head_tail = 1
 
 	#@stage.generate_bones
 	def generate_ik(self):

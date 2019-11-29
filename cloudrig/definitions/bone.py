@@ -360,14 +360,18 @@ class BoneInfo(ID):
 			for key, value in cinfo.items():
 				if con_type == 'ARMATURE' and key=='targets':
 					# Armature constraint targets need special treatment. D'oh!
-					# We assume the value is a list of dictionaries describing a target.
-					for t in value:
-						target = c.targets.new()
+					# We assume the value of "targets" is a list of dictionaries describing a target.
+					for tinfo in value:	# For each of those dictionaries
+						target = c.targets.new()	# Create a target
 						# Set armature as the target by default so we don't have to always specify it.
 						target.target = armature
-						for t_key, t_value in t.items():
-							setattr(target, t_key, t_value)	
+						# Copy just these three values.
+						copy = ['weight', 'target', 'subtarget']
+						for prop in copy:
+							if prop in tinfo:
+								setattr(target, prop, tinfo[prop])
 				elif(hasattr(c, key)):
+					if con_type=='ARMATURE' and key in ['target_space', 'owner_space']: continue
 					setattr(c, key, value)
 		
 		# Custom Properties.
