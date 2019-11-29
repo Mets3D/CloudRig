@@ -116,7 +116,6 @@ class Rig(BaseRig):
 			fk_bones[0], 
 			only_transform=True,
 			**self.defaults,
-			parent=None	# TODO: This gets overridden by Rigify, as it forces parentless bones to be parented to the "root" bone, which I'm not a big fan of.
 		)
 		fk_bones[0].parent = hng_bone
 
@@ -166,6 +165,10 @@ class Rig(BaseRig):
 
 		hng_bone.add_constraint(self.obj, 'COPY_LOCATION', con_copyloc)
 	
+	@stage.prepare_bones
+	def prepare_ik(self):
+		pass
+
 	def generate_bones(self):
 		# for bn in self.bones.flatten():
 		# 	bone = self.get_bone(bn)
@@ -185,6 +188,16 @@ class Rig(BaseRig):
 		for bd in self.bone_infos.bones:
 			pose_bone = self.get_bone(bd.name)
 			bd.write_pose_data(pose_bone)
+
+	def apply_bones(self):
+		# In a previous stage, Rigify automatically parents bones that have no parent to the root bone.
+		# We want to undo this when the bone has an Armature constraint, since such bones should never have a parent.
+		for eb in self.obj.data.edit_bones:
+			pb = self.obj.pose.bones.get(eb.name)
+			for c in pb.constraints:
+				if c.type=='ARMATURE':
+					eb.parent = None
+					break
 
 	#@stage.generate_bones
 	def generate_ik(self):
