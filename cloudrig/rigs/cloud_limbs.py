@@ -76,6 +76,9 @@ class Rig(BaseRig):
 		self.overriding_bone_infos = BoneInfoContainer()
 		self.bones.parent = self.get_bone(self.base_bone).parent.name
 		self.type = self.params.type
+		# IK/FK Switch custom property
+		self.root = self.bone_infos.bone("root")
+		ikfk_prop = self.root.custom_props["ik_fk"] = CustomProp("ik_fk", default=0.0)
 
 	@stage.prepare_bones
 	def prepare_fk(self):
@@ -130,10 +133,11 @@ class Rig(BaseRig):
 			],
 		)
 
-		# Custom property tests.
+		# Custom property. TODO: This could be set up in initialize(), perhaps.
+		base_bone = self.bone_infos.bone(self.base_bone)
 		hng_prop_name = "fk_hinge_left_arm" #TODO: How do we know what limb it belongs to? Maybe we don't care, if we're storing the property locally on the relevant bone anyways.
-		hinge_prop = hng_bone.custom_props[hng_prop_name] = CustomProp(hng_prop_name, default=0.0)
-		hng_bone.custom_props_edit["edit_bone_property"] = CustomProp("edit bone property", default=1.2)
+		hinge_prop = base_bone.custom_props[hng_prop_name] = CustomProp(hng_prop_name, default=0.0)
+		base_bone.custom_props_edit["edit_bone_property"] = CustomProp("edit bone property", default=1.2)
 
 		drv1 = Driver()
 		drv1.expression = "var"
@@ -141,7 +145,7 @@ class Rig(BaseRig):
 		var1.type = 'SINGLE_PROP'
 		var1.targets[0].id_type='OBJECT'
 		var1.targets[0].id = self.obj
-		var1.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (hng_bone.name, hng_prop_name)
+		var1.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (base_bone.name, hng_prop_name)
 
 		drv2 = Driver(drv1)
 		drv2.expression = "1-var"
@@ -153,6 +157,7 @@ class Rig(BaseRig):
 		hng_bone.drivers[data_path2] = drv2
 
 		hng_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True,
+			target=self.obj,
 			subtarget=self.bones.parent,
 			head_tail=1
 		)
@@ -171,10 +176,11 @@ class Rig(BaseRig):
 		bn = chain[-1]
 		org_bone = self.get_bone(bn)
 		ik_name = bn.replace("ORG", "IK")
-		ik_bone = self.bone_infos.bone(
+		ik_ctrl = self.bone_infos.bone(
 			ik_name, 
 			org_bone, 
-			custom_shape = load_widget("Hand_IK")
+			custom_shape = load_widget("Hand_IK"),
+			parent=None,
 		)
 		# Parent control
 		if self.params.double_ik_control:
@@ -183,10 +189,10 @@ class Rig(BaseRig):
 			parent_name = make_name(*sliced)
 			parent_bone = self.bone_infos.bone(
 				parent_name, 
-				ik_bone, 
+				ik_ctrl, 
 				custom_shape_scale=1.1
 			)
-			ik_bone.parent = parent_bone
+			ik_ctrl.parent = parent_bone
 		
 		# Stretch mechanism
 		eb = self.get_bone(chain[0])
@@ -196,19 +202,19 @@ class Rig(BaseRig):
 		str_bone = self.bone_infos.bone(
 			str_name, 
 			eb,
-			tail=Vector(ik_bone.head[:])
+			tail=Vector(ik_ctrl.head[:])
 		)
 		
-		str_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=ik_bone.name)
+		str_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=ik_ctrl.name)
 		str_bone.add_constraint(self.obj, 'LIMIT_SCALE', 
-			use_max_t = True,
+			use_max_y = True,
 			max_y = 1.05, # TODO: How to calculate this correctly?
 			influence = 0 # TODO: Put a driver on this, controlled by IK Stretch switch.
 		)
 
 		sliced[0].append("TIP")
 		tip_name = make_name(*sliced)
-		tip_bone = self.bone_infos.bone(tip_name, ik_bone, parent=ik_bone)
+		tip_bone = self.bone_infos.bone(tip_name, org_bone, parent=ik_ctrl)
 
 		# Create IK Chain (first two bones)
 		ik_chain = []
@@ -230,13 +236,21 @@ class Rig(BaseRig):
 					subtarget=tip_bone.name
 				)
 
+	def prepare_org(self):
+		for i, bn in enumerate(self.org.bones.main):
+			ik_bone = self.bone_infos.find(bn.replace("ORG", "IK"))
+
+
+
+
 	def generate_bones(self):
 		# for bn in self.bones.flatten():
 		# 	bone = self.get_bone(bn)
 		# 	self.overriding_bone_infos.bone(bn, bone)
 
 		for bd in self.bone_infos.bones:
-			bone_name = self.new_bone(bd.name)
+			if bd.name not in self.bones.flatten():
+				bone_name = self.new_bone(bd.name)	# TODO: About warnings being spewed into console - I wonder if something is missing from new_bone(). Test using copy_bone() instead?
 	
 	def parent_bones(self):
 		for bd in self.bone_infos.bones:

@@ -67,6 +67,7 @@ class BoneInfoContainer(ID):
 		for b in self.bones:
 			if b.name==name:
 				b = bi
+				self.bones.append(bi)
 				return b
 		self.bones.append(bi)
 		return bi
