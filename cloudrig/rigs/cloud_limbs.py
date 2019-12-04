@@ -79,9 +79,13 @@ class Rig(BaseRig):
 		
 		self.bones.parent = self.get_bone(self.base_bone).parent.name
 		self.type = self.params.type
-		# IK/FK Switch custom property
-		self.root = self.bone_infos.bone("root")
-		ikfk_prop = self.root.custom_props["ik_fk"] = CustomProp("ik_fk", default=0.0)
+
+		# Properties bone and Custom Properties
+		self.prop_bone = self.bone_infos.bone("Properties_IKFK", bone_group='Properties')
+		limb = "arm" if self.params.type=='ARM' else "leg"
+		side = "left" if self.base_bone.endswith("L") else "right"
+		ikfk_name = "ik_" + limb + "_" + side
+		self.ikfk_prop = self.prop_bone.custom_props[ikfk_name] = CustomProp(ikfk_name, default=0.0)
 
 	def prepare_bone_groups(self):
 		# Wipe any existing bone groups.
@@ -275,15 +279,76 @@ class Rig(BaseRig):
 			org_bone = self.bone_infos.find(bn)
 
 			org_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=fk_bone.name, name="Copy Transforms FK")
-			ik_con = org_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=ik_bone.name, name="Copy Transforms IK")
+			ik_ct_name = "Copy Transforms IK"
+			ik_con = org_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=ik_bone.name, name=ik_ct_name)
 
 			drv = Driver()
 			var = drv.make_var()
 			var.targets[0].id = self.obj
-			var.targets[0].data_path = 'pose.bones["root"]["ik_fk"]'
+			var.targets[0].data_path = 'pose.bones["%s"]["%s"]' %(self.prop_bone.name, self.ikfk_prop.name)
 
-			data_path = 'pose.bones["%s"].constraints["%s"].influence' %(org_bone.name, "Copy Transforms IK")
+			data_path = 'pose.bones["%s"].constraints["%s"].influence' %(org_bone.name, ik_ct_name)
 			org_bone.drivers[data_path] = drv
+
+	@stage.prepare_bones
+	def prepare_deform(self):
+		chain = self.bones.org.main
+		# What we need:
+		# Two bendy deform bones per limb piece, surrounded by STR- controls. 
+		# BBone properties are hooked up to the STR controls' transforms via drivers.
+		# limb pieces connected in some funky way so that the bending of the second part doesn't affect the BBone of the first part.
+			# In Rain this was done by having two STR- controls. I think I know a better way. Have one STR- control, but the ease in/out driver is slightly modified so that it's -1 by default.
+		def_bones = [self.base_bone]	# Used for chain-parenting. TODO not neccessarily well thought out.
+		for i, bn in enumerate(chain):
+			segments = self.params.deform_segments
+			if i == len(chain)-1:
+				segments = 1
+			for i in range(0, segments):
+				## Deform
+				def_name = bn.replace("ORG", "DEF")
+				sliced = slice_name(def_name)
+
+				# Figure out relevant bone names.
+				def_name 	  =	make_name(sliced[0], sliced[1] + str(i+1), sliced[2])
+				prev_def_name = make_name(sliced[0], sliced[1] + str(i),   sliced[2])
+				str_name = def_name.replace("DEF", "STR")
+				prev_str_name = prev_def_name.replace("DEF", "STR")
+
+				# Move head and tail into correct places
+				org_bone = self.get_bone(bn)	# TODO: Using BoneInfoContainer.bone() breaks stuff, why?
+				org_vec = org_bone.tail-org_bone.head
+				unit = org_vec / segments
+
+				def_bone = self.bone_infos.bone(
+					name = def_name,
+					head = org_bone.head + (unit * i),
+					tail = org_bone.head + (unit * (i+1)),
+					roll = org_bone.roll,
+					bbone_handle_type_start = 'TANGENT',
+					bbone_handle_type_end = 'TANGENT',
+					bbone_custom_handle_start = prev_str_name,
+					bbone_custom_handle_end = str_name,
+					parent = def_bones[-1]
+				)
+				def_bones.append(def_bone.name)
+
+				## Stretchy controls
+				
+				# Figure out what bones to parent to, and how to find FK names.
+				# TODO: STR- bones' transforms are locked, why? 
+				str_bone = self.bone_infos.bone(str_name,
+					head = def_bone.head,
+					tail = def_bone.tail,
+					roll = def_bone.roll,
+					length = 0.1,
+					custom_shape = load_widget("Sphere"),
+					bone_group = 'Body: STR - Stretch Controls'
+				)
+
+				# TODO: Create STR- controls with shapes, assign them as bbone tangent
+				# drivers
+				# parenting
+				# constraints
 
 	def generate_bones(self):
 		# for bn in self.bones.flatten():
@@ -315,50 +380,6 @@ class Rig(BaseRig):
 				if c.type=='ARMATURE':
 					eb.parent = None
 					break
-
-	#@stage.generate_bones
-	def generate_deform(self):
-		chain = self.bones.org.main
-		# What we need:
-		# Two bendy deform bones per limb piece, surrounded by STR- controls. 
-		# BBone properties are hooked up to the STR controls' transforms via drivers.
-		# limb pieces connected in some funky way so that the bending of the second part doesn't affect the BBone of the first part.
-		self.bones.deform = []
-		self.bones.ctrl.str = []
-		for i, bn in enumerate(chain):
-			for i in range(0, self.params.deform_segments):
-				## Deform
-				def_name = bn.replace("ORG", "DEF")
-				sliced = slice_name(def_name)
-				sliced[1] += str(i+1)
-				def_name = make_name(*sliced)
-
-				self.copy_bone(bn, def_name)
-				self.bones.deform.append(def_name)
-				def_bone = self.get_bone(def_name)
-
-				# Move head and tail into correct places
-				org_bone = self.get_bone(bn)
-				org_vec = org_bone.tail - org_bone.head
-				unit = org_vec / self.params.deform_segments
-				def_bone.head = org_bone.head + (unit * i)
-				def_bone.tail = org_bone.head + (unit * (i+1))
-
-				## Stretchy controls
-				str_name = def_name.replace("DEF", "STR")
-				self.copy_bone(def_name, str_name)
-				self.bones.ctrl.str.append(str_name)
-				# Create at the tail of the DEF bone we're currently iterating over. 
-				# TODO This means the first bone(at the head of the first DEF) will need to be handled separately.
-				str_bone = self.get_bone(str_name)
-				str_bone.head = def_bone.tail
-				str_bone.tail = str_bone.head + org_vec
-				str_bone.length = 0.1
-
-				# TODO: Create STR- controls with shapes, assign them as bbone tangent
-				# drivers
-				# parenting
-				# constraints
 
 	def generate_stretchy(self):
 		pass
@@ -417,11 +438,10 @@ class Rig(BaseRig):
 	def parameters_ui(self, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
-		r = layout.row()
-		r.prop(params, "type")
-		r = layout.row()
-		r.prop(params, "double_first_control")
-		r = layout.row()
-		r.prop(params, "double_ik_control")
-		r = layout.row()
-		r.prop(params, "display_middle")
+
+		layout.prop(params, "type")
+		layout.prop(params, "double_first_control")
+		layout.prop(params, "double_ik_control")
+		layout.prop(params, "display_middle")
+		layout.prop(params, "deform_segments")
+		layout.prop(params, "bbone_segments")

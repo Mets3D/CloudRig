@@ -378,6 +378,7 @@ class BoneInfo(ID):
 				setattr2(pose_bone, attr, value)
 
 		# Data bone data.
+		"""
 		for attr in my_dict.keys():
 			if(hasattr(data_bone, attr)):
 				value = my_dict[attr]
@@ -387,6 +388,7 @@ class BoneInfo(ID):
 					if(type(value)==str):
 						value = armature.data.bones.get(value)
 				setattr2(data_bone, attr, value)
+		"""
 		
 		# Bone group
 		if self.bone_group:

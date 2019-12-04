@@ -78,6 +78,21 @@ group_defs = {
     },
     'Body: FK Helper Bones' : {
         'layers' : [BODY_MECH]
+    },
+    'Properties' : {
+        'normal' : presets['PRESET03'][0],
+        'select' : presets['PRESET03'][1],
+        'active' : presets['PRESET03'][2],
+        'layers' : [PROPERTIES]
+    },
+    'Body: STR - Stretch Controls' : {
+        'normal' : presets['PRESET09'][0],
+        'select' : presets['PRESET09'][1],
+        'active' : presets['PRESET09'][2],
+        'layers' : [STRETCH]
+    },
+    'Body: DEF - Limb Deform Bones' : {
+        'layers' : [BODY_DEFORM]
     }
 
 }
