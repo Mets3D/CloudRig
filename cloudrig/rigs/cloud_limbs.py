@@ -63,6 +63,8 @@ class Rig(BaseRig):
 		"""Gather and validate data about the rig."""
 		assert len(self.bones.org.main)==3, "Limb bone chain must consist of exactly 3 connected bones."
 		
+		self.prepare_bone_groups()
+
 		self.defaults = {
 			"bbone_x" : 0.05,
 			"bbone_z" : 0.05,
@@ -70,15 +72,21 @@ class Rig(BaseRig):
 			"use_custom_shape_bone_size" : True
 		}
 		# Bone Info container used for storing new bone info created by the script.
-		self.bone_infos = BoneInfoContainer(self.defaults)
+		self.bone_infos = BoneInfoContainer(self.obj, self.defaults)
 		# Bone Info container used for storing existing bone info from the meta-rig, which should overwrite anything done by the script.
 		# TODO:  I still don't hate this idea, but we need to define how various properties are handled - eg, transforms would be overwritten, sure, but constraints? I guess figure this out when we have a use case.
-		self.overriding_bone_infos = BoneInfoContainer()
+		self.overriding_bone_infos = BoneInfoContainer(self.obj)
+		
 		self.bones.parent = self.get_bone(self.base_bone).parent.name
 		self.type = self.params.type
 		# IK/FK Switch custom property
 		self.root = self.bone_infos.bone("root")
 		ikfk_prop = self.root.custom_props["ik_fk"] = CustomProp("ik_fk", default=0.0)
+
+	def prepare_bone_groups(self):
+		# Wipe any existing bone groups.
+		for bone_group in self.obj.pose.bone_groups:
+			self.obj.pose.bone_groups.remove(bone_group)
 
 	@stage.prepare_bones
 	def prepare_fk(self):
@@ -133,6 +141,9 @@ class Rig(BaseRig):
 			],
 		)
 
+		hng_bone.layers[2]=True
+		hng_bone.bone_group = 'Body: FK Helper Bones'
+
 		# Custom property. TODO: This could be set up in initialize(), perhaps.
 		base_bone = self.bone_infos.bone(self.base_bone)
 		hng_prop_name = "fk_hinge_left_arm" #TODO: How do we know what limb it belongs to? Maybe we don't care, if we're storing the property locally on the relevant bone anyways.
@@ -161,6 +172,9 @@ class Rig(BaseRig):
 			subtarget=self.bones.parent,
 			head_tail=1
 		)
+
+		for fkb in fk_bones:
+			fkb.bone_group = "Body: Main FK Controls"
 	
 	@stage.prepare_bones
 	def prepare_ik(self):
@@ -181,6 +195,7 @@ class Rig(BaseRig):
 			org_bone, 
 			custom_shape = load_widget("Hand_IK"),
 			parent=None,
+			bone_group='Body: Main IK Controls'
 		)
 		# Parent control
 		if self.params.double_ik_control:
@@ -190,7 +205,8 @@ class Rig(BaseRig):
 			parent_bone = self.bone_infos.bone(
 				parent_name, 
 				ik_ctrl, 
-				custom_shape_scale=1.1
+				custom_shape_scale=1.1,
+				bone_group='Body: Main IK Controls Extra Parents'
 			)
 			ik_ctrl.parent = parent_bone
 		
@@ -202,7 +218,8 @@ class Rig(BaseRig):
 		str_bone = self.bone_infos.bone(
 			str_name, 
 			eb,
-			tail=Vector(ik_ctrl.head[:])
+			tail=Vector(ik_ctrl.head[:]),
+			bone_group = 'Body: IK - IK Mechanism Bones'
 		)
 		
 		str_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=ik_ctrl.name)
@@ -214,14 +231,22 @@ class Rig(BaseRig):
 
 		sliced[0].append("TIP")
 		tip_name = make_name(*sliced)
-		tip_bone = self.bone_infos.bone(tip_name, org_bone, parent=ik_ctrl)
+		tip_bone = self.bone_infos.bone(
+			tip_name, 
+			org_bone, 
+			parent=ik_ctrl,
+			bone_group='Body: IK - IK Mechanism Bones'
+		)
 
 		# Create IK Chain (first two bones)
 		ik_chain = []
 		for i, bn in enumerate(chain[:-1]):
 			org_bone = self.get_bone(bn)
 			ik_name = bn.replace("ORG", "IK")
-			ik_bone = self.bone_infos.bone(ik_name, org_bone, ik_stretch=0.1)
+			ik_bone = self.bone_infos.bone(ik_name, org_bone, 
+				ik_stretch=0.1,
+				bone_group='Body: IK - IK Mechanism Bones'
+			)
 			ik_chain.append(ik_bone)
 			
 			if i > 0:
@@ -236,12 +261,29 @@ class Rig(BaseRig):
 					subtarget=tip_bone.name
 				)
 
+	@stage.prepare_bones
 	def prepare_org(self):
-		for i, bn in enumerate(self.org.bones.main):
+		# What we need:
+		# Find existing ORG bones
+		# Add Copy Transforms constraints targetting both FK and IK bones.
+		# Put driver on only the second constraint.
+		# (Completely standard setup)
+		
+		for i, bn in enumerate(self.bones.org.main):
 			ik_bone = self.bone_infos.find(bn.replace("ORG", "IK"))
+			fk_bone = self.bone_infos.find(bn.replace("ORG", "FK"))
+			org_bone = self.bone_infos.find(bn)
 
+			org_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=fk_bone.name, name="Copy Transforms FK")
+			ik_con = org_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=ik_bone.name, name="Copy Transforms IK")
 
+			drv = Driver()
+			var = drv.make_var()
+			var.targets[0].id = self.obj
+			var.targets[0].data_path = 'pose.bones["root"]["ik_fk"]'
 
+			data_path = 'pose.bones["%s"].constraints["%s"].influence' %(org_bone.name, "Copy Transforms IK")
+			org_bone.drivers[data_path] = drv
 
 	def generate_bones(self):
 		# for bn in self.bones.flatten():
@@ -249,8 +291,8 @@ class Rig(BaseRig):
 		# 	self.overriding_bone_infos.bone(bn, bone)
 
 		for bd in self.bone_infos.bones:
-			if bd.name not in self.bones.flatten():
-				bone_name = self.new_bone(bd.name)	# TODO: About warnings being spewed into console - I wonder if something is missing from new_bone(). Test using copy_bone() instead?
+			if bd.name not in self.obj.data.bones and bd.name not in self.bones.flatten() and bd.name!='root':
+				bone_name = self.new_bone(bd.name)
 	
 	def parent_bones(self):
 		for bd in self.bone_infos.bones:
@@ -312,7 +354,6 @@ class Rig(BaseRig):
 				str_bone.head = def_bone.tail
 				str_bone.tail = str_bone.head + org_vec
 				str_bone.length = 0.1
-
 
 				# TODO: Create STR- controls with shapes, assign them as bbone tangent
 				# drivers

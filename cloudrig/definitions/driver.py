@@ -9,7 +9,7 @@ import copy
 class Driver(ID):
 	def __init__(self, source=None):
 		super().__init__()
-		self.expression = ""
+		self.expression = "var"
 		self.variables = []
 		self.use_self = False
 		self.type = ['SCRIPTED', 'AVERAGE', 'SUM', 'MIN', 'MAX'][0]

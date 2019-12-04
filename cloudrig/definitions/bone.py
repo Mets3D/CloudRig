@@ -5,6 +5,7 @@ from .id import *
 from mathutils import *
 from mets_tools.utils import *
 import copy
+from ..shared import group_defs
 
 # Attributes that reference an actual bone ID. These should get special treatment, because we don't want to store said bone ID. 
 # Ideally we would store a BoneInfo, but a string is allowed too(less safe).
@@ -13,10 +14,12 @@ bone_attribs = ['parent', 'bbone_custom_handle_start', 'bbone_custom_handle_end'
 def get_defaults(contype, armature):
 	"""Return my preferred defaults for each constraint type."""
 	ret = {
-		"target_space" : 'LOCAL',
-		"owner_space" : 'LOCAL',
 		"target" : armature,
 	 }
+
+	if contype not in ['STRETCH_TO', 'ARMATURE', 'IK']:
+		ret["target_space"] = 'LOCAL'
+		ret["owner_space"] = 'LOCAL'
 
 	if contype == 'STRETCH_TO':
 		ret["use_bulge_min"] = True
@@ -47,15 +50,27 @@ def get_defaults(contype, armature):
 	
 	return ret
 
+def setattr2(thing, key, value):
+	try:
+		setattr(thing, key, value)
+	except:
+		print("ERROR: Wrong type assignment: key:%s, type:%s, expected:%s"%(key, type(key), type(getattr(thing, key)) ) )
+
 class BoneInfoContainer(ID):
 	# TODO: implement __iter__ and such.
-	def __init__(self, defaults={}):
-		# TODO: Bone layers and groups go here too I think? Actually, maybe not. We need an even higher level place to store those, so that it's associated with the cloudrig featureset.
+	def __init__(self, armature, defaults={}):
 		self.bones = []
 		self.defaults = defaults	# For overriding arbitrary properties' default values when creating bones in this container.
 
+		# Load info about existing bones in the armature...
+		org_mode = armature.mode
+		bpy.ops.object.mode_set(mode='EDIT')
+		for eb in armature.data.edit_bones:
+			self.bone(eb.name, eb, armature)
+		bpy.ops.object.mode_set(mode=org_mode)
+
 	def find(self, name):
-		"""Find a BoneInfo instance by name, if it exists."""
+		"""Find a BoneInfo instance by name, return it if found."""
 		for bd in self.bones:
 			if(bd.name == name):
 				return bd
@@ -63,13 +78,13 @@ class BoneInfoContainer(ID):
 	
 	def bone(self, name="Bone", source=None, armature=None, **kwargs):
 		"""Define a bone and add it to the list of bones. If a bone with the same name already existed, OVERWRITE IT."""
+		bi = self.find(name)
+		if bi:
+			self.bones.remove(bi)
+		
 		bi = BoneInfo(self, name, source, armature, **kwargs)
-		for b in self.bones:
-			if b.name==name:
-				b = bi
-				self.bones.append(bi)
-				return b
 		self.bones.append(bi)
+			
 		return bi
 
 	def create_multiple_bones(self, armature, bones):
@@ -124,8 +139,9 @@ class BoneInfo(ID):
 		
 		self.name = name
 		self.head = Vector((0,0,0))
-		self.tail = Vector((0,0,1))
+		self.tail = Vector((0,1,0))
 		self.roll = 0
+		self.layers = [False]*32
 		self.rotation_mode = 'QUATERNION'
 		self.bbone_curveinx = 0
 		self.bbone_curveiny = 0
@@ -142,7 +158,7 @@ class BoneInfo(ID):
 		self.segments = 1
 		self.bbone_x = 0.1
 		self.bbone_z = 0.1
-		self.bone_group = None
+		self.bone_group = ""
 		self.custom_shape = None   # Object ID?
 		self.custom_shape_scale = 1.0
 		self.use_custom_shape_bone_size = False
@@ -178,11 +194,11 @@ class BoneInfo(ID):
 		
 		# Apply property values from container's defaults
 		for key, value in self.container.defaults.items():
-			setattr(self, key, value)
+			setattr2(self, key, value)
 
 		# Apply property values from arbitrary keyword arguments if any were passed.
 		for key, value in kwargs.items():
-			setattr(self, key, value)
+			setattr2(self, key, value)
 
 	@property
 	def bbone_width(self):
@@ -211,6 +227,17 @@ class BoneInfo(ID):
 	def center(self):
 		return self.head + self.vec/2
 
+	def set_layers(self, layerlist, wipe=True):
+		if wipe:
+			self.layers = [False]*32
+		
+		for i, e in enumerate(layerlist):
+			if type(e)==bool:
+				assert len(layerlist)==32, "ERROR: Layer assignment expected a list of 32 booleans, got %d."%len(layerlist)
+				self.layers[i] = e
+			elif type(e)==int:
+				self.layers[e] = True
+
 	def put(self, loc, length=None, width=None):
 		offset = loc-self.head
 		self.head = loc
@@ -228,7 +255,7 @@ class BoneInfo(ID):
 		skip = ["name"]
 		for attr in my_dict.keys():
 			if attr in skip: continue
-			setattr( self, attr, getattr(bone_info, copy.deepcopy(attr)) )
+			setattr2( self, attr, getattr(bone_info, copy.deepcopy(attr)) )
 
 	def copy_bone(self, armature, edit_bone):
 		"""Called from __init__ to initialize using existing bone."""
@@ -246,8 +273,11 @@ class BoneInfo(ID):
 					value = bone_info
 				else:
 					# EDIT BONE PROPERTIES MUST BE DEEPCOPIED SO THEY AREN'T DESTROYED WHEN LEAVEING EDIT MODE. OTHERWISE IT FAILS SILENTLY!
-					value = copy.deepcopy(getattr(edit_bone, key))
-				setattr(self, key, value)
+					if key in ['layers']:
+						value = list(getattr(edit_bone, key)[:])
+					else:
+						value = copy.deepcopy(getattr(edit_bone, key))
+				setattr2(self, key, value)
 				skip.append(key)
 
 		# Read Pose Bone data (only if armature was passed)
@@ -259,7 +289,7 @@ class BoneInfo(ID):
 			if attr in skip: continue
 
 			if hasattr(pose_bone, attr):
-				setattr( self, attr, getattr(pose_bone, attr) )
+				setattr2( self, attr, getattr(pose_bone, attr) )
 
 		# Read Constraint data
 		for c in pose_bone.constraints:
@@ -317,11 +347,11 @@ class BoneInfo(ID):
 						# TODO: Maybe this should be raised when assigning the parent to the variable in the first place(via @property setter/getter)
 						assert False, "ERROR: Unsupported parent type: " + str(type(value))
 					
-					setattr(edit_bone, key, real_bone)
+					setattr2(edit_bone, key, real_bone)
 				else:
 					# We don't want Blender to destroy my object references(particularly vectors) when leaving edit mode, so pass in a deepcopy instead.
-					setattr(edit_bone, key, copy.deepcopy(value))
-		
+					setattr2(edit_bone, key, copy.deepcopy(value))
+					
 		# Custom Properties.
 		for key, prop in self.custom_props_edit.items():
 			prop.make_real(edit_bone)
@@ -337,7 +367,7 @@ class BoneInfo(ID):
 		my_dict = self.__dict__
 
 		# Pose bone data.
-		skip = ['constraints', 'head', 'tail', 'parent', 'length', 'use_connect']
+		skip = ['constraints', 'head', 'tail', 'parent', 'length', 'use_connect', 'bone_group']
 		for attr in my_dict.keys():
 			value = my_dict[attr]
 			if(hasattr(pose_bone, attr)):
@@ -345,7 +375,7 @@ class BoneInfo(ID):
 				if 'bbone' in attr: continue
 				if(attr in ['custom_shape_transform'] and value):
 					value = armature.pose.bones.get(value.name)
-				setattr(pose_bone, attr, value)
+				setattr2(pose_bone, attr, value)
 
 		# Data bone data.
 		for attr in my_dict.keys():
@@ -356,7 +386,32 @@ class BoneInfo(ID):
 				if attr in ['bbone_custom_handle_start', 'bbone_custom_handle_end']:
 					if(type(value)==str):
 						value = armature.data.bones.get(value)
-				setattr(data_bone, attr, value)
+				setattr2(data_bone, attr, value)
+		
+		# Bone group
+		if self.bone_group:
+			bone_group = armature.pose.bone_groups.get(self.bone_group)
+			group_def = {}
+
+			# If the bone group doesn't already exist, create it.
+			if not bone_group:
+				bone_group = armature.pose.bone_groups.new(name=self.bone_group)
+			# If we have a definition for this group, set its attributes accordingly.
+			if self.bone_group in group_defs:
+				group_def = group_defs[self.bone_group]
+				if self.bone_group in group_defs:
+					for prop in ['normal', 'select', 'active']:
+						if prop in group_def:
+							bone_group.color_set='CUSTOM'
+							setattr(bone_group.colors, prop, group_def[prop])
+			
+			pose_bone.bone_group = bone_group
+
+			# Set layers if specified in the group definition.
+			if 'layers' in group_def:
+				self.set_layers(group_def['layers'])
+		
+		pose_bone.bone.layers = self.layers[:]
 		
 		# Constraints.
 		for cd in self.constraints:
@@ -376,12 +431,9 @@ class BoneInfo(ID):
 						copy = ['weight', 'target', 'subtarget']
 						for prop in copy:
 							if prop in tinfo:
-								setattr(target, prop, tinfo[prop])
+								setattr2(target, prop, tinfo[prop])
 				elif(hasattr(c, key)):
-					if con_type in ['IK', 'STRETCH_TO', 'ARMATURE'] and \
-						key in ['target_space', 'owner_space']: 
-						continue
-					setattr(c, key, value)
+					setattr2(c, key, value)
 		
 		# Custom Properties.
 		for key, prop in self.custom_props.items():
