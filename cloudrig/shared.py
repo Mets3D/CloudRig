@@ -152,20 +152,20 @@ def make_bbone_scale_drivers(armature, bi):
         var_tgt.bone_target = bi.bbone_custom_handle_start
 
         var_tgt.transform_type = 'SCALE_X'
-        bi.drivers["bbone_scaleinx"] = Driver(my_d)
+        bi.drivers["bbone_scaleinx"] = my_d.clone()
 
         var_tgt.transform_type = 'SCALE_Z'
-        bi.drivers["bbone_scaleiny"] = Driver(my_d)
+        bi.drivers["bbone_scaleiny"] = my_d.clone()
     
     # Scale Out X/Y
     if (bi.bbone_handle_type_end == 'TANGENT' and bi.bbone_custom_handle_end):
         var_tgt.bone_target = bi.bbone_custom_handle_end
         
         var_tgt.transform_type = 'SCALE_Z'
-        bi.drivers["bbone_scaleouty"] = Driver(my_d)
+        bi.drivers["bbone_scaleouty"] = my_d.clone()
 
         var_tgt.transform_type = 'SCALE_X'
-        bi.drivers["bbone_scaleoutx"] = Driver(my_d)
+        bi.drivers["bbone_scaleoutx"] = my_d.clone()
 
     ### Ease In/Out
     my_d = Driver()
@@ -188,9 +188,9 @@ def make_bbone_scale_drivers(armature, bi):
     # Ease In
     if (bi.bbone_handle_type_start == 'TANGENT' and bi.bbone_custom_handle_start):
         Y_tgt.bone_target = scale_tgt.bone_target = bi.bbone_custom_handle_start
-        bi.drivers["bbone_easein"] = Driver(my_d)
+        bi.drivers["bbone_easein"] = my_d.clone()
 
     # Ease Out
     if (bi.bbone_handle_type_end == 'TANGENT' and bi.bbone_custom_handle_end):
         Y_tgt.bone_target = scale_tgt.bone_target = bi.bbone_custom_handle_end
-        bi.drivers["bbone_easeout"] = Driver(my_d)
+        bi.drivers["bbone_easeout"] = my_d.clone()
