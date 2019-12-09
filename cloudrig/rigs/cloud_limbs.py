@@ -251,7 +251,7 @@ class Rig(CloudBaseRig):
 		# limb pieces connected in some funky way so that the bending of the second part doesn't affect the BBone of the first part.
 			# In Rain this was done by having two STR- controls. I think I know a better way. Have one STR- control, but the ease in/out driver is slightly modified so that it's -1 by default.
 		
-		next_parent = self.base_bone # Stores the appropriate parent bone to be used in the next iteration of the for loop.
+		next_parent = None # Stores the appropriate parent bone to be used in the next iteration of the for loop.
 		for org_i, bn in enumerate(chain):
 			segments = self.params.deform_segments
 			bbone_segments = self.params.bbone_segments
@@ -273,6 +273,8 @@ class Rig(CloudBaseRig):
 					sliced = slice_name(next_def_name)
 					next_def_name =	make_name(sliced[0], sliced[1] + "1", sliced[2])
 				str_name = def_name.replace("DEF", "STR")
+				if next_parent == None:
+					next_parent = str_name
 				next_str_name = next_def_name.replace("DEF", "STR")
 
 				# Move head and tail into correct places
@@ -294,6 +296,17 @@ class Rig(CloudBaseRig):
 					inherit_scale = 'NONE',
 				)
 				shared.make_bbone_scale_drivers(self.obj, def_bone)
+			
+				# If this is the first bone of the segment, but not the first bone of the chain
+				# Then set easein to 0.
+				if i==0 and org_i != 0:
+					def_bone.bbone_easein = 0
+				
+				# If this is the last bone of the segment, but not the last bone of the chain,
+				# Then set easeout to 0.
+				if i==segments-1 and org_i != len(chain)-1:
+					def_bone.bbone_easeout = 0
+
 				next_parent = def_bone.name
 
 				# BBone scale drivers
