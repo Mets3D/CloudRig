@@ -47,8 +47,10 @@ class Rig(CloudBaseRig):
 		# Properties bone and Custom Properties
 		limb = "arm" if self.params.type=='ARM' else "leg"
 		side = "left" if self.base_bone.endswith("L") else "right"
-		ikfk_name = "ik_" + limb + "_" + side
+		ikfk_name = "ik_%s_%s" %(limb, side)
+		fk_hinge_name = "fk_hinge_%s_%s" %(limb, side)
 		self.ikfk_prop = self.prop_bone.custom_props[ikfk_name] = CustomProp(ikfk_name, default=0.0)
+		self.fk_hinge_prop = self.prop_bone.custom_props[fk_hinge_name] = CustomProp(fk_hinge_name, default=0.0)
 
 	@stage.prepare_bones
 	def prepare_fk(self):
@@ -89,6 +91,7 @@ class Rig(CloudBaseRig):
 			fk_bones[0], 
 			only_transform=True,
 			**self.defaults,
+			bone_group = 'Body: FK Helper Bones'
 		)
 		fk_bones[0].parent = hng_bone
 
@@ -103,28 +106,19 @@ class Rig(CloudBaseRig):
 			],
 		)
 
-		hng_bone.layers[2]=True
-		hng_bone.bone_group = 'Body: FK Helper Bones'
-
-		# Custom property. TODO: This could be set up in initialize(), perhaps.
-		base_bone = self.bone_infos.bone(self.base_bone)
-		hng_prop_name = "fk_hinge_left_arm" #TODO: How do we know what limb it belongs to? Maybe we don't care, if we're storing the property locally on the relevant bone anyways.
-		hinge_prop = base_bone.custom_props[hng_prop_name] = CustomProp(hng_prop_name, default=0.0)
-		base_bone.custom_props_edit["edit_bone_property"] = CustomProp("edit bone property", default=1.2)
-
 		drv1 = Driver()
 		drv1.expression = "var"
 		var1 = drv1.make_var("var")
 		var1.type = 'SINGLE_PROP'
 		var1.targets[0].id_type='OBJECT'
 		var1.targets[0].id = self.obj
-		var1.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (base_bone.name, hng_prop_name)
+		var1.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.fk_hinge_prop.name)
 
 		drv2 = Driver(drv1)
 		drv2.expression = "1-var"
 
-		data_path1 = 'pose.bones["%s"].constraints["Armature"].targets[0].weight' %(hng_name)
-		data_path2 = 'pose.bones["%s"].constraints["Armature"].targets[1].weight' %(hng_name)
+		data_path1 = 'constraints["Armature"].targets[0].weight'
+		data_path2 = 'constraints["Armature"].targets[1].weight'
 		
 		hng_bone.drivers[data_path1] = drv1
 		hng_bone.drivers[data_path2] = drv2
@@ -245,7 +239,7 @@ class Rig(CloudBaseRig):
 			var.targets[0].id = self.obj
 			var.targets[0].data_path = 'pose.bones["%s"]["%s"]' %(self.prop_bone.name, self.ikfk_prop.name)
 
-			data_path = 'pose.bones["%s"].constraints["%s"].influence' %(org_bone.name, ik_ct_name)
+			data_path = 'constraints["%s"].influence' %(ik_ct_name)
 			org_bone.drivers[data_path] = drv
 
 	@stage.prepare_bones
@@ -299,7 +293,10 @@ class Rig(CloudBaseRig):
 					parent = next_parent,
 					inherit_scale = 'NONE',
 				)
+				shared.make_bbone_scale_drivers(self.obj, def_bone)
 				next_parent = def_bone.name
+
+				# BBone scale drivers
 
 				## Stretchy controls
 				
@@ -320,7 +317,6 @@ class Rig(CloudBaseRig):
 				if i == segments-1:
 					# The first DEF bone of each segment should be parented to the last STR bone of the previous segment.
 					next_parent = next_str_name
-
 
 				def_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=next_str_name)
 				# constraints

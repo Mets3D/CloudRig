@@ -2,6 +2,8 @@
 
 from .rigs.cloud_utils import load_widget, make_name, slice_name
 
+from .definitions.driver import *
+
 presets = {
 	'PRESET01' : [(0.6039215922355652, 0.0, 0.0), (0.7411764860153198, 0.06666667014360428, 0.06666667014360428), (0.9686275124549866, 0.03921568766236305, 0.03921568766236305)],
 	'PRESET02' : [(0.9686275124549866, 0.250980406999588, 0.0941176563501358), (0.9647059440612793, 0.4117647409439087, 0.07450980693101883), (0.9803922176361084, 0.6000000238418579, 0.0)],
@@ -127,3 +129,68 @@ def create_dsp_bone(self, parent):
     dsp_bone.bone_group = 'DSP - Display Transform Helpers'
     parent.custom_shape_transform = dsp_bone
     return dsp_bone
+
+def make_bbone_scale_drivers(armature, bi):
+    my_d = Driver()
+    my_d.expression = "var/scale"
+    my_var = my_d.make_var("var")
+    my_var.type = 'TRANSFORMS'
+    
+    var_tgt = my_var.targets[0]
+    var_tgt.id = armature
+    var_tgt.transform_space = 'WORLD_SPACE'
+    
+    scale_var = my_d.make_var("scale")
+    scale_var.type = 'TRANSFORMS'
+    scale_tgt = scale_var.targets[0]
+    scale_tgt.id = armature
+    scale_tgt.transform_space = 'WORLD_SPACE'
+    scale_tgt.transform_type = 'SCALE_Y'
+    
+    # Scale In X/Y
+    if (bi.bbone_handle_type_start == 'TANGENT' and bi.bbone_custom_handle_start):
+        var_tgt.bone_target = bi.bbone_custom_handle_start
+
+        var_tgt.transform_type = 'SCALE_X'
+        bi.drivers["bbone_scaleinx"] = Driver(my_d)
+
+        var_tgt.transform_type = 'SCALE_Z'
+        bi.drivers["bbone_scaleiny"] = Driver(my_d)
+    
+    # Scale Out X/Y
+    if (bi.bbone_handle_type_end == 'TANGENT' and bi.bbone_custom_handle_end):
+        var_tgt.bone_target = bi.bbone_custom_handle_end
+        
+        var_tgt.transform_type = 'SCALE_Z'
+        bi.drivers["bbone_scaleouty"] = Driver(my_d)
+
+        var_tgt.transform_type = 'SCALE_X'
+        bi.drivers["bbone_scaleoutx"] = Driver(my_d)
+
+    ### Ease In/Out
+    my_d = Driver()
+    my_d.expression = "scale-Y"
+
+    scale_var = my_d.make_var("scale")
+    scale_var.type = 'TRANSFORMS'
+    scale_tgt = scale_var.targets[0]
+    scale_tgt.id = armature
+    scale_tgt.transform_type = 'SCALE_Y'
+    scale_tgt.transform_space = 'LOCAL_SPACE'
+
+    Y_var = my_d.make_var("Y")
+    Y_var.type = 'TRANSFORMS'
+    Y_tgt = Y_var.targets[0]
+    Y_tgt.id = armature
+    Y_tgt.transform_type = 'SCALE_AVG'
+    Y_tgt.transform_space = 'LOCAL_SPACE'
+
+    # Ease In
+    if (bi.bbone_handle_type_start == 'TANGENT' and bi.bbone_custom_handle_start):
+        Y_tgt.bone_target = scale_tgt.bone_target = bi.bbone_custom_handle_start
+        bi.drivers["bbone_easein"] = Driver(my_d)
+
+    # Ease Out
+    if (bi.bbone_handle_type_end == 'TANGENT' and bi.bbone_custom_handle_end):
+        Y_tgt.bone_target = scale_tgt.bone_target = bi.bbone_custom_handle_end
+        bi.drivers["bbone_easeout"] = Driver(my_d)
