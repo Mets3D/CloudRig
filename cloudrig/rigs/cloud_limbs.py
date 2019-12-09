@@ -1,18 +1,18 @@
 #====================== BEGIN GPL LICENSE BLOCK ======================
 #
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
 #
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
 #
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 #======================= END GPL LICENSE BLOCK ========================
 
@@ -36,61 +36,32 @@ from ..definitions.custom_props import CustomProp
 from ..definitions.bone import BoneInfoContainer, BoneInfo
 from .. import shared
 from .cloud_utils import load_widget, make_name, slice_name
+from .cloud_base import CloudBaseRig
 
 # Ideas:
 # Should probably turn constraints into a class. At least it would let us more easily add drivers to them.
 # I should implement a CollectionProperty-like class, for ID collections, similar to BoneInfoContainer.
 # BoneInfo and other ID classes could perhaps live without all their values pre-assigned in __init__. The only ones that need to be pre-assigned are the ones that other things rely on, like how the length property relies on head and tail existing.
-# I really need to make sure I can justify abstracting the entire blender rigging datastructures... it feels really silly.
+# I really need to make sure I can justify abstracting the entire set of blender rigging related datastructures... it feels really silly.
 
 
 # Registerable rig template classes MUST be called exactly "Rig"!!!
 # (This class probably shouldn't be registered in the future)
-class Rig(BaseRig):
+class Rig(CloudBaseRig):
 	""" Base for CloudRig arms and legs.
 	"""
-
-	# overrides BaseRig.find_org_bones.
-	def find_org_bones(self, bone):
-		"""Populate self.bones.org."""
-		# For now we just grab all connected children of our main bone and put it in self.bones.org.main.
-		return BoneDict(
-			main=[bone.name] + connected_children_names(self.obj, bone.name),
-		)
 
 	def initialize(self):
 		super().initialize()
 		"""Gather and validate data about the rig."""
 		assert len(self.bones.org.main)==3, "Limb bone chain must consist of exactly 3 connected bones."
-		
-		self.prepare_bone_groups()
-
-		self.defaults = {
-			"bbone_x" : 0.05,
-			"bbone_z" : 0.05,
-			"rotation_mode" : "XYZ",
-			"use_custom_shape_bone_size" : True
-		}
-		# Bone Info container used for storing new bone info created by the script.
-		self.bone_infos = BoneInfoContainer(self.obj, self.defaults)
-		# Bone Info container used for storing existing bone info from the meta-rig, which should overwrite anything done by the script.
-		# TODO:  I still don't hate this idea, but we need to define how various properties are handled - eg, transforms would be overwritten, sure, but constraints? I guess figure this out when we have a use case.
-		self.overriding_bone_infos = BoneInfoContainer(self.obj)
-		
-		self.bones.parent = self.get_bone(self.base_bone).parent.name
 		self.type = self.params.type
 
 		# Properties bone and Custom Properties
-		self.prop_bone = self.bone_infos.bone("Properties_IKFK", bone_group='Properties')
 		limb = "arm" if self.params.type=='ARM' else "leg"
 		side = "left" if self.base_bone.endswith("L") else "right"
 		ikfk_name = "ik_" + limb + "_" + side
 		self.ikfk_prop = self.prop_bone.custom_props[ikfk_name] = CustomProp(ikfk_name, default=0.0)
-
-	def prepare_bone_groups(self):
-		# Wipe any existing bone groups.
-		for bone_group in self.obj.pose.bone_groups:
-			self.obj.pose.bone_groups.remove(bone_group)
 
 	@stage.prepare_bones
 	def prepare_fk(self):
@@ -183,10 +154,10 @@ class Rig(BaseRig):
 	@stage.prepare_bones
 	def prepare_ik(self):
 		# What we need:
-		# IK Chain (equivalents to ORG, so 3 of these) - Make sure IK Stretch is enabled on first two, and they are parented and connected to each other.
-		# IK Controls: Wrist, Wrist Parent(optional)
-		# IK-STR- bone with its Limit Scale constraint set automagically somehow.
-		# IK Pole target and line, somehow automagically placed.
+		# DONE IK Chain (equivalents to ORG, so 3 of these) - Make sure IK Stretch is enabled on first two, and they are parented and connected to each other.
+		# DONE IK Controls: Wrist, Wrist Parent(optional)
+		# DONE IK-STR- bone with its Limit Scale constraint set automagically somehow.
+		# TODO IK Pole target and line, somehow automagically placed.
 		
 		chain = self.bones.org.main
 
@@ -298,11 +269,14 @@ class Rig(BaseRig):
 		# BBone properties are hooked up to the STR controls' transforms via drivers.
 		# limb pieces connected in some funky way so that the bending of the second part doesn't affect the BBone of the first part.
 			# In Rain this was done by having two STR- controls. I think I know a better way. Have one STR- control, but the ease in/out driver is slightly modified so that it's -1 by default.
-		def_bones = [self.base_bone]	# Used for chain-parenting. TODO not neccessarily well thought out.
+		
+		next_parent = self.base_bone # Stores the appropriate parent bone to be used in the next iteration of the for loop.
 		for i, bn in enumerate(chain):
 			segments = self.params.deform_segments
+			bbone_segments = self.params.bbone_segments
 			if i == len(chain)-1:
 				segments = 1
+				bbone_segments = 1
 			for i in range(0, segments):
 				## Deform
 				def_name = bn.replace("ORG", "DEF")
@@ -328,15 +302,17 @@ class Rig(BaseRig):
 					bbone_handle_type_end = 'TANGENT',
 					bbone_custom_handle_start = prev_str_name,
 					bbone_custom_handle_end = str_name,
-					parent = def_bones[-1]
+					bbone_segments = bbone_segments,
+					parent = next_parent,
 				)
-				def_bones.append(def_bone.name)
+				next_parent = def_bone.name
 
 				## Stretchy controls
 				
 				# Figure out what bones to parent to, and how to find FK names.
 				# TODO: STR- bones' transforms are locked, why? 
-				str_bone = self.bone_infos.bone(str_name,
+				str_bone = self.bone_infos.bone(
+					name = str_name,
 					head = def_bone.head,
 					tail = def_bone.tail,
 					roll = def_bone.roll,
@@ -344,51 +320,14 @@ class Rig(BaseRig):
 					custom_shape = load_widget("Sphere"),
 					bone_group = 'Body: STR - Stretch Controls'
 				)
+				if i==segments-1:
+					# The first DEF bone of each segment should be parented to the last STR bone of the previous segment.
+					next_parent=str_bone.name
 
 				# TODO: Create STR- controls with shapes, assign them as bbone tangent
 				# drivers
 				# parenting
 				# constraints
-
-	def generate_bones(self):
-		# for bn in self.bones.flatten():
-		# 	bone = self.get_bone(bn)
-		# 	self.overriding_bone_infos.bone(bn, bone)
-
-		for bd in self.bone_infos.bones:
-			if bd.name not in self.obj.data.bones and bd.name not in self.bones.flatten() and bd.name!='root':
-				bone_name = self.new_bone(bd.name)
-	
-	def parent_bones(self):
-		for bd in self.bone_infos.bones:
-			edit_bone = self.get_bone(bd.name)
-			bd.write_edit_data(self.obj, edit_bone)
-			
-			# overriding_bone = self.overriding_bone_infos.find(bd.name)
-	
-	def configure_bones(self):
-		for bd in self.bone_infos.bones:
-			pose_bone = self.get_bone(bd.name)
-			bd.write_pose_data(pose_bone)
-
-	def apply_bones(self):
-		# In a previous stage, Rigify automatically parents bones that have no parent to the root bone.
-		# We want to undo this when the bone has an Armature constraint, since such bones should never have a parent.
-		for eb in self.obj.data.edit_bones:
-			pb = self.obj.pose.bones.get(eb.name)
-			for c in pb.constraints:
-				if c.type=='ARMATURE':
-					eb.parent = None
-					break
-
-	def generate_stretchy(self):
-		pass
-
-	@stage.finalize
-	def configure_display(self):
-		# Armature display settings
-		self.obj.display_type = 'SOLID'
-		self.obj.data.display_type = 'BBONE'
 
 	##############################
 	# Parameters

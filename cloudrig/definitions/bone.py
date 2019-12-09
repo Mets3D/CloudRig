@@ -151,10 +151,10 @@ class BoneInfo(ID):
 		self.bbone_handle_type_end = "AUTO"
 		self.bbone_easein = 0
 		self.bbone_easeout = 0
-		self.bbone_scaleinx = 0
-		self.bbone_scaleiny = 0
-		self.bbone_scaleoutx = 0
-		self.bbone_scaleouty = 0
+		self.bbone_scaleinx = 1
+		self.bbone_scaleiny = 1
+		self.bbone_scaleoutx = 1
+		self.bbone_scaleouty = 1
 		self.segments = 1
 		self.bbone_x = 0.1
 		self.bbone_z = 0.1
