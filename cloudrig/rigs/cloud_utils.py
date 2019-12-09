@@ -38,11 +38,3 @@ def slice_name(name):
 	suffixes = name.split(".")[1:]
 	base = name.split("-")[-1].split(".")[0]
 	return [prefixes, base, suffixes]
-
-def make_dsp_bone(obj, parent):
-	# Create a new bone.
-	# Name is the original bone in full prefixed with DSP-.
-	# Assign to DSP group.
-	# Parent it to source bone.
-	# Return it so it can be moved.
-	pass

@@ -115,9 +115,9 @@ class CloudBaseRig(BaseRig):
 		self.obj.data.display_type = 'BBONE'
 	
 	@stage.finalize
-	def unlock_transforms(self):
+	def transform_locks(self):
 		# Rigify automatically locks transforms of bones whose names match this regex: "[A-Z][A-Z][A-Z]-"
-		# We want to undo this... For now, we just don't want anything to be locked.
+		# We want to undo this... For now, we just don't want anything to be locked. In future, maybe lock based on bone groups.
 		for pb in self.obj.pose.bones:
 			pb.lock_location = (False, False, False)
 			pb.lock_rotation = (False, False, False)
