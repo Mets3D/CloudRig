@@ -143,21 +143,26 @@ class BoneInfo(ID):
 		self.roll = 0
 		self.layers = [False]*32
 		self.rotation_mode = 'QUATERNION'
+
+		# BBone Properties that are shared between pose and edit mode.
+		self.bbone_x = 0.1
+		self.bbone_z = 0.1
+		self.bbone_segments = 1
+		self.bbone_handle_type_start = "AUTO"
+		self.bbone_handle_type_end = "AUTO"
+
+		# BBone Properties that are split between pose and edit mode. Note that here, we are referring only to edit bone values.
 		self.bbone_curveinx = 0
 		self.bbone_curveiny = 0
 		self.bbone_curveoutx = 0
 		self.bbone_curveouty = 0
-		self.bbone_handle_type_start = "AUTO"
-		self.bbone_handle_type_end = "AUTO"
-		self.bbone_easein = 0
-		self.bbone_easeout = 0
+		self.bbone_easein = 1
+		self.bbone_easeout = 1
 		self.bbone_scaleinx = 1
 		self.bbone_scaleiny = 1
 		self.bbone_scaleoutx = 1
 		self.bbone_scaleouty = 1
-		self.segments = 1
-		self.bbone_x = 0.1
-		self.bbone_z = 0.1
+
 		self.bone_group = ""
 		self.custom_shape = None   # Object ID?
 		self.custom_shape_scale = 1.0
@@ -173,9 +178,8 @@ class BoneInfo(ID):
 
 		# We don't want to store a real Bone ID because we want to be able to set the parent before the parent was really created. So this is either a String or a BoneInfo instance.
 		# TODO: These should be handled uniformally.
-		# TODO: Maybe they should be forced to be BoneInfo instance, and don't allow str. Seems pointless and unneccessarily non-foolproof.
-		self.custom_shape_transform = None # Bone name
 		self.parent = None
+		self.custom_shape_transform = None # Bone name
 		self.bbone_custom_handle_start = None
 		self.bbone_custom_handle_end = None
 		

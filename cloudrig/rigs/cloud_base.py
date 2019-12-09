@@ -22,19 +22,13 @@ import bpy
 from bpy.props import *
 from mathutils import *
 
-from rigify.utils.errors import MetarigError
-from rigify.utils.rig import connected_children_names
-from rigify.utils.naming import make_derived_name
-from rigify.utils.widgets_basic import create_bone_widget
-from rigify.utils.bones import BoneDict
-from rigify.utils.mechanism import make_property
-
 from rigify.base_rig import BaseRig, stage
+from rigify.utils.bones import BoneDict
+from rigify.utils.rig import connected_children_names
 
 from ..definitions.driver import *
 from ..definitions.custom_props import CustomProp
 from ..definitions.bone import BoneInfoContainer, BoneInfo
-from .. import shared
 from .cloud_utils import load_widget, make_name, slice_name
 
 # Ideas:
@@ -43,9 +37,6 @@ from .cloud_utils import load_widget, make_name, slice_name
 # BoneInfo and other ID classes could perhaps live without all their values pre-assigned in __init__. The only ones that need to be pre-assigned are the ones that other things rely on, like how the length property relies on head and tail existing.
 # I really need to make sure I can justify abstracting the entire set of blender rigging related datastructures... it feels really silly.
 
-
-# Registerable rig template classes MUST be called exactly "Rig"!!!
-# (This class probably shouldn't be registered in the future)
 class CloudBaseRig(BaseRig):
 	""" Base for CloudRig arms and legs.
 	"""

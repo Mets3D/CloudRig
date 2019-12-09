@@ -23,27 +23,14 @@ from bpy.props import *
 from mathutils import *
 
 from rigify.utils.errors import MetarigError
-from rigify.utils.rig import connected_children_names
-from rigify.utils.naming import make_derived_name
-from rigify.utils.widgets_basic import create_bone_widget
-from rigify.utils.bones import BoneDict
-from rigify.utils.mechanism import make_property
+from rigify.base_rig import stage
 
-from rigify.base_rig import BaseRig, stage
-
+from .. import shared
 from ..definitions.driver import *
 from ..definitions.custom_props import CustomProp
 from ..definitions.bone import BoneInfoContainer, BoneInfo
-from .. import shared
 from .cloud_utils import load_widget, make_name, slice_name
 from .cloud_base import CloudBaseRig
-
-# Ideas:
-# Should probably turn constraints into a class. At least it would let us more easily add drivers to them.
-# I should implement a CollectionProperty-like class, for ID collections, similar to BoneInfoContainer.
-# BoneInfo and other ID classes could perhaps live without all their values pre-assigned in __init__. The only ones that need to be pre-assigned are the ones that other things rely on, like how the length property relies on head and tail existing.
-# I really need to make sure I can justify abstracting the entire set of blender rigging related datastructures... it feels really silly.
-
 
 # Registerable rig template classes MUST be called exactly "Rig"!!!
 # (This class probably shouldn't be registered in the future)
@@ -271,10 +258,10 @@ class Rig(CloudBaseRig):
 			# In Rain this was done by having two STR- controls. I think I know a better way. Have one STR- control, but the ease in/out driver is slightly modified so that it's -1 by default.
 		
 		next_parent = self.base_bone # Stores the appropriate parent bone to be used in the next iteration of the for loop.
-		for i, bn in enumerate(chain):
+		for org_i, bn in enumerate(chain):
 			segments = self.params.deform_segments
 			bbone_segments = self.params.bbone_segments
-			if i == len(chain)-1:
+			if org_i == len(chain)-1:
 				segments = 1
 				bbone_segments = 1
 			for i in range(0, segments):
@@ -284,9 +271,15 @@ class Rig(CloudBaseRig):
 
 				# Figure out relevant bone names.
 				def_name 	  =	make_name(sliced[0], sliced[1] + str(i+1), sliced[2])
-				prev_def_name = make_name(sliced[0], sliced[1] + str(i),   sliced[2])
+				next_def_name = make_name(sliced[0], sliced[1] + str(i+2),   sliced[2])
+				if i == segments-1 and org_i != len(chain)-1:
+					# If this is the final bone of this segment, but not the final bone of the entire chain, get the name of the first bone of the next segment.
+					next_org_name = chain[org_i+1]
+					next_def_name = next_org_name.replace("ORG", "DEF")
+					sliced = slice_name(next_def_name)
+					next_def_name =	make_name(sliced[0], sliced[1] + "1", sliced[2])
 				str_name = def_name.replace("DEF", "STR")
-				prev_str_name = prev_def_name.replace("DEF", "STR")
+				next_str_name = next_def_name.replace("DEF", "STR")
 
 				# Move head and tail into correct places
 				org_bone = self.get_bone(bn)	# TODO: Using BoneInfoContainer.bone() breaks stuff, why?
@@ -300,17 +293,18 @@ class Rig(CloudBaseRig):
 					roll = org_bone.roll,
 					bbone_handle_type_start = 'TANGENT',
 					bbone_handle_type_end = 'TANGENT',
-					bbone_custom_handle_start = prev_str_name,
-					bbone_custom_handle_end = str_name,
+					bbone_custom_handle_start = str_name,
+					bbone_custom_handle_end = next_str_name,
 					bbone_segments = bbone_segments,
 					parent = next_parent,
+					inherit_scale = 'NONE',
 				)
 				next_parent = def_bone.name
 
 				## Stretchy controls
 				
-				# Figure out what bones to parent to, and how to find FK names.
-				# TODO: STR- bones' transforms are locked, why? 
+				# TODO Figure out what bones to parent STR to, and how to find FK names.
+				# I think we parent STR to ORG though. No need to find FK names.
 				str_bone = self.bone_infos.bone(
 					name = str_name,
 					head = def_bone.head,
@@ -318,16 +312,19 @@ class Rig(CloudBaseRig):
 					roll = def_bone.roll,
 					length = 0.1,
 					custom_shape = load_widget("Sphere"),
-					bone_group = 'Body: STR - Stretch Controls'
+					custom_shape_scale = 2,
+					bone_group = 'Body: STR - Stretch Controls',
+					parent=bn,
 				)
-				if i==segments-1:
-					# The first DEF bone of each segment should be parented to the last STR bone of the previous segment.
-					next_parent=str_bone.name
 
-				# TODO: Create STR- controls with shapes, assign them as bbone tangent
-				# drivers
-				# parenting
+				if i == segments-1:
+					# The first DEF bone of each segment should be parented to the last STR bone of the previous segment.
+					next_parent = next_str_name
+
+
+				def_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=next_str_name)
 				# constraints
+				# bbone scale drivers
 
 	##############################
 	# Parameters
