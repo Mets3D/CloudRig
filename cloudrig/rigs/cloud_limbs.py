@@ -114,7 +114,7 @@ class Rig(CloudBaseRig):
 		var1.targets[0].id = self.obj
 		var1.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.fk_hinge_prop.name)
 
-		drv2 = Driver(drv1)
+		drv2 = drv1.clone()
 		drv2.expression = "1-var"
 
 		data_path1 = 'constraints["Armature"].targets[0].weight'
