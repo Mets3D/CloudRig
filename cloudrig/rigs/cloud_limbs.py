@@ -243,42 +243,35 @@ class Rig(CloudBaseRig):
 			org_bone.drivers[data_path] = drv
 
 	@stage.prepare_bones
-	def prepare_deform(self):
-		chain = self.bones.org.main
-		# What we need:
-		# Two bendy deform bones per limb piece, surrounded by STR- controls. 
-		# BBone properties are hooked up to the STR controls' transforms via drivers.
-		# limb pieces connected in some funky way so that the bending of the second part doesn't affect the BBone of the first part.
-			# In Rain this was done by having two STR- controls. I think I know a better way. Have one STR- control, but the ease in/out driver is slightly modified so that it's -1 by default.
+	def prepare_deform_and_stretch(self):
+		chain = self.bones.org.main[:]
+		# We refer to a full limb as a limb. (eg. Arm)
+		# Each part of that limb is a section. (eg. Forearm)
+		# And that section contains the bones. (eg. DEF-Forearm1)
+		# The deform_segments parameter defines how many bones there are in each section.
+
+		# Each DEF bone is surrounded by an STR bone on each end.
+		# Each STR section's first and last bones act as a control for the bones inbetween them.
 		
-		next_parent = None # Stores the appropriate parent bone to be used in the next iteration of the for loop.
-		for org_i, bn in enumerate(chain):
+		### Create deform bones.
+		def_sections = []
+		for org_i, org_name in enumerate(chain):
 			segments = self.params.deform_segments
 			bbone_segments = self.params.bbone_segments
+			def_section = []
+
 			if org_i == len(chain)-1:
 				segments = 1
 				bbone_segments = 1
+			
 			for i in range(0, segments):
 				## Deform
-				def_name = bn.replace("ORG", "DEF")
+				def_name = org_name.replace("ORG", "DEF")
 				sliced = slice_name(def_name)
-
-				# Figure out relevant bone names.
-				def_name 	  =	make_name(sliced[0], sliced[1] + str(i+1), sliced[2])
-				next_def_name = make_name(sliced[0], sliced[1] + str(i+2),   sliced[2])
-				if i == segments-1 and org_i != len(chain)-1:
-					# If this is the final bone of this segment, but not the final bone of the entire chain, get the name of the first bone of the next segment.
-					next_org_name = chain[org_i+1]
-					next_def_name = next_org_name.replace("ORG", "DEF")
-					sliced = slice_name(next_def_name)
-					next_def_name =	make_name(sliced[0], sliced[1] + "1", sliced[2])
-				str_name = def_name.replace("DEF", "STR")
-				if next_parent == None:
-					next_parent = str_name
-				next_str_name = next_def_name.replace("DEF", "STR")
+				def_name = make_name(sliced[0], sliced[1] + str(i+1), sliced[2])
 
 				# Move head and tail into correct places
-				org_bone = self.get_bone(bn)	# TODO: Using BoneInfoContainer.bone() breaks stuff, why?
+				org_bone = self.get_bone(org_name)	# TODO: Using BoneInfoContainer.bone() breaks stuff, why?
 				org_vec = org_bone.tail-org_bone.head
 				unit = org_vec / segments
 
@@ -289,34 +282,35 @@ class Rig(CloudBaseRig):
 					roll = org_bone.roll,
 					bbone_handle_type_start = 'TANGENT',
 					bbone_handle_type_end = 'TANGENT',
-					bbone_custom_handle_start = str_name,
-					bbone_custom_handle_end = next_str_name,
 					bbone_segments = bbone_segments,
-					parent = next_parent,
 					inherit_scale = 'NONE',
 				)
-				shared.make_bbone_scale_drivers(self.obj, def_bone)
 			
-				# If this is the first bone of the segment, but not the first bone of the chain
-				# Then set easein to 0.
+				# First bone of the segment, but not the first bone of the chain.
 				if i==0 and org_i != 0:
 					def_bone.bbone_easein = 0
 				
-				# If this is the last bone of the segment, but not the last bone of the chain,
-				# Then set easeout to 0.
+				# Last bone of the segment, but not the last bone of the chain.
 				if i==segments-1 and org_i != len(chain)-1:
 					def_bone.bbone_easeout = 0
+				
+				# Last bone of the chain.
+				if i==segments-1 and org_i == len(chain)-1:
+					def_bone.inherit_scale = 'FULL'	# This is not perfect - when trying to adjust the spline shape by scaling the STR control on local Y axis, it scales the last deform bone in a bad way.
 
 				next_parent = def_bone.name
+				def_section.append(def_bone)
+			def_sections.append(def_section)
 
-				# BBone scale drivers
-
-				## Stretchy controls
-				
+		### Create Stretch controls
+		str_sections = []
+		for sec_i, section in enumerate(def_sections):
+			str_section = []
+			for seg_i, def_bone in enumerate(section):
 				# TODO Figure out what bones to parent STR to, and how to find FK names.
 				# I think we parent STR to ORG though. No need to find FK names.
 				str_bone = self.bone_infos.bone(
-					name = str_name,
+					name = def_bone.name.replace("DEF", "STR"),
 					head = def_bone.head,
 					tail = def_bone.tail,
 					roll = def_bone.roll,
@@ -324,16 +318,64 @@ class Rig(CloudBaseRig):
 					custom_shape = load_widget("Sphere"),
 					custom_shape_scale = 2,
 					bone_group = 'Body: STR - Stretch Controls',
-					parent=bn,
+					parent=chain[sec_i],
 				)
+				str_section.append(str_bone)
+			str_sections.append(str_section)
+	
+		### Create Stretch Helpers and parent STR to them
+		for sec_i, section in enumerate(str_sections):
+			for i, str_bone in enumerate(section):
+				# If this STR bone is not the first in its section
+				# Create an STR-H parent helper for it, which will hold some constraints 
+				# that keep this bone between the first and last STR bone of the section.
+				if i==0: continue
+				str_h_bone = self.bone_infos.bone(
+					name = str_bone.name.replace("STR-", "STR-H-"),
+					source = str_bone,
+					only_transform = True,
+					bone_group = 'Body: STR-H - Stretch Helpers',
+					parent = str_bone.parent
+				)
+				str_bone.parent = str_h_bone.name
 
-				if i == segments-1:
-					# The first DEF bone of each segment should be parented to the last STR bone of the previous segment.
-					next_parent = next_str_name
+				first_str = section[0].name
+				last_str = str_sections[sec_i+1][0].name
 
-				def_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=next_str_name)
-				# constraints
-				# bbone scale drivers
+				str_h_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True, target=self.obj, subtarget=first_str)
+				str_h_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True, target=self.obj, subtarget=last_str, influence=0.5)
+				str_h_bone.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=last_str)
+		
+		### Configure Deform (parent to STR or previous DEF, set BBone handle)
+		for sec_i, section in enumerate(def_sections):
+			for i, def_bone in enumerate(section):
+				if i==0:
+					# If this is the first bone in the section, parent it to the STR bone of the same indices.
+					def_bone.parent = str_sections[sec_i][i].name
+					if i==len(section)-1 and sec_i==len(def_sections)-1: 
+						# If this is also the last bone of the last section(eg. Wrist bone), don't do anything else.
+						break
+				else:
+					# Otherwise parent to previous deform bone.
+					def_bone.parent = section[i-1].name
+				
+				# Set BBone start handle to the same index STR bone.
+				def_bone.bbone_custom_handle_start = str_sections[sec_i][i].name
+				next_str = ""
+				if i < len(section)-1:
+					# Set BBone end handle to the next index STR bone.
+					next_str = str_sections[sec_i][i+1].name
+					def_bone.bbone_custom_handle_end = next_str
+				else:
+					# If this is the last bone in the section, use the first STR of the next section instead.
+					next_str = str_sections[sec_i+1][0].name
+					def_bone.bbone_custom_handle_end = next_str
+				
+				# Stretch To constraint
+				def_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=next_str)
+
+				# BBone scale drivers
+				shared.make_bbone_scale_drivers(self.obj, def_bone)
 
 	##############################
 	# Parameters

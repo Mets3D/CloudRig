@@ -95,7 +95,10 @@ group_defs = {
     },
     'Body: DEF - Limb Deform Bones' : {
         'layers' : [BODY_DEFORM]
-    }
+    },
+    'Body: STR-H - Stretch Helpers' : {
+        'layers' : [BODY_MECH]
+    },
 
 }
 

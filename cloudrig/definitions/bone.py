@@ -17,8 +17,9 @@ def get_defaults(contype, armature):
 		"target" : armature,
 	 }
 
-	if contype not in ['STRETCH_TO', 'ARMATURE', 'IK']:
-		ret["target_space"] = 'LOCAL'
+	if contype not in ['STRETCH_TO', 'ARMATURE', 'IK', 'DAMPED_TRACK']:
+		if contype not in ['LIMIT_SCALE']:
+			ret["target_space"] = 'LOCAL'
 		ret["owner_space"] = 'LOCAL'
 
 	if contype == 'STRETCH_TO':
@@ -419,8 +420,10 @@ class BoneInfo(ID):
 		for cd in self.constraints:
 			con_type = cd[0]
 			cinfo = cd[1]
-			name = cinfo['name'] if 'name' in cinfo else None
-			c = find_or_create_constraint(pose_bone, con_type, name)
+			c = pose_bone.constraints.new(con_type)
+			if 'name' in cinfo:
+				c.name = cinfo['name'] 
+			#c = find_or_create_constraint(pose_bone, con_type, name)
 			for key, value in cinfo.items():
 				if con_type == 'ARMATURE' and key=='targets':
 					# Armature constraint targets need special treatment. D'oh!
