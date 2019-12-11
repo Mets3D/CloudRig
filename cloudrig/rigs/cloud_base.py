@@ -16,8 +16,6 @@
 #
 #======================= END GPL LICENSE BLOCK ========================
 
-# <pep8 compliant> (TODO: make it so)
-
 import bpy
 from bpy.props import *
 from mathutils import *
@@ -64,14 +62,17 @@ class CloudBaseRig(BaseRig):
 		}
 		# Bone Info container used for storing new bone info created by the script.
 		self.bone_infos = BoneInfoContainer(self.obj, self.defaults)
-		# Bone Info container used for storing existing bone info from the meta-rig, which should overwrite anything done by the script.
-		# TODO:  I still don't hate this idea, but we need to define how various properties are handled - eg, transforms would be overwritten, sure, but constraints? I guess figure this out when we have a use case.
-		self.overriding_bone_infos = BoneInfoContainer(self.obj)
 		
 		self.bones.parent = self.get_bone(self.base_bone).parent.name
 
 		# Properties bone and Custom Properties
-		self.prop_bone = self.bone_infos.bone("Properties_IKFK", bone_group='Properties')
+		self.prop_bone = self.bone_infos.bone(
+			name = "Properties_IKFK", 
+			bone_group = 'Properties',
+			custom_shape = load_widget("Cogwheel"),
+			head = Vector((0, self.scale*1, 0)),
+			tail = Vector((0, self.scale*2, 0))
+		)
 
 	def prepare_bone_groups(self):
 		# Wipe any existing bone groups.
@@ -80,10 +81,6 @@ class CloudBaseRig(BaseRig):
 			self.obj.pose.bone_groups.remove(bone_group)
 
 	def generate_bones(self):
-		# for bn in self.bones.flatten():
-		# 	bone = self.get_bone(bn)
-		# 	self.overriding_bone_infos.bone(bn, bone)
-
 		# Apply scaling
 		for bd in self.bone_infos.bones:
 			if not bd.use_custom_shape_bone_size:
@@ -99,8 +96,6 @@ class CloudBaseRig(BaseRig):
 		for bd in self.bone_infos.bones:
 			edit_bone = self.get_bone(bd.name)
 			bd.write_edit_data(self.obj, edit_bone)
-			
-			# overriding_bone = self.overriding_bone_infos.find(bd.name)
 	
 	def configure_bones(self):
 		for bd in self.bone_infos.bones:

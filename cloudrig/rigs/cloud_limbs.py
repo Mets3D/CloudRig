@@ -61,6 +61,20 @@ class Rig(CloudBaseRig):
 		self.fk_hinge_prop = self.prop_bone.custom_props[fk_hinge_name] = CustomProp(fk_hinge_name, default=0.0)
 
 	@stage.prepare_bones
+	def prepare_root(self):
+		# Socket/Root bone to parent everything to.
+		root_name = self.base_bone.replace("ORG", "ROOT-")
+		base_bone = self.get_bone(self.base_bone)
+		self.root_bone = self.bone_infos.bone(
+			name 				= root_name, 
+			source 				= base_bone, 
+			only_transform 		= True, 
+			parent 				= self.bones.parent,
+			custom_shape 		= load_widget("Cube"),
+			custom_shape_scale 	= 0.5,
+		)
+
+	@stage.prepare_bones
 	def prepare_fk(self):
 		fk_bones = []
 		fk_name = ""
@@ -68,11 +82,12 @@ class Rig(CloudBaseRig):
 			edit_bone = self.get_bone(bn)
 			fk_name = bn.replace("ORG", "FK")
 			fk_bone = self.bone_infos.bone(
-				fk_name, 
-				edit_bone,
-				custom_shape = load_widget("FK_Limb"),
-				custom_shape_scale = 0.6,
-				**self.defaults
+				name				= fk_name, 
+				source				= edit_bone,
+				**self.defaults,
+				custom_shape 		= load_widget("FK_Limb"),
+				custom_shape_scale 	= 0.6,
+				parent				= self.root_bone.name
 			)
 			fk_bones.append(fk_bone)
 			
@@ -96,11 +111,10 @@ class Rig(CloudBaseRig):
 		# Create Hinge helper
 		hng_name = self.base_bone.replace("ORG", "FK-HNG")	# Name it after the first bone in the chain.
 		hng_bone = self.bone_infos.bone(
-			hng_name, 
-			fk_bones[0], 
-			only_transform=True,
-			**self.defaults,
-			bone_group = 'Body: FK Helper Bones'
+			name			= hng_name, 
+			source			= fk_bones[0], 
+			only_transform	= True,
+			bone_group 		= 'Body: FK Helper Bones',
 		)
 		fk_bones[0].parent = hng_bone
 
@@ -110,7 +124,7 @@ class Rig(CloudBaseRig):
 					"subtarget" : 'root'
 				},
 				{
-					"subtarget" : self.bones.parent
+					"subtarget" : self.root_bone.name
 				}
 			],
 		)
@@ -133,9 +147,8 @@ class Rig(CloudBaseRig):
 		hng_bone.drivers[data_path2] = drv2
 
 		hng_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True,
-			target=self.obj,
-			subtarget=self.bones.parent,
-			head_tail=1
+			target = self.obj,
+			subtarget = self.root_bone.name,
 		)
 
 		for fkb in fk_bones:
@@ -156,11 +169,11 @@ class Rig(CloudBaseRig):
 		org_bone = self.get_bone(bn)
 		ik_name = bn.replace("ORG", "IK")
 		ik_ctrl = self.bone_infos.bone(
-			ik_name, 
-			org_bone, 
+			name = ik_name, 
+			source = org_bone, 
 			custom_shape = load_widget("Hand_IK"),
-			parent=None,
-			bone_group='Body: Main IK Controls'
+			parent = None,	# TODO: Parent switching with operator that corrects transforms.
+			bone_group = 'Body: Main IK Controls'
 		)
 		# Parent control
 		if self.params.double_ik_control:
@@ -168,22 +181,22 @@ class Rig(CloudBaseRig):
 			sliced[0].append("P")
 			parent_name = make_name(*sliced)
 			parent_bone = self.bone_infos.bone(
-				parent_name, 
-				ik_ctrl, 
+				name = parent_name, 
+				source = ik_ctrl, 
 				custom_shape_scale=1.1,
 				bone_group='Body: Main IK Controls Extra Parents'
 			)
 			ik_ctrl.parent = parent_bone
 		
 		# Stretch mechanism
-		eb = self.get_bone(chain[0])
 		sliced = slice_name(ik_name)
 		sliced[0].append("STR")
 		str_name = make_name(*sliced)
 		str_bone = self.bone_infos.bone(
-			str_name, 
-			eb,
-			tail=Vector(ik_ctrl.head[:]),
+			name = str_name, 
+			source = self.get_bone(chain[0]),
+			tail = Vector(ik_ctrl.head[:]),
+			parent = self.root_bone.name,
 			bone_group = 'Body: IK - IK Mechanism Bones'
 		)
 		
@@ -197,10 +210,10 @@ class Rig(CloudBaseRig):
 		sliced[0].append("TIP")
 		tip_name = make_name(*sliced)
 		tip_bone = self.bone_infos.bone(
-			tip_name, 
-			org_bone, 
-			parent=ik_ctrl,
-			bone_group='Body: IK - IK Mechanism Bones'
+			name = tip_name, 
+			source = org_bone, 
+			parent = ik_ctrl,
+			bone_group = 'Body: IK - IK Mechanism Bones'
 		)
 
 		# Create IK Chain (first two bones)
@@ -209,15 +222,15 @@ class Rig(CloudBaseRig):
 			org_bone = self.get_bone(bn)
 			ik_name = bn.replace("ORG", "IK")
 			ik_bone = self.bone_infos.bone(ik_name, org_bone, 
-				ik_stretch=0.1,
-				bone_group='Body: IK - IK Mechanism Bones'
+				ik_stretch = 0.1,
+				bone_group = 'Body: IK - IK Mechanism Bones',
 			)
 			ik_chain.append(ik_bone)
 			
-			if i > 0:
-				ik_bone.parent = ik_chain[-2]
+			if i == 0:
+				ik_bone.parent = self.root_bone.name
 			else:
-				ik_bone.parent = self.bone_infos.bone(self.bones.parent)
+				ik_bone.parent = ik_chain[-2]
 			
 			if i == len(chain)-2:
 				# Add the IK constraint to the 2nd-to-last bone.

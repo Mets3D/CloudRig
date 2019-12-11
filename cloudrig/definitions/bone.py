@@ -382,6 +382,9 @@ class BoneInfo(ID):
 		# Custom Properties.
 		for key, prop in self.custom_props_edit.items():
 			prop.make_real(edit_bone)
+		
+		# TODO: We just slapped this here to prevent ORG- bones from being affected by Copy Transforms constraints, since connected parenting overwrites it/prevents it from taking effect.
+		edit_bone.use_connect = False
 
 	def write_pose_data(self, pose_bone):
 		"""Write relevant data into a PoseBone."""
