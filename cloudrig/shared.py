@@ -110,7 +110,7 @@ def create_parent_bone(self, child, shape=None):
         parent_name, 
         child, 
         only_transform=True, 
-        custom_shape_scale=1.1,
+        custom_shape_scale=child.custom_shape_scale*1.2,
         **self.defaults
     )
 
@@ -123,12 +123,12 @@ def create_dsp_bone(self, parent):
     if not self.params.display_middle: return
     dsp_name = "DSP-" + parent.name
     dsp_bone = self.bone_infos.bone(
-        dsp_name, 
-        parent, 
+        name=dsp_name, 
+        source=parent, 
         custom_shape=None, 
         parent=parent
     )
-    dsp_bone.put(parent.center, 0.1, 0.1)
+    dsp_bone.put(parent.center, scale=0.3, bbone_scale=1.5)
     dsp_bone.bone_group = 'DSP - Display Transform Helpers'
     parent.custom_shape_transform = dsp_bone
     return dsp_bone

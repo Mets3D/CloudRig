@@ -54,6 +54,8 @@ class CloudBaseRig(BaseRig):
 		"""Gather and validate data about the rig."""
 		self.prepare_bone_groups()
 
+		self.scale = self.obj.dimensions[2]/10
+
 		self.defaults = {
 			"bbone_x" : 0.05,
 			"bbone_z" : 0.05,
@@ -82,8 +84,15 @@ class CloudBaseRig(BaseRig):
 		# 	bone = self.get_bone(bn)
 		# 	self.overriding_bone_infos.bone(bn, bone)
 
+		# Apply scaling
 		for bd in self.bone_infos.bones:
-			if bd.name not in self.obj.data.bones and bd.name not in self.bones.flatten() and bd.name!='root':
+			if not bd.use_custom_shape_bone_size:
+				bd.custom_shape_scale *= self.scale
+			bd.bbone_x *= self.scale
+			bd.bbone_z *= self.scale
+		
+		for bd in self.bone_infos.bones:
+			if bd.name not in self.obj.data.edit_bones and bd.name not in self.bones.flatten() and bd.name!='root':
 				bone_name = self.new_bone(bd.name)
 	
 	def parent_bones(self):

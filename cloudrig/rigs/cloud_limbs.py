@@ -24,6 +24,8 @@ from mathutils import *
 
 from rigify.utils.errors import MetarigError
 from rigify.base_rig import stage
+from rigify.utils.bones import BoneDict
+from rigify.utils.rig import connected_children_names
 
 from .. import shared
 from ..definitions.driver import *
@@ -37,11 +39,17 @@ from .cloud_base import CloudBaseRig
 class Rig(CloudBaseRig):
 	""" Base for CloudRig arms and legs.
 	"""
-
+	def find_org_bones(self, bone):
+		"""Populate self.bones.org."""
+		# For now we just grab all connected children of our main bone and put it in self.bones.org.main.
+		return BoneDict(
+			main=[bone.name] + connected_children_names(self.obj, bone.name)[:2],
+		)
+	
 	def initialize(self):
 		super().initialize()
 		"""Gather and validate data about the rig."""
-		assert len(self.bones.org.main)==3, "Limb bone chain must consist of exactly 3 connected bones."
+		assert len(self.bones.org.main)>=3, "Limb bone chain must be at least 3 connected bones."
 		self.type = self.params.type
 
 		# Properties bone and Custom Properties
@@ -63,6 +71,7 @@ class Rig(CloudBaseRig):
 				fk_name, 
 				edit_bone,
 				custom_shape = load_widget("FK_Limb"),
+				custom_shape_scale = 0.6,
 				**self.defaults
 			)
 			fk_bones.append(fk_bone)
@@ -306,7 +315,7 @@ class Rig(CloudBaseRig):
 		str_sections = []
 		for sec_i, section in enumerate(def_sections):
 			str_section = []
-			for seg_i, def_bone in enumerate(section):
+			for i, def_bone in enumerate(section):
 				# TODO Figure out what bones to parent STR to, and how to find FK names.
 				# I think we parent STR to ORG though. No need to find FK names.
 				str_bone = self.bone_infos.bone(
@@ -314,12 +323,16 @@ class Rig(CloudBaseRig):
 					head = def_bone.head,
 					tail = def_bone.tail,
 					roll = def_bone.roll,
-					length = 0.1,
 					custom_shape = load_widget("Sphere"),
 					custom_shape_scale = 2,
 					bone_group = 'Body: STR - Stretch Controls',
 					parent=chain[sec_i],
 				)
+				str_bone.scale(0.3)
+				if i==0:
+					# Make first control bigger.
+					str_bone.custom_shape_scale = 2.5
+				
 				str_section.append(str_bone)
 			str_sections.append(str_section)
 	

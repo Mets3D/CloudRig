@@ -143,17 +143,20 @@ class BoneInfo(ID):
 		self.head = Vector((0,0,0))
 		self.tail = Vector((0,1,0))
 		self.roll = 0
-		self.layers = [False]*32
+		self.layers = [False]*32	# NOTE: If no layers are enabled, Blender will force layers[0]=True without warning.
 		self.rotation_mode = 'QUATERNION'
 
-		# BBone Properties that are shared between pose and edit mode.
+		### Properties that are shared between pose and edit mode.
 		self.bbone_x = 0.1
 		self.bbone_z = 0.1
 		self.bbone_segments = 1
 		self.bbone_handle_type_start = "AUTO"
 		self.bbone_handle_type_end = "AUTO"
+		self.bbone_custom_handle_start = None	# Bone name only!
+		self.bbone_custom_handle_end = None		# Bone name only!
 
-		# BBone Properties that are split between pose and edit mode. Note that here, we are referring only to edit bone values.
+		### Edit Mode Only
+		# Note that for these bbone properties, we are referring only to edit bone versions of the values.
 		self.bbone_curveinx = 0
 		self.bbone_curveiny = 0
 		self.bbone_curveoutx = 0
@@ -165,6 +168,9 @@ class BoneInfo(ID):
 		self.bbone_scaleoutx = 1
 		self.bbone_scaleouty = 1
 
+		self.parent = None	# Bone name only!
+
+		### Pose Mode Only
 		self.bone_group = ""
 		self.custom_shape = None   # Object ID?
 		self.custom_shape_scale = 1.0
@@ -178,12 +184,7 @@ class BoneInfo(ID):
 		self.use_envelope_multiply = False
 		self.use_relative_parent = False
 
-		# We don't want to store a real Bone ID because we want to be able to set the parent before the parent was really created. So this is either a String or a BoneInfo instance.
-		# TODO: These should be handled uniformally.
-		self.parent = None
 		self.custom_shape_transform = None # Bone name
-		self.bbone_custom_handle_start = None
-		self.bbone_custom_handle_end = None
 		
 		if only_transform:
 			assert source, "If only_transform==True, source cannot be None!"
@@ -223,6 +224,15 @@ class BoneInfo(ID):
 		"""Vector pointing from head to tail."""
 		return self.tail-self.head
 
+	def bbone_scale(self, value):
+		"""Set bbone width relative to current."""
+		self.bbone_x *= value
+		self.bbone_z *= value
+
+	def scale(self, value):
+		"""Set bone length relative to its current length."""
+		self.tail = self.head + self.vec * value
+
 	@property
 	def length(self):
 		return (self.tail-self.head).size
@@ -243,7 +253,7 @@ class BoneInfo(ID):
 		"""
 
 		if wipe:
-			self.layers = [False]*32	# Note: If this stays like this, blender will force layers[0]=True without warning.
+			self.layers = [False]*32
 		
 		for i, e in enumerate(layerlist):
 			if type(e)==bool:
@@ -252,16 +262,19 @@ class BoneInfo(ID):
 			elif type(e)==int:
 				self.layers[e] = True
 
-	def put(self, loc, length=None, width=None):
+	def put(self, loc, length=None, width=None, scale=None, bbone_scale=None):
 		offset = loc-self.head
 		self.head = loc
 		self.tail = loc+offset
 		
 		if length:
 			self.length=length
-		
 		if width:
 			self.bbone_width = width
+		if scale:
+			self.scale(scale)
+		if bbone_scale:
+			self.bbone_scale(bbone_scale)
 	
 	def copy_info(self, bone_info):
 		"""Called from __init__ to initialize using existing BoneInfo."""
@@ -371,7 +384,7 @@ class BoneInfo(ID):
 			prop.make_real(edit_bone)
 
 	def write_pose_data(self, pose_bone):
-		"""Write relevant data into a PoseBone and its (Data)Bone."""
+		"""Write relevant data into a PoseBone."""
 		armature = pose_bone.id_data
 
 		assert armature.mode != 'EDIT', "Armature cannot be in Edit Mode when writing pose data"
