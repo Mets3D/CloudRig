@@ -21,11 +21,13 @@
 import bpy
 from bpy.props import *
 from mathutils import *
+from math import pi
 
 from rigify.utils.errors import MetarigError
 from rigify.base_rig import stage
 from rigify.utils.bones import BoneDict
 from rigify.utils.rig import connected_children_names
+from rigify.utils.misc import map_list
 
 from .. import shared
 from ..definitions.driver import *
@@ -60,6 +62,56 @@ class Rig(CloudBaseRig):
 		self.ikfk_prop = self.prop_bone.custom_props[ikfk_name] = CustomProp(ikfk_name, default=0.0)
 		self.fk_hinge_prop = self.prop_bone.custom_props[fk_hinge_name] = CustomProp(fk_hinge_name, default=0.0)
 
+		# Calculate IK Pole related info
+		rot_axis = self.params.rotation_axis
+
+		if rot_axis in {'x', 'automatic'}:
+			self.main_axis, self.aux_axis = 'x', 'z'
+		elif rot_axis == 'z':
+			self.main_axis, self.aux_axis = 'z', 'x'
+		else:
+			self.raise_error('Unexpected axis value: {}', rot_axis)
+		
+		bones = map_list(self.get_bone, self.bones.org.main[0:2])
+
+		self.elbow_vector = self.compute_elbow_vector(bones)
+		self.pole_angle = self.compute_pole_angle(bones, self.elbow_vector)
+		self.rig_parent_bone = self.get_bone_parent(self.bones.org.main[0])
+
+	####################################################
+	# Utilities
+
+	def compute_elbow_vector(self, bones):
+		lo_vector = bones[1].vector
+		tot_vector = bones[1].tail - bones[0].head
+		return (lo_vector.project(tot_vector) - lo_vector).normalized() * tot_vector.length
+
+	def get_main_axis(self, bone):
+		return getattr(bone, self.main_axis + '_axis')
+
+	def get_aux_axis(self, bone):
+		return getattr(bone, self.aux_axis + '_axis')
+
+	def compute_pole_angle(self, bones, elbow_vector):
+		if self.params.rotation_axis == 'z':
+			return 0
+
+		vector = self.get_aux_axis(bones[0]) + self.get_aux_axis(bones[1])
+
+		if elbow_vector.angle(vector) > pi/2:
+			return -pi/2
+		else:
+			return pi/2
+
+	def get_segment_pos(self, org, seg):
+		bone = self.get_bone(org)
+		return bone.head + bone.vector * (seg / self.segments)
+
+	@staticmethod
+	def vector_without_z(vector):
+		return Vector((vector[0], vector[1], 0))
+
+
 	@stage.prepare_bones
 	def prepare_root(self):
 		# Socket/Root bone to parent everything to.
@@ -72,6 +124,7 @@ class Rig(CloudBaseRig):
 			parent 				= self.bones.parent,
 			custom_shape 		= load_widget("Cube"),
 			custom_shape_scale 	= 0.5,
+			bone_group			= 'Body: IK - IK Mechanism Bones'
 		)
 
 	@stage.prepare_bones
@@ -95,7 +148,7 @@ class Rig(CloudBaseRig):
 				# Make a parent for the first control.
 				fk_parent_bone = shared.create_parent_bone(self, fk_bone)
 				fk_parent_bone.custom_shape = load_widget("FK_Limb")
-				shared.create_dsp_bone(self, fk_parent_bone)
+				shared.create_dsp_bone(self, fk_parent_bone, center=True)
 
 				# Store in the beginning of the FK list, since it's the new root of the FK chain.
 				fk_bones.insert(0, fk_parent_bone)
@@ -105,7 +158,7 @@ class Rig(CloudBaseRig):
 			
 			if i < 2:
 				# Setup DSP bone for all but last bone.
-				shared.create_dsp_bone(self, fk_bone)
+				shared.create_dsp_bone(self, fk_bone, center=True)
 				pass
 		
 		# Create Hinge helper
@@ -164,10 +217,24 @@ class Rig(CloudBaseRig):
 		
 		chain = self.bones.org.main
 
+		# Create IK Pole Control
+		first_bn = chain[0]
+		head = self.get_bone(chain[0]).tail + self.elbow_vector
+		pole_ctrl = self.bone_infos.bone(
+			name = "IK-POLE-" + self.params.type.capitalize() + self.side_suffix,
+			head = head,
+			tail = head + self.elbow_vector/8,
+			roll = 0,
+			custom_shape = load_widget('ArrowHead'),
+			bone_group = 'Body: Main IK Controls'
+		)
+
+		pole_dsp = shared.create_dsp_bone(self, pole_ctrl)
+
 		# Create IK control(s) (Wrist/Ankle)
-		bn = chain[-1]
-		org_bone = self.get_bone(bn)
-		ik_name = bn.replace("ORG", "IK")
+		last_bn = chain[-1]
+		org_bone = self.get_bone(last_bn)
+		ik_name = last_bn.replace("ORG", "IK")
 		ik_ctrl = self.bone_infos.bone(
 			name = ik_name, 
 			source = org_bone, 
@@ -229,13 +296,14 @@ class Rig(CloudBaseRig):
 			
 			if i == 0:
 				ik_bone.parent = self.root_bone.name
+				pole_dsp.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=ik_bone.name, head_tail=1, track_axis='TRACK_NEGATIVE_Y')
 			else:
 				ik_bone.parent = ik_chain[-2]
 			
 			if i == len(chain)-2:
 				# Add the IK constraint to the 2nd-to-last bone.
 				ik_bone.add_constraint(self.obj, 'IK', 
-					pole_target=None,	# TODO pole target.
+					pole_subtarget=pole_ctrl.name,
 					subtarget=tip_bone.name
 				)
 
@@ -411,6 +479,18 @@ class Rig(CloudBaseRig):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
 		"""
+		items = [
+			('x', 'X manual', ''),
+			('z', 'Z manual', ''),
+			('automatic', 'Automatic', '')
+		]
+
+		params.rotation_axis = bpy.props.EnumProperty(
+			items   = items,
+			name	= "Rotation Axis",
+			default = 'automatic'
+		)
+
 		params.type = EnumProperty(name="Type",
 		items = (
 			("ARM", "Arm", "Arm"),
@@ -458,3 +538,5 @@ class Rig(CloudBaseRig):
 		layout.prop(params, "display_middle")
 		layout.prop(params, "deform_segments")
 		layout.prop(params, "bbone_segments")
+
+		layout.prop(params, "rotation_axis")

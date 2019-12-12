@@ -1,4 +1,5 @@
 # Well, this could probably be a lot more elegant.
+# TODO: This entire file should be merged into cloud_base.py.
 
 from .rigs.cloud_utils import load_widget, make_name, slice_name
 
@@ -118,18 +119,20 @@ def create_parent_bone(self, child, shape=None):
     return parent_bone
 
 # DSP bones - Display bones at the mid-point of each bone to use as display transforms for FK.
-def create_dsp_bone(self, parent):
+def create_dsp_bone(self, parent, center=False):
     """If Display Centered rig option is enabled, we want certain controls to display in the center of the bone rather than at the head."""
     if not self.params.display_middle: return
     dsp_name = "DSP-" + parent.name
     dsp_bone = self.bone_infos.bone(
         name=dsp_name, 
-        source=parent, 
+        source=parent,
+        only_transform=True,
         custom_shape=None, 
-        parent=parent
+        parent=parent,
+        bone_group = 'DSP - Display Transform Helpers'
     )
-    dsp_bone.put(parent.center, scale=0.3, bbone_scale=1.5)
-    dsp_bone.bone_group = 'DSP - Display Transform Helpers'
+    if center:
+        dsp_bone.put(parent.center, scale=0.3, bbone_scale=1.5)
     parent.custom_shape_transform = dsp_bone
     return dsp_bone
 

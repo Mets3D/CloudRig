@@ -36,8 +36,7 @@ from .cloud_utils import load_widget, make_name, slice_name
 # I really need to make sure I can justify abstracting the entire set of blender rigging related datastructures... it feels really silly.
 
 class CloudBaseRig(BaseRig):
-	""" Base for CloudRig arms and legs.
-	"""
+	"""Base for all CloudRig rigs."""
 
 	# overrides BaseRig.find_org_bones.
 	def find_org_bones(self, bone):
@@ -53,6 +52,13 @@ class CloudBaseRig(BaseRig):
 		self.prepare_bone_groups()
 
 		self.scale = self.obj.dimensions[2]/10
+
+		if self.base_bone.endswith(".L"):
+			self.side_suffix = ".L"
+		elif self.base_bone.endswith(".R"):
+			self.side_suffix = ".R"
+		else:
+			self.side_suffix = ""
 
 		self.defaults = {
 			"bbone_x" : 0.05,
