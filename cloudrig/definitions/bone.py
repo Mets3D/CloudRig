@@ -145,6 +145,8 @@ class BoneInfo(ID):
 		self.roll = 0
 		self.layers = [False]*32	# NOTE: If no layers are enabled, Blender will force layers[0]=True without warning.
 		self.rotation_mode = 'QUATERNION'
+		self.hide_select = False
+		self.hide = False
 
 		### Properties that are shared between pose and edit mode.
 		self.bbone_x = 0.1
