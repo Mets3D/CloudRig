@@ -77,8 +77,27 @@ class CloudBaseRig(BaseRig):
 			bone_group = 'Properties',
 			custom_shape = load_widget("Cogwheel"),
 			head = Vector((0, self.scale*1, 0)),
-			tail = Vector((0, self.scale*2, 0))
+			tail = Vector((0, self.scale*1, self.scale*1))
 		)
+
+		# Find or create collection for this rig.
+		metarig = self.generator.metarig
+		if metarig.name.startswith('META'):	# TODO should this be enforced?
+			collection_name = metarig.name.replace('META', 'CH')
+			self.collection = bpy.data.collections.get(collection_name)
+			if not self.collection:
+				self.collection = bpy.data.collections.new(collection_name)
+				bpy.context.scene.collection.children.link(self.collection)
+			
+			self.obj.name = metarig.name.replace('META', 'RIG')
+			if self.obj.name not in self.collection.objects:
+				self.collection.objects.link(self.obj)
+			
+			wgt_collection_name = metarig.name.replace('META', 'WGT')
+			self.wgt_collection = bpy.data.collections.get(wgt_collection_name)
+			if not self.wgt_collection:
+				self.wgt_collection = bpy.data.collections.new(wgt_collection_name)
+				self.collection.children.link(self.wgt_collection)
 
 	def prepare_bone_groups(self):
 		# Wipe any existing bone groups.
@@ -87,6 +106,10 @@ class CloudBaseRig(BaseRig):
 			self.obj.pose.bone_groups.remove(bone_group)
 
 	def generate_bones(self):
+		root_bone = self.get_bone("root")
+		root_bone.bbone_x = self.scale/10
+		root_bone.bbone_z = self.scale/10
+
 		# Apply scaling
 		for bd in self.bone_infos.bones:
 			if not bd.use_custom_shape_bone_size:
