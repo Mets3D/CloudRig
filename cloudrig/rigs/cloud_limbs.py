@@ -65,12 +65,10 @@ class Rig(CloudBaseRig):
 		# Calculate IK Pole related info
 		rot_axis = self.params.rotation_axis
 
-		if rot_axis in {'x', 'automatic'}:
+		if rot_axis == 'x':
 			self.main_axis, self.aux_axis = 'x', 'z'
 		elif rot_axis == 'z':
 			self.main_axis, self.aux_axis = 'z', 'x'
-		else:
-			self.raise_error('Unexpected axis value: {}', rot_axis)
 		
 		bones = map_list(self.get_bone, self.bones.org.main[0:2])
 
@@ -499,13 +497,12 @@ class Rig(CloudBaseRig):
 		items = [
 			('x', 'X manual', ''),
 			('z', 'Z manual', ''),
-			('automatic', 'Automatic', '')
 		]
 
 		params.rotation_axis = bpy.props.EnumProperty(
 			items   = items,
 			name	= "Rotation Axis",
-			default = 'automatic'
+			default = 'x'
 		)
 
 		params.type = EnumProperty(name="Type",
