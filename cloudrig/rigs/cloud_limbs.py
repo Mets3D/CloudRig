@@ -62,54 +62,6 @@ class Rig(CloudBaseRig):
 		self.ikfk_prop = self.prop_bone.custom_props[ikfk_name] = CustomProp(ikfk_name, default=0.0)
 		self.fk_hinge_prop = self.prop_bone.custom_props[fk_hinge_name] = CustomProp(fk_hinge_name, default=0.0)
 
-		# Calculate IK Pole related info
-		rot_axis = self.params.rotation_axis
-
-		if rot_axis == 'x':
-			self.main_axis, self.aux_axis = 'x', 'z'
-		elif rot_axis == 'z':
-			self.main_axis, self.aux_axis = 'z', 'x'
-		
-		bones = map_list(self.get_bone, self.bones.org.main[0:2])
-
-		self.elbow_vector = self.compute_elbow_vector(bones)
-		self.pole_angle = self.compute_pole_angle(bones, self.elbow_vector)
-		self.rig_parent_bone = self.get_bone_parent(self.bones.org.main[0])
-
-	####################################################
-	# Utilities
-
-	def compute_elbow_vector(self, bones):
-		lo_vector = bones[1].vector
-		tot_vector = bones[1].tail - bones[0].head
-		return (lo_vector.project(tot_vector) - lo_vector).normalized() * tot_vector.length
-
-	def get_main_axis(self, bone):
-		return getattr(bone, self.main_axis + '_axis')
-
-	def get_aux_axis(self, bone):
-		return getattr(bone, self.aux_axis + '_axis')
-
-	def compute_pole_angle(self, bones, elbow_vector):
-		if self.params.rotation_axis == 'z':
-			return 0
-
-		vector = self.get_aux_axis(bones[0]) + self.get_aux_axis(bones[1])
-
-		if elbow_vector.angle(vector) > pi/2:
-			return -pi/2
-		else:
-			return pi/2
-
-	def get_segment_pos(self, org, seg):
-		bone = self.get_bone(org)
-		return bone.head + bone.vector * (seg / self.segments)
-
-	@staticmethod
-	def vector_without_z(vector):
-		return Vector((vector[0], vector[1], 0))
-
-
 	@stage.prepare_bones
 	def prepare_root(self):
 		# Socket/Root bone to parent everything to.
@@ -207,22 +159,18 @@ class Rig(CloudBaseRig):
 	
 	@stage.prepare_bones
 	def prepare_ik(self):
-		# What we need:
-		# DONE IK Chain (equivalents to ORG, so 3 of these) - Make sure IK Stretch is enabled on first two, and they are parented and connected to each other.
-		# DONE IK Controls: Wrist, Wrist Parent(optional)
-		# DONE IK-STR- bone with its Limit Scale constraint set automagically somehow.
-		# TODO IK Pole target and line, somehow automagically placed.
-		
 		limb_type = self.params.type
 		chain = self.bones.org.main
 
 		# Create IK Pole Control
 		first_bn = chain[0]
-		head = self.get_bone(chain[0]).tail + self.elbow_vector
+		head = Vector( self.get_bone(chain[0]).tail[:] )
+		direction = 1 if limb_type=='ARM' else -1
+		offset = Vector((0, direction*self.scale*3, 0))
 		pole_ctrl = self.bone_infos.bone(
 			name = "IK-POLE-" + limb_type.capitalize() + self.side_suffix,
-			head = head,
-			tail = head + self.elbow_vector/8,
+			head = head + offset,
+			tail = head + offset*1.1,
 			roll = 0,
 			custom_shape = self.load_widget('ArrowHead'),
 			bone_group = 'Body: Main IK Controls'
@@ -318,8 +266,9 @@ class Rig(CloudBaseRig):
 			if i == len(chain)-2:
 				# Add the IK constraint to the 2nd-to-last bone.
 				ik_bone.add_constraint(self.obj, 'IK', 
-					pole_subtarget=pole_ctrl.name,
-					subtarget=tip_bone.name
+					pole_subtarget = pole_ctrl.name,
+					pole_angle = -pi/2,
+					subtarget = tip_bone.name
 				)
 
 	@stage.prepare_bones
@@ -494,16 +443,6 @@ class Rig(CloudBaseRig):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
 		"""
-		items = [
-			('x', 'X manual', ''),
-			('z', 'Z manual', ''),
-		]
-
-		params.rotation_axis = bpy.props.EnumProperty(
-			items   = items,
-			name	= "Rotation Axis",
-			default = 'x'
-		)
 
 		params.type = EnumProperty(name="Type",
 		items = (
@@ -552,5 +491,3 @@ class Rig(CloudBaseRig):
 		layout.prop(params, "display_middle")
 		layout.prop(params, "deform_segments")
 		layout.prop(params, "bbone_segments")
-
-		layout.prop(params, "rotation_axis")
