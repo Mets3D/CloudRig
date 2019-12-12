@@ -1,7 +1,7 @@
 # Well, this could probably be a lot more elegant.
 # TODO: This entire file should be merged into cloud_base.py.
 
-from .rigs.cloud_utils import load_widget, make_name, slice_name
+from .rigs.cloud_utils import make_name, slice_name
 
 from .definitions.driver import *
 

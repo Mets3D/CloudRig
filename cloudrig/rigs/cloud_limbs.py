@@ -33,7 +33,7 @@ from .. import shared
 from ..definitions.driver import *
 from ..definitions.custom_props import CustomProp
 from ..definitions.bone import BoneInfoContainer, BoneInfo
-from .cloud_utils import load_widget, make_name, slice_name
+from .cloud_utils import make_name, slice_name
 from .cloud_base import CloudBaseRig
 
 # Registerable rig template classes MUST be called exactly "Rig"!!!
@@ -122,7 +122,7 @@ class Rig(CloudBaseRig):
 			source 				= base_bone, 
 			only_transform 		= True, 
 			parent 				= self.bones.parent,
-			custom_shape 		= load_widget("Cube"),
+			custom_shape 		= self.load_widget("Cube"),
 			custom_shape_scale 	= 0.5,
 			bone_group			= 'Body: IK - IK Mechanism Bones'
 		)
@@ -138,7 +138,7 @@ class Rig(CloudBaseRig):
 				name				= fk_name, 
 				source				= edit_bone,
 				**self.defaults,
-				custom_shape 		= load_widget("FK_Limb"),
+				custom_shape 		= self.load_widget("FK_Limb"),
 				custom_shape_scale 	= 0.6,
 				parent				= self.root_bone.name
 			)
@@ -147,7 +147,7 @@ class Rig(CloudBaseRig):
 			if i == 0 and self.params.double_first_control:
 				# Make a parent for the first control.
 				fk_parent_bone = shared.create_parent_bone(self, fk_bone)
-				fk_parent_bone.custom_shape = load_widget("FK_Limb")
+				fk_parent_bone.custom_shape = self.load_widget("FK_Limb")
 				shared.create_dsp_bone(self, fk_parent_bone, center=True)
 
 				# Store in the beginning of the FK list, since it's the new root of the FK chain.
@@ -225,7 +225,7 @@ class Rig(CloudBaseRig):
 			head = head,
 			tail = head + self.elbow_vector/8,
 			roll = 0,
-			custom_shape = load_widget('ArrowHead'),
+			custom_shape = self.load_widget('ArrowHead'),
 			bone_group = 'Body: Main IK Controls'
 		)
 
@@ -238,7 +238,7 @@ class Rig(CloudBaseRig):
 		ik_ctrl = self.bone_infos.bone(
 			name = ik_name, 
 			source = org_bone, 
-			custom_shape = load_widget("Hand_IK"),
+			custom_shape = self.load_widget("Hand_IK"),
 			parent = None,	# TODO: Parent switching with operator that corrects transforms.
 			bone_group = 'Body: Main IK Controls'
 		)
@@ -404,7 +404,7 @@ class Rig(CloudBaseRig):
 					head = def_bone.head,
 					tail = def_bone.tail,
 					roll = def_bone.roll,
-					custom_shape = load_widget("Sphere"),
+					custom_shape = self.load_widget("Sphere"),
 					custom_shape_scale = 2,
 					bone_group = 'Body: STR - Stretch Controls',
 					parent=chain[sec_i],

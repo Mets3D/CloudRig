@@ -27,7 +27,7 @@ from rigify.utils.rig import connected_children_names
 from ..definitions.driver import *
 from ..definitions.custom_props import CustomProp
 from ..definitions.bone import BoneInfoContainer, BoneInfo
-from .cloud_utils import load_widget, make_name, slice_name
+from .cloud_utils import make_name, slice_name
 
 # Ideas:
 # Should probably turn constraints into a class. At least it would let us more easily add drivers to them.
@@ -71,15 +71,8 @@ class CloudBaseRig(BaseRig):
 		
 		self.bones.parent = self.get_bone(self.base_bone).parent.name
 
-		# Properties bone and Custom Properties
-		self.prop_bone = self.bone_infos.bone(
-			name = "Properties_IKFK", 
-			bone_group = 'Properties',
-			custom_shape = load_widget("Cogwheel"),
-			head = Vector((0, self.scale*1, 0)),
-			tail = Vector((0, self.scale*1, self.scale*1))
-		)
-
+		self.collection = None
+		self.wgt_collection = None
 		# Find or create collection for this rig.
 		metarig = self.generator.metarig
 		if metarig.name.startswith('META'):	# TODO should this be enforced?
@@ -98,6 +91,39 @@ class CloudBaseRig(BaseRig):
 			if not self.wgt_collection:
 				self.wgt_collection = bpy.data.collections.new(wgt_collection_name)
 				self.collection.children.link(self.wgt_collection)
+
+		# Properties bone and Custom Properties
+		self.prop_bone = self.bone_infos.bone(
+			name = "Properties_IKFK", 
+			bone_group = 'Properties',
+			custom_shape = self.load_widget("Cogwheel"),
+			head = Vector((0, self.scale*1, 0)),
+			tail = Vector((0, self.scale*1, self.scale*1))
+		)
+	
+	def load_widget(self, name):
+		""" Load custom shapes by appending them from a blend file, unless they already exist in this file. """
+		# If it's already loaded, return it.
+		wgt_name = "WGT_"+name
+		wgt_ob = bpy.data.objects.get(wgt_name)
+		if not wgt_ob:
+			# Loading bone shape object from file
+			filename = "Widgets.blend"
+			filedir = os.path.dirname(os.path.realpath(__file__))
+			blend_path = os.path.join(filedir, filename)
+
+			with bpy.data.libraries.load(blend_path) as (data_from, data_to):
+				for o in data_from.objects:
+					if o == wgt_name:
+						data_to.objects.append(o)
+			
+			wgt_ob = bpy.data.objects.get(wgt_name)
+			if not wgt_ob:
+				print("WARNING: Failed to load bone shape: " + wgt_name)
+
+		if self.wgt_collection and (wgt_ob.name not in self.wgt_collection.objects):
+			self.wgt_collection.objects.link(wgt_ob)
+		return wgt_ob
 
 	def prepare_bone_groups(self):
 		# Wipe any existing bone groups.
