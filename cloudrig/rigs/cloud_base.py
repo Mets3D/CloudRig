@@ -16,7 +16,7 @@
 #
 #======================= END GPL LICENSE BLOCK ========================
 
-import bpy
+import bpy, os
 from bpy.props import *
 from mathutils import *
 
@@ -69,28 +69,10 @@ class CloudBaseRig(BaseRig):
 		# Bone Info container used for storing new bone info created by the script.
 		self.bone_infos = BoneInfoContainer(self.obj, self.defaults)
 		
-		self.bones.parent = self.get_bone(self.base_bone).parent.name
+		# Keep track of created widgets, so we can add them to Rigify-created Widgets collection at the end.
+		self.widgets = []
 
-		self.collection = None
-		self.wgt_collection = None
-		# Find or create collection for this rig.
-		metarig = self.generator.metarig
-		if metarig.name.startswith('META'):	# TODO should this be enforced?
-			collection_name = metarig.name.replace('META', 'CH')
-			self.collection = bpy.data.collections.get(collection_name)
-			if not self.collection:
-				self.collection = bpy.data.collections.new(collection_name)
-				bpy.context.scene.collection.children.link(self.collection)
-			
-			self.obj.name = metarig.name.replace('META', 'RIG')
-			if self.obj.name not in self.collection.objects:
-				self.collection.objects.link(self.obj)
-			
-			wgt_collection_name = metarig.name.replace('META', 'WGT')
-			self.wgt_collection = bpy.data.collections.get(wgt_collection_name)
-			if not self.wgt_collection:
-				self.wgt_collection = bpy.data.collections.new(wgt_collection_name)
-				self.collection.children.link(self.wgt_collection)
+		self.bones.parent = self.get_bone(self.base_bone).parent.name
 
 		# Properties bone and Custom Properties
 		self.prop_bone = self.bone_infos.bone(
@@ -120,9 +102,9 @@ class CloudBaseRig(BaseRig):
 			wgt_ob = bpy.data.objects.get(wgt_name)
 			if not wgt_ob:
 				print("WARNING: Failed to load bone shape: " + wgt_name)
-
-		if self.wgt_collection and (wgt_ob.name not in self.wgt_collection.objects):
-			self.wgt_collection.objects.link(wgt_ob)
+		if wgt_ob not in self.widgets:
+			self.widgets.append(wgt_ob)
+		
 		return wgt_ob
 
 	def prepare_bone_groups(self):
@@ -166,6 +148,14 @@ class CloudBaseRig(BaseRig):
 				if c.type=='ARMATURE':
 					eb.parent = None
 					break
+
+	@stage.finalize
+	def organize_widgets(self):
+		# Hijack the widget collection automatically created by Rigify.
+		wgt_collection = self.generator.collection.children.get("Widgets")
+		for wgt in self.widgets:
+			if wgt.name not in wgt_collection.objects:
+				wgt_collection.objects.link(wgt)
 
 	@stage.finalize
 	def configure_display(self):

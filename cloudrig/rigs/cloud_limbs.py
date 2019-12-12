@@ -215,13 +215,14 @@ class Rig(CloudBaseRig):
 		# DONE IK-STR- bone with its Limit Scale constraint set automagically somehow.
 		# TODO IK Pole target and line, somehow automagically placed.
 		
+		limb_type = self.params.type
 		chain = self.bones.org.main
 
 		# Create IK Pole Control
 		first_bn = chain[0]
 		head = self.get_bone(chain[0]).tail + self.elbow_vector
 		pole_ctrl = self.bone_infos.bone(
-			name = "IK-POLE-" + self.params.type.capitalize() + self.side_suffix,
+			name = "IK-POLE-" + limb_type.capitalize() + self.side_suffix,
 			head = head,
 			tail = head + self.elbow_vector/8,
 			roll = 0,
@@ -231,17 +232,32 @@ class Rig(CloudBaseRig):
 
 		pole_dsp = shared.create_dsp_bone(self, pole_ctrl)
 
+		def foot_dsp(bone):
+			# Create foot DSP helpers
+			if limb_type=='LEG':
+				dsp_bone = shared.create_dsp_bone(self, bone)
+				direction = 1 if self.side_suffix=='.L' else -1
+				projected_head = Vector((bone.head[0], bone.head[1], 0))
+				projected_tail = Vector((bone.tail[0], bone.tail[1], 0))
+				projected_center = projected_head + (projected_tail-projected_head)/2
+				dsp_bone.head = projected_center
+				dsp_bone.tail = projected_center + Vector((0, -self.scale/10, 0))
+				dsp_bone.roll = pi/2 * direction
+
 		# Create IK control(s) (Wrist/Ankle)
 		last_bn = chain[-1]
 		org_bone = self.get_bone(last_bn)
 		ik_name = last_bn.replace("ORG", "IK")
+		wgt_name = 'Hand_IK' if limb_type=='ARM' else 'Foot_IK'
 		ik_ctrl = self.bone_infos.bone(
 			name = ik_name, 
 			source = org_bone, 
-			custom_shape = self.load_widget("Hand_IK"),
+			custom_shape = self.load_widget(wgt_name),
+			custom_shape_scale = 2.5 if limb_type=='LEG' else 1,
 			parent = None,	# TODO: Parent switching with operator that corrects transforms.
 			bone_group = 'Body: Main IK Controls'
 		)
+		foot_dsp(ik_ctrl)
 		# Parent control
 		if self.params.double_ik_control:
 			sliced = slice_name(ik_name)
@@ -250,9 +266,10 @@ class Rig(CloudBaseRig):
 			parent_bone = self.bone_infos.bone(
 				name = parent_name, 
 				source = ik_ctrl, 
-				custom_shape_scale=1.1,
+				custom_shape_scale = 3 if limb_type=='LEG' else 1.1,
 				bone_group='Body: Main IK Controls Extra Parents'
 			)
+			foot_dsp(parent_bone)
 			ik_ctrl.parent = parent_bone
 		
 		# Stretch mechanism
