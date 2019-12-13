@@ -16,8 +16,6 @@
 #
 #======================= END GPL LICENSE BLOCK ========================
 
-# <pep8 compliant> (TODO: make it so)
-
 import bpy
 from bpy.props import *
 from mathutils import *
@@ -61,8 +59,8 @@ class CloudChainRig(CloudBaseRig):
 			bbone_segments = self.params.bbone_segments
 			def_section = []
 
-			# Last bone shouldn't get segmented in any way.
-			if org_i == len(chain)-1:
+			# Last bone shouldn't get segmented.
+			if (org_i == len(chain)-1) and not self.params.cap_control:
 				segments = 1
 				bbone_segments = 1
 			
@@ -97,7 +95,7 @@ class CloudChainRig(CloudBaseRig):
 						def_bone.bbone_easeout = 0
 				
 				# Last bone of the chain.
-				if i==segments-1 and org_i == len(chain)-1:
+				if (i==segments-1) and (org_i == len(chain)-1) and (not self.params.cap_control):
 					def_bone.inherit_scale = 'FULL'	# This is not perfect - when trying to adjust the spline shape by scaling the STR control on local Y axis, it scales the last deform bone in a bad way.
 
 				next_parent = def_bone.name
@@ -109,8 +107,6 @@ class CloudChainRig(CloudBaseRig):
 		for sec_i, section in enumerate(def_sections):
 			str_section = []
 			for i, def_bone in enumerate(section):
-				# TODO Figure out what bones to parent STR to, and how to find FK names.
-				# I think we parent STR to ORG though. No need to find FK names.
 				str_bone = self.bone_infos.bone(
 					name = def_bone.name.replace("DEF", "STR"),
 					head = def_bone.head,
@@ -119,7 +115,7 @@ class CloudChainRig(CloudBaseRig):
 					custom_shape = self.load_widget("Sphere"),
 					custom_shape_scale = 2,
 					bone_group = 'Body: STR - Stretch Controls',
-					parent=chain[sec_i],
+					parent = chain[sec_i],
 				)
 				str_bone.scale(0.3)
 				if i==0:
@@ -128,6 +124,26 @@ class CloudChainRig(CloudBaseRig):
 				
 				str_section.append(str_bone)
 			str_sections.append(str_section)
+		
+		if self.params.cap_control:
+			# Add final STR control.
+			last_def = def_sections[-1][-1]
+			sliced = slice_name(str_sections[-1][-1].name)
+			sliced[0].append("TIP")
+			str_name = make_name(*sliced)
+			str_bone = self.bone_infos.bone(
+				name = str_name,
+				head = last_def.tail,
+				tail = last_def.tail + last_def.vec,
+				roll = last_def.roll,
+				custom_shape = self.load_widget("Sphere"),
+				custom_shape_scale = 2,
+				bone_group = 'Body: STR - Stretch Controls',
+				parent = chain[sec_i],
+			)
+			str_bone.scale(0.3)
+
+			str_sections.append([str_bone])
 	
 		### Create Stretch Helpers and parent STR to them
 		for sec_i, section in enumerate(str_sections):
@@ -158,8 +174,8 @@ class CloudChainRig(CloudBaseRig):
 				if i==0:
 					# If this is the first bone in the section, parent it to the STR bone of the same indices.
 					def_bone.parent = str_sections[sec_i][i].name
-					if i==len(section)-1 and sec_i==len(def_sections)-1: 
-						# If this is also the last bone of the last section(eg. Wrist bone), don't do anything else.
+					if (i==len(section)-1) and (sec_i==len(def_sections)-1) and (not self.params.cap_control): 
+						# If this is also the last bone of the last section(eg. Wrist bone), don't do anything else, unless the Final Control option is enabled.
 						break
 				else:
 					# Otherwise parent to previous deform bone.
@@ -229,6 +245,7 @@ class CloudChainRig(CloudBaseRig):
 		layout.prop(params, "deform_segments")
 		layout.prop(params, "bbone_segments")
 		layout.prop(params, "sharp_sections")
+		layout.prop(params, "cap_control")
 
 		super().parameters_ui(layout, params)
 
