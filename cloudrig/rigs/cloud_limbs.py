@@ -35,15 +35,14 @@ from ..definitions.custom_props import CustomProp
 from ..definitions.bone import BoneInfoContainer, BoneInfo
 from .cloud_utils import make_name, slice_name
 from .cloud_base import CloudBaseRig
+from .cloud_chain import CloudChainRig
 
-# Registerable rig template classes MUST be called exactly "Rig"!!!
-# (This class probably shouldn't be registered in the future)
-class Rig(CloudBaseRig):
-	""" Base for CloudRig arms and legs.
-	"""
+class Rig(CloudChainRig):
+	"""CloudRig arms and legs."""
+
 	def find_org_bones(self, bone):
 		"""Populate self.bones.org."""
-		# For now we just grab all connected children of our main bone and put it in self.bones.org.main.
+		# For limbs, we only care about the first three bones in the chain.
 		return BoneDict(
 			main=[bone.name] + connected_children_names(self.obj, bone.name)[:2],
 		)
@@ -112,9 +111,8 @@ class Rig(CloudBaseRig):
 				pass
 		
 		# Create Hinge helper
-		hng_name = self.base_bone.replace("ORG", "FK-HNG")	# Name it after the first bone in the chain.
 		hng_bone = self.bone_infos.bone(
-			name			= hng_name, 
+			name			= self.base_bone.replace("ORG", "FK-HNG"), # Name it after the first bone in the chain.
 			source			= fk_bones[0], 
 			only_transform	= True,
 			bone_group 		= 'Body: FK Helper Bones',
@@ -267,7 +265,7 @@ class Rig(CloudBaseRig):
 				# Add the IK constraint to the 2nd-to-last bone.
 				ik_bone.add_constraint(self.obj, 'IK', 
 					pole_subtarget = pole_ctrl.name,
-					pole_angle = -pi/2,
+					pole_angle = direction * pi/2,
 					subtarget = tip_bone.name
 				)
 
@@ -296,145 +294,6 @@ class Rig(CloudBaseRig):
 			data_path = 'constraints["%s"].influence' %(ik_ct_name)
 			org_bone.drivers[data_path] = drv
 
-	@stage.prepare_bones
-	def prepare_deform_and_stretch(self):
-		chain = self.bones.org.main[:]
-		# We refer to a full limb as a limb. (eg. Arm)
-		# Each part of that limb is a section. (eg. Forearm)
-		# And that section contains the bones. (eg. DEF-Forearm1)
-		# The deform_segments parameter defines how many bones there are in each section.
-
-		# Each DEF bone is surrounded by an STR bone on each end.
-		# Each STR section's first and last bones act as a control for the bones inbetween them.
-		
-		### Create deform bones.
-		def_sections = []
-		for org_i, org_name in enumerate(chain):
-			segments = self.params.deform_segments
-			bbone_segments = self.params.bbone_segments
-			def_section = []
-
-			if org_i == len(chain)-1:
-				segments = 1
-				bbone_segments = 1
-			
-			for i in range(0, segments):
-				## Deform
-				def_name = org_name.replace("ORG", "DEF")
-				sliced = slice_name(def_name)
-				def_name = make_name(sliced[0], sliced[1] + str(i+1), sliced[2])
-
-				# Move head and tail into correct places
-				org_bone = self.get_bone(org_name)	# TODO: Using BoneInfoContainer.bone() breaks stuff, why?
-				org_vec = org_bone.tail-org_bone.head
-				unit = org_vec / segments
-
-				def_bone = self.bone_infos.bone(
-					name = def_name,
-					head = org_bone.head + (unit * i),
-					tail = org_bone.head + (unit * (i+1)),
-					roll = org_bone.roll,
-					bbone_handle_type_start = 'TANGENT',
-					bbone_handle_type_end = 'TANGENT',
-					bbone_segments = bbone_segments,
-					inherit_scale = 'NONE',
-				)
-			
-				# First bone of the segment, but not the first bone of the chain.
-				if i==0 and org_i != 0:
-					def_bone.bbone_easein = 0
-				
-				# Last bone of the segment, but not the last bone of the chain.
-				if i==segments-1 and org_i != len(chain)-1:
-					def_bone.bbone_easeout = 0
-				
-				# Last bone of the chain.
-				if i==segments-1 and org_i == len(chain)-1:
-					def_bone.inherit_scale = 'FULL'	# This is not perfect - when trying to adjust the spline shape by scaling the STR control on local Y axis, it scales the last deform bone in a bad way.
-
-				next_parent = def_bone.name
-				def_section.append(def_bone)
-			def_sections.append(def_section)
-
-		### Create Stretch controls
-		str_sections = []
-		for sec_i, section in enumerate(def_sections):
-			str_section = []
-			for i, def_bone in enumerate(section):
-				# TODO Figure out what bones to parent STR to, and how to find FK names.
-				# I think we parent STR to ORG though. No need to find FK names.
-				str_bone = self.bone_infos.bone(
-					name = def_bone.name.replace("DEF", "STR"),
-					head = def_bone.head,
-					tail = def_bone.tail,
-					roll = def_bone.roll,
-					custom_shape = self.load_widget("Sphere"),
-					custom_shape_scale = 2,
-					bone_group = 'Body: STR - Stretch Controls',
-					parent=chain[sec_i],
-				)
-				str_bone.scale(0.3)
-				if i==0:
-					# Make first control bigger.
-					str_bone.custom_shape_scale = 2.5
-				
-				str_section.append(str_bone)
-			str_sections.append(str_section)
-	
-		### Create Stretch Helpers and parent STR to them
-		for sec_i, section in enumerate(str_sections):
-			for i, str_bone in enumerate(section):
-				# If this STR bone is not the first in its section
-				# Create an STR-H parent helper for it, which will hold some constraints 
-				# that keep this bone between the first and last STR bone of the section.
-				if i==0: continue
-				str_h_bone = self.bone_infos.bone(
-					name = str_bone.name.replace("STR-", "STR-H-"),
-					source = str_bone,
-					only_transform = True,
-					bone_group = 'Body: STR-H - Stretch Helpers',
-					parent = str_bone.parent
-				)
-				str_bone.parent = str_h_bone.name
-
-				first_str = section[0].name
-				last_str = str_sections[sec_i+1][0].name
-
-				str_h_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True, target=self.obj, subtarget=first_str)
-				str_h_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True, target=self.obj, subtarget=last_str, influence=0.5)
-				str_h_bone.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=last_str)
-		
-		### Configure Deform (parent to STR or previous DEF, set BBone handle)
-		for sec_i, section in enumerate(def_sections):
-			for i, def_bone in enumerate(section):
-				if i==0:
-					# If this is the first bone in the section, parent it to the STR bone of the same indices.
-					def_bone.parent = str_sections[sec_i][i].name
-					if i==len(section)-1 and sec_i==len(def_sections)-1: 
-						# If this is also the last bone of the last section(eg. Wrist bone), don't do anything else.
-						break
-				else:
-					# Otherwise parent to previous deform bone.
-					def_bone.parent = section[i-1].name
-				
-				# Set BBone start handle to the same index STR bone.
-				def_bone.bbone_custom_handle_start = str_sections[sec_i][i].name
-				next_str = ""
-				if i < len(section)-1:
-					# Set BBone end handle to the next index STR bone.
-					next_str = str_sections[sec_i][i+1].name
-					def_bone.bbone_custom_handle_end = next_str
-				else:
-					# If this is the last bone in the section, use the first STR of the next section instead.
-					next_str = str_sections[sec_i+1][0].name
-					def_bone.bbone_custom_handle_end = next_str
-				
-				# Stretch To constraint
-				def_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=next_str)
-
-				# BBone scale drivers
-				shared.make_bbone_scale_drivers(self.obj, def_bone)
-
 	##############################
 	# Parameters
 
@@ -443,6 +302,7 @@ class Rig(CloudBaseRig):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
 		"""
+		super().add_parameters(params)
 
 		params.type = EnumProperty(name="Type",
 		items = (
@@ -465,29 +325,13 @@ class Rig(CloudBaseRig):
 			description="Display FK controls on the center of the bone, instead of at its root", 
 			default=True,
 		)
-		params.deform_segments = IntProperty(
-			name="Deform Segments",
-			description="Number of deform bones per limb piece",
-			default=2,
-			min=1,
-			max=9
-		)
-		params.bbone_segments = IntProperty(
-			name="BBone Segments",
-			description="BBone segments of deform bones",
-			default=10,
-			min=1,
-			max=32
-		)
 
 	@classmethod
 	def parameters_ui(self, layout, params):
-		""" Create the ui for the rig parameters.
-		"""
+		"""Create the ui for the rig parameters."""
+		super().parameters_ui(layout, params)
 
 		layout.prop(params, "type")
 		layout.prop(params, "double_first_control")
 		layout.prop(params, "double_ik_control")
 		layout.prop(params, "display_middle")
-		layout.prop(params, "deform_segments")
-		layout.prop(params, "bbone_segments")

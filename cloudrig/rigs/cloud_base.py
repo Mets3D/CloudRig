@@ -29,12 +29,6 @@ from ..definitions.custom_props import CustomProp
 from ..definitions.bone import BoneInfoContainer, BoneInfo
 from .cloud_utils import make_name, slice_name
 
-# Ideas:
-# Should probably turn constraints into a class. At least it would let us more easily add drivers to them.
-# I should implement a CollectionProperty-like class, for ID collections, similar to BoneInfoContainer.
-# BoneInfo and other ID classes could perhaps live without all their values pre-assigned in __init__. The only ones that need to be pre-assigned are the ones that other things rely on, like how the length property relies on head and tail existing.
-# I really need to make sure I can justify abstracting the entire set of blender rigging related datastructures... it feels really silly.
-
 class CloudBaseRig(BaseRig):
 	"""Base for all CloudRig rigs."""
 
