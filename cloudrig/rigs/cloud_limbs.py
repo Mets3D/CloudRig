@@ -44,13 +44,13 @@ class Rig(CloudChainRig):
 		"""Populate self.bones.org."""
 		# For limbs, we only care about the first three bones in the chain.
 		return BoneDict(
-			main=[bone.name] + connected_children_names(self.obj, bone.name)[:2],
+			main=[bone.name] + connected_children_names(self.obj, bone.name),
 		)
 	
 	def initialize(self):
 		super().initialize()
 		"""Gather and validate data about the rig."""
-		assert len(self.bones.org.main)>=3, "Limb bone chain must be at least 3 connected bones."
+		#assert len(self.bones.org.main)>=3, "Limb bone chain must be at least 3 connected bones."
 		self.type = self.params.type
 
 		# Properties bone and Custom Properties
@@ -154,7 +154,20 @@ class Rig(CloudChainRig):
 
 		for fkb in fk_bones:
 			fkb.bone_group = "Body: Main FK Controls"
+
+	# TODO: IK Foot with Roll	
+	# Create a usual setup for STR/DEF bones, but with strictly 1 segment.
+
+	# Create ROLL control behind the foot, parented to IK-Foot from the parent rigify_rig. (Limit Rotation, lock other transforms)
+
+	# Create RollBack bone from the heel bone's head to the toe bone's head. Parented to IK. (Transformation Constraint)
+	# Create RIK bones for Foot and Toe. (flipped orientation). 
+	# 	Foot is parented to RollBack. (Copy Location of Toe tail, Roll, CounterRoll constraints)
+	#	Toe is parented to RollBack. (Roll constraint)
 	
+	# ORG-Foot bone is parented between RIK and FK Foot with armature constraint.
+	# FK-Toe bone 	is parented between RIK and FK Foot with armature constraint.
+
 	@stage.prepare_bones
 	def prepare_ik(self):
 		limb_type = self.params.type
@@ -189,12 +202,12 @@ class Rig(CloudChainRig):
 				dsp_bone.roll = pi/2 * direction
 
 		# Create IK control(s) (Wrist/Ankle)
-		last_bn = chain[-1]
-		org_bone = self.get_bone(last_bn)
-		ik_name = last_bn.replace("ORG", "IK")
+		bone_name = chain[2]
+		org_bone = self.get_bone(bone_name)
+		mstr_name = bone_name.replace("ORG", "IK-MSTR")
 		wgt_name = 'Hand_IK' if limb_type=='ARM' else 'Foot_IK'
 		ik_ctrl = self.bone_infos.bone(
-			name = ik_name, 
+			name = mstr_name, 
 			source = org_bone, 
 			custom_shape = self.load_widget(wgt_name),
 			custom_shape_scale = 2.5 if limb_type=='LEG' else 1,
@@ -204,7 +217,7 @@ class Rig(CloudChainRig):
 		foot_dsp(ik_ctrl)
 		# Parent control
 		if self.params.double_ik_control:
-			sliced = slice_name(ik_name)
+			sliced = slice_name(mstr_name)
 			sliced[0].append("P")
 			parent_name = make_name(*sliced)
 			parent_bone = self.bone_infos.bone(
@@ -217,9 +230,7 @@ class Rig(CloudChainRig):
 			ik_ctrl.parent = parent_bone
 		
 		# Stretch mechanism
-		sliced = slice_name(ik_name)
-		sliced[0].append("STR")
-		str_name = make_name(*sliced)
+		str_name = bone_name.replace("ORG", "IK-STR")
 		str_bone = self.bone_infos.bone(
 			name = str_name, 
 			source = self.get_bone(chain[0]),
@@ -235,6 +246,7 @@ class Rig(CloudChainRig):
 			influence = 0 # TODO: Put a driver on this, controlled by IK Stretch switch.
 		)
 
+		sliced = slice_name(str_name)
 		sliced[0].append("TIP")
 		tip_name = make_name(*sliced)
 		tip_bone = self.bone_infos.bone(
@@ -246,7 +258,7 @@ class Rig(CloudChainRig):
 
 		# Create IK Chain (first two bones)
 		ik_chain = []
-		for i, bn in enumerate(chain[:-1]):
+		for i, bn in enumerate(chain):
 			org_bone = self.get_bone(bn)
 			ik_name = bn.replace("ORG", "IK")
 			ik_bone = self.bone_infos.bone(ik_name, org_bone, 
@@ -256,26 +268,30 @@ class Rig(CloudChainRig):
 			ik_chain.append(ik_bone)
 			
 			if i == 0:
+				# Parent first bone to the limb root
 				ik_bone.parent = self.root_bone.name
+				# Add aim constraint to pole display bone
 				pole_dsp.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=ik_bone.name, head_tail=1, track_axis='TRACK_NEGATIVE_Y')
 			else:
 				ik_bone.parent = ik_chain[-2]
 			
-			if i == len(chain)-2:
-				# Add the IK constraint to the 2nd-to-last bone.
+			if i == 1:
+				# Add the IK constraint to the 2nd bone.
 				ik_bone.add_constraint(self.obj, 'IK', 
 					pole_subtarget = pole_ctrl.name,
 					pole_angle = direction * pi/2,
 					subtarget = tip_bone.name
 				)
+			
+			if i == 2:
+				# Parent to IK master.
+				ik_bone.parent = ik_ctrl
 
 	@stage.prepare_bones
 	def prepare_org(self):
-		# What we need:
 		# Find existing ORG bones
 		# Add Copy Transforms constraints targetting both FK and IK bones.
 		# Put driver on only the second constraint.
-		# (Completely standard setup)
 		
 		for i, bn in enumerate(self.bones.org.main):
 			ik_bone = self.bone_infos.find(bn.replace("ORG", "IK"))
