@@ -66,7 +66,9 @@ class CloudBaseRig(BaseRig):
 		# Keep track of created widgets, so we can add them to Rigify-created Widgets collection at the end.
 		self.widgets = []
 
-		self.bones.parent = self.get_bone(self.base_bone).parent.name
+		parent = self.get_bone(self.base_bone).parent
+		self.bones.parent = parent.name if parent else ""
+		
 
 		# Properties bone and Custom Properties
 		self.prop_bone = self.bone_infos.bone(

@@ -88,13 +88,13 @@ class CloudChainRig(CloudBaseRig):
 					inherit_scale = 'NONE',
 				)
 			
-				# First bone of the segment, but not the first bone of the chain.
-				if i==0 and org_i != 0:
-					def_bone.bbone_easein = 0
-				
-				# Last bone of the segment, but not the last bone of the chain.
-				if i==segments-1 and org_i != len(chain)-1:
-					def_bone.bbone_easeout = 0
+				if self.params.sharp_sections:
+					# First bone of the segment, but not the first bone of the chain.
+					if i==0 and org_i != 0:
+						def_bone.bbone_easein = 0
+					# Last bone of the segment, but not the last bone of the chain.
+					if i==segments-1 and org_i != len(chain)-1:
+						def_bone.bbone_easeout = 0
 				
 				# Last bone of the chain.
 				if i==segments-1 and org_i == len(chain)-1:
@@ -207,6 +207,19 @@ class CloudChainRig(CloudBaseRig):
 			min=1,
 			max=32
 		)
+		params.sharp_sections = BoolProperty(
+			name="Sharp Sections",
+			description="BBone EaseIn/Out is set to 0 for controls connectiong two chain sections",
+			default=True
+		)
+		# TODO: Not sure if this is a good idea yet. I guess we don't want to use this in cases where we want to connect another chain to this one.
+		# Current use case idea is for the spine/head, where we want the final control for the head to exist. Also for a generic chain like a ponytail or a scarf.
+		params.cap_control = BoolProperty(
+			name="Final Control",
+			description="Add the final control at the end of the chain (Turn off if you connect another chain to this one)",
+			default=True
+		)
+
 
 	@classmethod
 	def parameters_ui(self, layout, params):
@@ -215,5 +228,9 @@ class CloudChainRig(CloudBaseRig):
 
 		layout.prop(params, "deform_segments")
 		layout.prop(params, "bbone_segments")
+		layout.prop(params, "sharp_sections")
 
 		super().parameters_ui(layout, params)
+
+class Rig(CloudChainRig):
+	pass
