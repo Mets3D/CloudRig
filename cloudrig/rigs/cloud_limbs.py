@@ -109,6 +109,35 @@ class Rig(CloudChainRig):
 				# Setup DSP bone for all but last bone.
 				shared.create_dsp_bone(self, fk_bone, center=True)
 				pass
+
+			if i == 2:
+				if self.params.world_aligned:
+					fk_name = fk_bone.name
+					fk_bone.name = fk_bone.name.replace("FK-", "FK-W-")	# W for World?
+					# Make child control for the world-aligned control, that will have the original transforms and name.
+					fk_child_bone = self.bone_infos.bone(
+						name = fk_name,
+						source = fk_bone,
+						only_transform = True,
+						parent = fk_bone,
+						custom_shape = self.load_widget("FK_Limb"),
+						custom_shape_scale = 0.5
+					)
+					fk_bones.append(fk_child_bone)
+				
+					# Make last control world-aligned based on longest axis.
+					vec = fk_bone.tail - fk_bone.head
+					maxabs = 0
+					max_index = 0
+					for i, x in enumerate(vec):
+						if abs(x) > maxabs:
+							maxabs = abs(x)
+							max_index = i
+
+					for i, co in enumerate(fk_bone.tail):
+						if i != max_index:
+							fk_bone.tail[i] = fk_bone.head[i]
+					fk_bone.roll = 0
 		
 		# Create Hinge helper
 		hng_bone = self.bone_infos.bone(
@@ -341,6 +370,11 @@ class Rig(CloudChainRig):
 			description="Display FK controls on the center of the bone, instead of at its root", 
 			default=True,
 		)
+		params.world_aligned = BoolProperty(
+			name="World Aligned Control", 
+			description="IK/FK controls are aligned with world axes.", 
+			default=True,
+		)
 
 	@classmethod
 	def parameters_ui(self, layout, params):
@@ -351,3 +385,4 @@ class Rig(CloudChainRig):
 		layout.prop(params, "double_first_control")
 		layout.prop(params, "double_ik_control")
 		layout.prop(params, "display_middle")
+		layout.prop(params, "world_aligned")
