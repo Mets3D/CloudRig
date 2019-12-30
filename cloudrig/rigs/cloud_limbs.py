@@ -120,24 +120,12 @@ class Rig(CloudChainRig):
 						source = fk_bone,
 						only_transform = True,
 						parent = fk_bone,
-						custom_shape = self.load_widget("FK_Limb"),
+						#custom_shape = self.load_widget("FK_Limb"),
 						custom_shape_scale = 0.5
 					)
 					fk_bones.append(fk_child_bone)
-				
-					# Make last control world-aligned based on longest axis.
-					vec = fk_bone.tail - fk_bone.head
-					maxabs = 0
-					max_index = 0
-					for i, x in enumerate(vec):
-						if abs(x) > maxabs:
-							maxabs = abs(x)
-							max_index = i
-
-					for i, co in enumerate(fk_bone.tail):
-						if i != max_index:
-							fk_bone.tail[i] = fk_bone.head[i]
-					fk_bone.roll = 0
+					
+					fk_bone.flatten()
 		
 		# Create Hinge helper
 		hng_bone = self.bone_infos.bone(
@@ -245,18 +233,36 @@ class Rig(CloudChainRig):
 		)
 		foot_dsp(ik_ctrl)
 		# Parent control
+		double_control = None
 		if self.params.double_ik_control:
 			sliced = slice_name(mstr_name)
 			sliced[0].append("P")
 			parent_name = make_name(*sliced)
-			parent_bone = self.bone_infos.bone(
+			double_control = self.bone_infos.bone(
 				name = parent_name, 
 				source = ik_ctrl, 
 				custom_shape_scale = 3 if limb_type=='LEG' else 1.1,
 				bone_group='Body: Main IK Controls Extra Parents'
 			)
-			foot_dsp(parent_bone)
-			ik_ctrl.parent = parent_bone
+			foot_dsp(double_control)
+			ik_ctrl.parent = double_control
+		
+		if self.params.world_aligned:
+			ik_name = ik_ctrl.name
+			ik_ctrl.name = ik_ctrl.name.replace("IK-", "IK-W-")	# W for World?
+			# Make child control for the world-aligned control, that will have the original transforms and name.
+			ik_child_bone = self.bone_infos.bone(
+				name = ik_name,
+				source = ik_ctrl,
+				only_transform = True,
+				parent = ik_ctrl,
+				#custom_shape = self.load_widget("FK_Limb"),
+				custom_shape_scale = 0.5,
+				bone_group = 'Body: IK - IK Mechanism Bones'
+			)
+			
+			ik_ctrl.flatten()
+			double_control.flatten()
 		
 		# Stretch mechanism
 		str_name = bone_name.replace("ORG", "IK-STR")
