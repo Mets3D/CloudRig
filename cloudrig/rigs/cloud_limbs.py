@@ -172,6 +172,44 @@ class Rig(CloudChainRig):
 		for fkb in fk_bones:
 			fkb.bone_group = "Body: Main FK Controls"
 
+	def prepare_foot_ik(self, ik_chain, org_chain):
+		ik_foot = ik_chain[0]
+		# Create ROLL control behind the foot (Limit Rotation, lock other transforms)
+		sliced_name = shared.slice_name(ik_foot.name)
+		roll_name = shared.make_name(["ROLL"], sliced_name[1], sliced_name[2])
+		roll_ctrl = self.bone_infos.bone(
+			name = roll_name,
+			head = ik_foot.head + Vector((0, self.scale, self.scale/4)),
+			tail = ik_foot.head + Vector((0, self.scale/2, self.scale/4)),
+			roll = pi,
+			custom_shape = self.load_widget('FootRoll'),
+			bone_group = 'Body: Main IK Controls',
+			parent = ik_foot
+		)
+
+		roll_ctrl.add_constraint(self.obj, 'LIMIT_ROTATION', 
+			use_limit_x=True,
+			min_x = -90 * pi/180,
+			max_x = 130 * pi/180,
+			use_limit_y=True,
+			use_limit_z=True,
+			min_z = -pi/2,
+			max_z = pi/2,
+		)
+
+		# We hardcode name for ankle pivot for now.
+		ankle_pivot = self.generator.metarig.data.bones.get("AnklePivot" + self.side_suffix)
+		assert ankle_pivot, "ERROR: Could not find AnklePivot bone in the metarig."
+
+		ankle_pivot_ctrl = self.bone_infos.bone(
+			name = "IK-RollBack" + self.side_suffix,
+			head = ankle_pivot.head_local,
+			tail = ankle_pivot.tail_local,
+			roll = pi,
+			bone_group = 'Body: IK - IK Mechanism Bones',
+			parent = ik_foot.parent
+		)
+
 	# TODO: IK Foot with Roll	
 	# Create a usual setup for STR/DEF bones, but with strictly 1 segment.
 
@@ -223,7 +261,7 @@ class Rig(CloudChainRig):
 		org_bone = self.get_bone(bone_name)
 		mstr_name = bone_name.replace("ORG", "IK-MSTR")
 		wgt_name = 'Hand_IK' if limb_type=='ARM' else 'Foot_IK'
-		ik_ctrl = self.bone_infos.bone(
+		ik_mstr = self.bone_infos.bone(
 			name = mstr_name, 
 			source = org_bone, 
 			custom_shape = self.load_widget(wgt_name),
@@ -231,7 +269,7 @@ class Rig(CloudChainRig):
 			parent = None,	# TODO: Parent switching with operator that corrects transforms.
 			bone_group = 'Body: Main IK Controls'
 		)
-		foot_dsp(ik_ctrl)
+		foot_dsp(ik_mstr)
 		# Parent control
 		double_control = None
 		if self.params.double_ik_control:
@@ -240,28 +278,16 @@ class Rig(CloudChainRig):
 			parent_name = make_name(*sliced)
 			double_control = self.bone_infos.bone(
 				name = parent_name, 
-				source = ik_ctrl, 
+				source = ik_mstr, 
 				custom_shape_scale = 3 if limb_type=='LEG' else 1.1,
 				bone_group='Body: Main IK Controls Extra Parents'
 			)
 			foot_dsp(double_control)
-			ik_ctrl.parent = double_control
+			ik_mstr.parent = double_control
 		
 		if self.params.world_aligned:
-			ik_name = ik_ctrl.name
-			ik_ctrl.name = ik_ctrl.name.replace("IK-", "IK-W-")	# W for World?
-			# Make child control for the world-aligned control, that will have the original transforms and name.
-			ik_child_bone = self.bone_infos.bone(
-				name = ik_name,
-				source = ik_ctrl,
-				only_transform = True,
-				parent = ik_ctrl,
-				#custom_shape = self.load_widget("FK_Limb"),
-				custom_shape_scale = 0.5,
-				bone_group = 'Body: IK - IK Mechanism Bones'
-			)
 			
-			ik_ctrl.flatten()
+			ik_mstr.flatten()
 			double_control.flatten()
 		
 		# Stretch mechanism
@@ -269,7 +295,7 @@ class Rig(CloudChainRig):
 		str_bone = self.bone_infos.bone(
 			name = str_name, 
 			source = self.get_bone(chain[0]),
-			tail = Vector(ik_ctrl.head[:]),
+			tail = Vector(ik_mstr.head[:]),
 			parent = self.root_bone.name,
 			bone_group = 'Body: IK - IK Mechanism Bones'
 		)
@@ -287,14 +313,16 @@ class Rig(CloudChainRig):
 		tip_bone = self.bone_infos.bone(
 			name = tip_name, 
 			source = org_bone, 
-			parent = ik_ctrl,
+			parent = ik_mstr,
 			bone_group = 'Body: IK - IK Mechanism Bones'
 		)
 
-		# Create IK Chain (first two bones)
+		# Create IK Chain
 		ik_chain = []
+		org_chain = []
 		for i, bn in enumerate(chain):
 			org_bone = self.get_bone(bn)
+			org_chain.append(org_bone)
 			ik_name = bn.replace("ORG", "IK")
 			ik_bone = self.bone_infos.bone(ik_name, org_bone, 
 				ik_stretch = 0.1,
@@ -320,7 +348,10 @@ class Rig(CloudChainRig):
 			
 			if i == 2:
 				# Parent to IK master.
-				ik_bone.parent = ik_ctrl
+				ik_bone.parent = ik_mstr
+
+		if self.params.type == 'LEG':
+			self.prepare_foot_ik(ik_chain[-2:], org_chain[-2:])
 
 	@stage.prepare_bones
 	def prepare_org(self):
