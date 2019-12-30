@@ -76,6 +76,246 @@ class Rig(CloudChainRig):
 			bone_group			= 'Body: IK - IK Mechanism Bones'
 		)
 
+	def prepare_foot_ik(self, ik_mstr, ik_chain, org_chain):
+		ik_foot = ik_chain[0]
+		# Create ROLL control behind the foot (Limit Rotation, lock other transforms)
+		sliced_name = shared.slice_name(ik_foot.name)
+		roll_name = shared.make_name(["ROLL"], sliced_name[1], sliced_name[2])
+		roll_ctrl = self.bone_infos.bone(
+			name = roll_name,
+			head = ik_foot.head + Vector((0, self.scale, self.scale/4)),
+			tail = ik_foot.head + Vector((0, self.scale/2, self.scale/4)),
+			roll = pi,
+			custom_shape = self.load_widget('FootRoll'),
+			bone_group = 'Body: Main IK Controls',
+			parent = ik_mstr
+		)
+
+		roll_ctrl.add_constraint(self.obj, 'LIMIT_ROTATION', 
+			use_limit_x=True,
+			min_x = -90 * pi/180,
+			max_x = 130 * pi/180,
+			use_limit_y=True,
+			use_limit_z=True,
+			min_z = -pi/2,
+			max_z = pi/2,
+		)
+
+		# Create bone to use as pivot point when rolling back. This is read from the metarig and should be placed at the heel of the shoe, pointing forward.
+		# We hardcode name for ankle pivot for now.
+		ankle_pivot = self.generator.metarig.data.bones.get("AnklePivot" + self.side_suffix)
+		assert ankle_pivot, "ERROR: Could not find AnklePivot bone in the metarig."
+
+		ankle_pivot_ctrl = self.bone_infos.bone(
+			name = "IK-RollBack" + self.side_suffix,
+			head = ankle_pivot.head_local,
+			tail = ankle_pivot.tail_local,
+			roll = pi,
+			bone_group = 'Body: IK - IK Mechanism Bones',
+			parent = ik_foot.parent
+		)
+
+		ankle_pivot_ctrl.add_constraint(self.obj, 'TRANSFORM',
+			subtarget = roll_ctrl.name,
+			map_from = 'ROTATION',
+			map_to = 'ROTATION',
+			from_min_x_rot = -90 * pi/180,
+			to_min_x_rot = -60 * pi/180,
+		)
+		
+		# Create reverse bones
+		rik_chain = []
+		for i, b in reversed(list(enumerate(org_chain))):
+			rik_bone = self.bone_infos.bone(
+				name = b.name.replace("ORG", "RIK"),
+				head = b.tail.copy(),
+				tail = b.head.copy(),
+				parent = ankle_pivot_ctrl
+			)
+			rik_chain.append(rik_bone)
+			ik_chain[i].parent = rik_bone
+
+			if i == 1:
+				rik_bone.add_constraint(self.obj, 'TRANSFORM',
+					subtarget = roll_ctrl.name,
+					map_from = 'ROTATION',
+					map_to = 'ROTATION',
+					from_min_x_rot = 90 * pi/180,
+					from_max_x_rot = 166 * pi/180,
+					to_min_x_rot = 0 * pi/180,
+					to_max_x_rot = 169 * pi/180,
+					from_min_z_rot = -60 * pi/180,
+					from_max_z_rot = 60 * pi/180,
+					to_min_z_rot = 10 * pi/180,
+					to_max_z_rot = -10 * pi/180
+				)
+			
+			if i == 0:
+				rik_bone.add_constraint(self.obj, 'COPY_LOCATION',
+					true_defaults = True,
+					target = self.obj,
+					subtarget = rik_chain[-2].name,
+					head_tail = 1,
+				)
+
+				rik_bone.add_constraint(self.obj, 'TRANSFORM',
+					name = "Transformation Roll",
+					subtarget = roll_ctrl.name,
+					map_from = 'ROTATION',
+					map_to = 'ROTATION',
+					from_min_x_rot = 0 * pi/180,
+					from_max_x_rot = 135 * pi/180,
+					to_min_x_rot = 0 * pi/180,
+					to_max_x_rot = 118 * pi/180,
+					from_min_z_rot = -45 * pi/180,
+					from_max_z_rot = 45 * pi/180,
+					to_min_z_rot = 25 * pi/180,
+					to_max_z_rot = -25 * pi/180
+				)
+				rik_bone.add_constraint(self.obj, 'TRANSFORM',
+					name = "Transformation CounterRoll",
+					subtarget = roll_ctrl.name,
+					map_from = 'ROTATION',
+					map_to = 'ROTATION',
+					from_min_x_rot = 90 * pi/180,
+					from_max_x_rot = 135 * pi/180,
+					to_min_x_rot = 0 * pi/180,
+					to_max_x_rot = -31.8 * pi/180
+				)
+
+	# TODO: Foot and Toe should have strictly 1 segment.
+
+	@stage.prepare_bones
+	def prepare_ik(self):
+		limb_type = self.params.type
+		chain = self.bones.org.main
+
+		# Create IK Pole Control
+		first_bn = chain[0]
+		head = Vector( self.get_bone(chain[0]).tail[:] )
+		direction = 1 if limb_type=='ARM' else -1
+		offset = Vector((0, direction*self.scale*3, 0))
+		pole_ctrl = self.bone_infos.bone(
+			name = "IK-POLE-" + limb_type.capitalize() + self.side_suffix,
+			head = head + offset,
+			tail = head + offset*1.1,
+			roll = 0,
+			custom_shape = self.load_widget('ArrowHead'),
+			bone_group = 'Body: Main IK Controls'
+		)
+
+		pole_dsp = shared.create_dsp_bone(self, pole_ctrl)
+
+		def foot_dsp(bone):
+			# Create foot DSP helpers
+			if limb_type=='LEG':
+				dsp_bone = shared.create_dsp_bone(self, bone)
+				direction = 1 if self.side_suffix=='.L' else -1
+				projected_head = Vector((bone.head[0], bone.head[1], 0))
+				projected_tail = Vector((bone.tail[0], bone.tail[1], 0))
+				projected_center = projected_head + (projected_tail-projected_head)/2
+				dsp_bone.head = projected_center
+				dsp_bone.tail = projected_center + Vector((0, -self.scale/10, 0))
+				dsp_bone.roll = pi/2 * direction
+
+		# Create IK control(s) (Wrist/Ankle)
+		bone_name = chain[2]
+		org_bone = self.get_bone(bone_name)
+		mstr_name = bone_name.replace("ORG", "IK-MSTR")
+		wgt_name = 'Hand_IK' if limb_type=='ARM' else 'Foot_IK'
+		ik_mstr = self.bone_infos.bone(
+			name = mstr_name, 
+			source = org_bone, 
+			custom_shape = self.load_widget(wgt_name),
+			custom_shape_scale = 2.5 if limb_type=='LEG' else 1,
+			parent = None,	# TODO: Parent switching with operator that corrects transforms.
+			bone_group = 'Body: Main IK Controls'
+		)
+		foot_dsp(ik_mstr)
+		# Parent control
+		double_control = None
+		if self.params.double_ik_control:
+			sliced = slice_name(mstr_name)
+			sliced[0].append("P")
+			parent_name = make_name(*sliced)
+			double_control = self.bone_infos.bone(
+				name = parent_name, 
+				source = ik_mstr, 
+				custom_shape_scale = 3 if limb_type=='LEG' else 1.1,
+				bone_group='Body: Main IK Controls Extra Parents'
+			)
+			foot_dsp(double_control)
+			ik_mstr.parent = double_control
+		
+		if self.params.world_aligned:
+			
+			ik_mstr.flatten()
+			double_control.flatten()
+		
+		# Stretch mechanism
+		str_name = bone_name.replace("ORG", "IK-STR")
+		str_bone = self.bone_infos.bone(
+			name = str_name, 
+			source = self.get_bone(chain[0]),
+			tail = Vector(ik_mstr.head[:]),
+			parent = self.root_bone.name,
+			bone_group = 'Body: IK - IK Mechanism Bones'
+		)
+		
+		str_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=ik_mstr.name)
+		str_bone.add_constraint(self.obj, 'LIMIT_SCALE', 
+			use_max_y = True,
+			max_y = 1.05, # TODO: How to calculate this correctly?
+			influence = 0 # TODO: Put a driver on this, controlled by IK Stretch switch.
+		)
+
+		sliced = slice_name(str_name)
+		sliced[0].append("TIP")
+		tip_name = make_name(*sliced)
+
+		# Create IK Chain
+		ik_chain = []
+		org_chain = []
+		for i, bn in enumerate(chain):
+			org_bone = self.get_bone(bn)
+			org_chain.append(org_bone)
+			ik_name = bn.replace("ORG", "IK")
+			ik_bone = self.bone_infos.bone(ik_name, org_bone, 
+				ik_stretch = 0.1,
+				bone_group = 'Body: IK - IK Mechanism Bones',
+			)
+			ik_chain.append(ik_bone)
+			
+			if i == 0:
+				# Parent first bone to the limb root
+				ik_bone.parent = self.root_bone.name
+				# Add aim constraint to pole display bone
+				pole_dsp.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=ik_bone.name, head_tail=1, track_axis='TRACK_NEGATIVE_Y')
+			else:
+				ik_bone.parent = ik_chain[-2]
+			
+			if i == 1:
+				# Add the IK constraint to the 2nd bone.
+				ik_bone.add_constraint(self.obj, 'IK', 
+					pole_subtarget = pole_ctrl.name,
+					pole_angle = direction * pi/2,
+					subtarget = tip_name
+				)
+			
+			if i == 2:
+				# Parent to IK master.
+				ik_bone.parent = ik_mstr
+
+		tip_bone = self.bone_infos.bone(
+			name = tip_name, 
+			source = org_chain[2], 
+			parent = ik_chain[2],
+			bone_group = 'Body: IK - IK Mechanism Bones'
+		)
+
+		if self.params.type == 'LEG':
+			self.prepare_foot_ik(ik_mstr, ik_chain[-2:], org_chain[-2:])
+
 	@stage.prepare_bones
 	def prepare_fk(self):
 		fk_bones = []
@@ -171,187 +411,6 @@ class Rig(CloudChainRig):
 
 		for fkb in fk_bones:
 			fkb.bone_group = "Body: Main FK Controls"
-
-	def prepare_foot_ik(self, ik_chain, org_chain):
-		ik_foot = ik_chain[0]
-		# Create ROLL control behind the foot (Limit Rotation, lock other transforms)
-		sliced_name = shared.slice_name(ik_foot.name)
-		roll_name = shared.make_name(["ROLL"], sliced_name[1], sliced_name[2])
-		roll_ctrl = self.bone_infos.bone(
-			name = roll_name,
-			head = ik_foot.head + Vector((0, self.scale, self.scale/4)),
-			tail = ik_foot.head + Vector((0, self.scale/2, self.scale/4)),
-			roll = pi,
-			custom_shape = self.load_widget('FootRoll'),
-			bone_group = 'Body: Main IK Controls',
-			parent = ik_foot
-		)
-
-		roll_ctrl.add_constraint(self.obj, 'LIMIT_ROTATION', 
-			use_limit_x=True,
-			min_x = -90 * pi/180,
-			max_x = 130 * pi/180,
-			use_limit_y=True,
-			use_limit_z=True,
-			min_z = -pi/2,
-			max_z = pi/2,
-		)
-
-		# We hardcode name for ankle pivot for now.
-		ankle_pivot = self.generator.metarig.data.bones.get("AnklePivot" + self.side_suffix)
-		assert ankle_pivot, "ERROR: Could not find AnklePivot bone in the metarig."
-
-		ankle_pivot_ctrl = self.bone_infos.bone(
-			name = "IK-RollBack" + self.side_suffix,
-			head = ankle_pivot.head_local,
-			tail = ankle_pivot.tail_local,
-			roll = pi,
-			bone_group = 'Body: IK - IK Mechanism Bones',
-			parent = ik_foot.parent
-		)
-
-	# TODO: IK Foot with Roll	
-	# Create a usual setup for STR/DEF bones, but with strictly 1 segment.
-
-	# Create ROLL control behind the foot, parented to IK-Foot from the parent rigify_rig. (Limit Rotation, lock other transforms)
-
-	# Create RollBack bone from the heel bone's head to the toe bone's head. Parented to IK. (Transformation Constraint)
-	# Create RIK bones for Foot and Toe. (flipped orientation). 
-	# 	Foot is parented to RollBack. (Copy Location of Toe tail, Roll, CounterRoll constraints)
-	#	Toe is parented to RollBack. (Roll constraint)
-	
-	# ORG-Foot bone is parented between RIK and FK Foot with armature constraint.
-	# FK-Toe bone 	is parented between RIK and FK Foot with armature constraint.
-
-	@stage.prepare_bones
-	def prepare_ik(self):
-		limb_type = self.params.type
-		chain = self.bones.org.main
-
-		# Create IK Pole Control
-		first_bn = chain[0]
-		head = Vector( self.get_bone(chain[0]).tail[:] )
-		direction = 1 if limb_type=='ARM' else -1
-		offset = Vector((0, direction*self.scale*3, 0))
-		pole_ctrl = self.bone_infos.bone(
-			name = "IK-POLE-" + limb_type.capitalize() + self.side_suffix,
-			head = head + offset,
-			tail = head + offset*1.1,
-			roll = 0,
-			custom_shape = self.load_widget('ArrowHead'),
-			bone_group = 'Body: Main IK Controls'
-		)
-
-		pole_dsp = shared.create_dsp_bone(self, pole_ctrl)
-
-		def foot_dsp(bone):
-			# Create foot DSP helpers
-			if limb_type=='LEG':
-				dsp_bone = shared.create_dsp_bone(self, bone)
-				direction = 1 if self.side_suffix=='.L' else -1
-				projected_head = Vector((bone.head[0], bone.head[1], 0))
-				projected_tail = Vector((bone.tail[0], bone.tail[1], 0))
-				projected_center = projected_head + (projected_tail-projected_head)/2
-				dsp_bone.head = projected_center
-				dsp_bone.tail = projected_center + Vector((0, -self.scale/10, 0))
-				dsp_bone.roll = pi/2 * direction
-
-		# Create IK control(s) (Wrist/Ankle)
-		bone_name = chain[2]
-		org_bone = self.get_bone(bone_name)
-		mstr_name = bone_name.replace("ORG", "IK-MSTR")
-		wgt_name = 'Hand_IK' if limb_type=='ARM' else 'Foot_IK'
-		ik_mstr = self.bone_infos.bone(
-			name = mstr_name, 
-			source = org_bone, 
-			custom_shape = self.load_widget(wgt_name),
-			custom_shape_scale = 2.5 if limb_type=='LEG' else 1,
-			parent = None,	# TODO: Parent switching with operator that corrects transforms.
-			bone_group = 'Body: Main IK Controls'
-		)
-		foot_dsp(ik_mstr)
-		# Parent control
-		double_control = None
-		if self.params.double_ik_control:
-			sliced = slice_name(mstr_name)
-			sliced[0].append("P")
-			parent_name = make_name(*sliced)
-			double_control = self.bone_infos.bone(
-				name = parent_name, 
-				source = ik_mstr, 
-				custom_shape_scale = 3 if limb_type=='LEG' else 1.1,
-				bone_group='Body: Main IK Controls Extra Parents'
-			)
-			foot_dsp(double_control)
-			ik_mstr.parent = double_control
-		
-		if self.params.world_aligned:
-			
-			ik_mstr.flatten()
-			double_control.flatten()
-		
-		# Stretch mechanism
-		str_name = bone_name.replace("ORG", "IK-STR")
-		str_bone = self.bone_infos.bone(
-			name = str_name, 
-			source = self.get_bone(chain[0]),
-			tail = Vector(ik_mstr.head[:]),
-			parent = self.root_bone.name,
-			bone_group = 'Body: IK - IK Mechanism Bones'
-		)
-		
-		str_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=ik_ctrl.name)
-		str_bone.add_constraint(self.obj, 'LIMIT_SCALE', 
-			use_max_y = True,
-			max_y = 1.05, # TODO: How to calculate this correctly?
-			influence = 0 # TODO: Put a driver on this, controlled by IK Stretch switch.
-		)
-
-		sliced = slice_name(str_name)
-		sliced[0].append("TIP")
-		tip_name = make_name(*sliced)
-		tip_bone = self.bone_infos.bone(
-			name = tip_name, 
-			source = org_bone, 
-			parent = ik_mstr,
-			bone_group = 'Body: IK - IK Mechanism Bones'
-		)
-
-		# Create IK Chain
-		ik_chain = []
-		org_chain = []
-		for i, bn in enumerate(chain):
-			org_bone = self.get_bone(bn)
-			org_chain.append(org_bone)
-			ik_name = bn.replace("ORG", "IK")
-			ik_bone = self.bone_infos.bone(ik_name, org_bone, 
-				ik_stretch = 0.1,
-				bone_group = 'Body: IK - IK Mechanism Bones',
-			)
-			ik_chain.append(ik_bone)
-			
-			if i == 0:
-				# Parent first bone to the limb root
-				ik_bone.parent = self.root_bone.name
-				# Add aim constraint to pole display bone
-				pole_dsp.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=ik_bone.name, head_tail=1, track_axis='TRACK_NEGATIVE_Y')
-			else:
-				ik_bone.parent = ik_chain[-2]
-			
-			if i == 1:
-				# Add the IK constraint to the 2nd bone.
-				ik_bone.add_constraint(self.obj, 'IK', 
-					pole_subtarget = pole_ctrl.name,
-					pole_angle = direction * pi/2,
-					subtarget = tip_bone.name
-				)
-			
-			if i == 2:
-				# Parent to IK master.
-				ik_bone.parent = ik_mstr
-
-		if self.params.type == 'LEG':
-			self.prepare_foot_ik(ik_chain[-2:], org_chain[-2:])
 
 	@stage.prepare_bones
 	def prepare_org(self):
