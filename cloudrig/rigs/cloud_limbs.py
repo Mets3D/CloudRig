@@ -183,8 +183,6 @@ class Rig(CloudChainRig):
 					to_max_x_rot = -31.8 * pi/180
 				)
 
-	# TODO: Foot and Toe should have strictly 1 segment.
-
 	@stage.prepare_bones
 	def prepare_ik(self):
 		limb_type = self.params.type
@@ -315,10 +313,12 @@ class Rig(CloudChainRig):
 
 		if self.params.type == 'LEG':
 			self.prepare_foot_ik(ik_mstr, ik_chain[-2:], org_chain[-2:])
+		
+		self.ik_chain = ik_chain
 
 	@stage.prepare_bones
 	def prepare_fk(self):
-		fk_bones = []
+		fk_chain = []
 		fk_name = ""
 		for i, bn in enumerate(self.bones.org.main):
 			edit_bone = self.get_bone(bn)
@@ -331,7 +331,7 @@ class Rig(CloudChainRig):
 				custom_shape_scale 	= 0.6,
 				parent				= self.root_bone.name
 			)
-			fk_bones.append(fk_bone)
+			fk_chain.append(fk_bone)
 			
 			if i == 0 and self.params.double_first_control:
 				# Make a parent for the first control.
@@ -340,10 +340,10 @@ class Rig(CloudChainRig):
 				shared.create_dsp_bone(self, fk_parent_bone, center=True)
 
 				# Store in the beginning of the FK list, since it's the new root of the FK chain.
-				fk_bones.insert(0, fk_parent_bone)
+				fk_chain.insert(0, fk_parent_bone)
 			else:
 				# Parent FK bone to previous FK bone.
-				fk_bone.parent = fk_bones[-2]
+				fk_bone.parent = fk_chain[-2]
 			
 			if i < 2:
 				# Setup DSP bone for all but last bone.
@@ -363,18 +363,50 @@ class Rig(CloudChainRig):
 						#custom_shape = self.load_widget("FK_Limb"),
 						custom_shape_scale = 0.5
 					)
-					fk_bones.append(fk_child_bone)
+					fk_chain.append(fk_child_bone)
 					
 					fk_bone.flatten()
+			
+			if i == 3 and self.params.type=='LEG':
+				# TODO: With this setup, we can't really support our old ik/stretch/hinge feature set, but that never really worked well, and it cna't really work well anyways.
+				# FK Toe bone should be parented between FK Foot and IK Toe.
+				fk_bone.parent = None
+				fk_bone.add_constraint(self.obj, 'ARMATURE',
+					targets = [
+						{
+							"subtarget" : fk_chain[-2].name
+						},
+						{
+							"subtarget" : self.ik_chain[-1].name
+						}
+					],
+				)
+
+				drv1 = Driver()
+				drv1.expression = "1-ik"
+				var1 = drv1.make_var("ik")
+				var1.type = 'SINGLE_PROP'
+				var1.targets[0].id_type='OBJECT'
+				var1.targets[0].id = self.obj
+				var1.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ikfk_prop.name)
+
+				drv2 = drv1.clone()
+				drv2.expression = "ik"
+
+				data_path1 = 'constraints["Armature"].targets[0].weight'
+				data_path2 = 'constraints["Armature"].targets[1].weight'
+				
+				fk_bone.drivers[data_path1] = drv1
+				fk_bone.drivers[data_path2] = drv2
 		
 		# Create Hinge helper
 		hng_bone = self.bone_infos.bone(
 			name			= self.base_bone.replace("ORG", "FK-HNG"), # Name it after the first bone in the chain.
-			source			= fk_bones[0], 
+			source			= fk_chain[0], 
 			only_transform	= True,
 			bone_group 		= 'Body: FK Helper Bones',
 		)
-		fk_bones[0].parent = hng_bone
+		fk_chain[0].parent = hng_bone
 
 		hng_bone.add_constraint(self.obj, 'ARMATURE', 
 			targets = [
@@ -409,11 +441,12 @@ class Rig(CloudChainRig):
 			subtarget = self.root_bone.name,
 		)
 
-		for fkb in fk_bones:
+		for fkb in fk_chain:
 			fkb.bone_group = "Body: Main FK Controls"
 
 	@stage.prepare_bones
 	def prepare_org(self):
+		# TODO: Foot and Toe should have strictly 1 segment.
 		# Find existing ORG bones
 		# Add Copy Transforms constraints targetting both FK and IK bones.
 		# Put driver on only the second constraint.
