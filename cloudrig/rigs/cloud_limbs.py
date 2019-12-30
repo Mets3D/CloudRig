@@ -56,9 +56,14 @@ class Rig(CloudChainRig):
 		# Properties bone and Custom Properties
 		limb = "arm" if self.params.type=='ARM' else "leg"
 		side = "left" if self.base_bone.endswith("L") else "right"
+		
 		ikfk_name = "ik_%s_%s" %(limb, side)
-		fk_hinge_name = "fk_hinge_%s_%s" %(limb, side)
 		self.ikfk_prop = self.prop_bone.custom_props[ikfk_name] = CustomProp(ikfk_name, default=0.0)
+		
+		ik_stretch_name = "ik_stretch_%s_%s" %(limb, side)
+		self.ik_stretch_prop = self.prop_bone.custom_props[ik_stretch_name] = CustomProp(ik_stretch_name, default=0.0)
+
+		fk_hinge_name = "fk_hinge_%s_%s" %(limb, side)
 		self.fk_hinge_prop = self.prop_bone.custom_props[fk_hinge_name] = CustomProp(fk_hinge_name, default=0.0)
 
 	@stage.prepare_bones
@@ -266,6 +271,18 @@ class Rig(CloudChainRig):
 			max_y = 1.05, # TODO: How to calculate this correctly?
 			influence = 0 # TODO: Put a driver on this, controlled by IK Stretch switch.
 		)
+
+		str_drv = Driver()
+		str_drv.expression = "1-stretch"
+		var = str_drv.make_var("stretch")
+		var.type = 'SINGLE_PROP'
+		var.targets[0].id_type='OBJECT'
+		var.targets[0].id = self.obj
+		var.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ik_stretch_prop.name)
+
+		data_path = 'constraints["Limit Scale"].influence'
+		
+		str_bone.drivers[data_path] = str_drv
 
 		sliced = slice_name(str_name)
 		sliced[0].append("TIP")
