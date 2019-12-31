@@ -102,25 +102,32 @@ class CloudChainRig(CloudBaseRig):
 				def_section.append(def_bone)
 			def_sections.append(def_section)
 
+		def make_str_bone(def_bone, name=None):
+			if not name:
+				name = def_bone.name.replace("DEF", "STR")
+			str_bone = self.bone_infos.bone(
+				name = name,
+				head = def_bone.head,
+				tail = def_bone.tail,
+				roll = def_bone.roll,
+				custom_shape = self.load_widget("Sphere"),
+				use_custom_shape_bone_size = False,
+				custom_shape_scale = 0.1,
+				bone_group = 'Body: STR - Stretch Controls',
+				parent = chain[sec_i],
+			)
+			return str_bone
+
 		### Create Stretch controls
 		str_sections = []
 		for sec_i, section in enumerate(def_sections):
 			str_section = []
 			for i, def_bone in enumerate(section):
-				str_bone = self.bone_infos.bone(
-					name = def_bone.name.replace("DEF", "STR"),
-					head = def_bone.head,
-					tail = def_bone.tail,
-					roll = def_bone.roll,
-					custom_shape = self.load_widget("Sphere"),
-					custom_shape_scale = 2,
-					bone_group = 'Body: STR - Stretch Controls',
-					parent = chain[sec_i],
-				)
+				str_bone = make_str_bone(def_bone)
 				str_bone.scale(0.3)
 				if i==0:
 					# Make first control bigger.
-					str_bone.custom_shape_scale = 2.5
+					str_bone.custom_shape_scale = 0.15
 				
 				str_section.append(str_bone)
 			str_sections.append(str_section)
@@ -131,16 +138,7 @@ class CloudChainRig(CloudBaseRig):
 			sliced = slice_name(str_sections[-1][-1].name)
 			sliced[0].append("TIP")
 			str_name = make_name(*sliced)
-			str_bone = self.bone_infos.bone(
-				name = str_name,
-				head = last_def.tail,
-				tail = last_def.tail + last_def.vec,
-				roll = last_def.roll,
-				custom_shape = self.load_widget("Sphere"),
-				custom_shape_scale = 2,
-				bone_group = 'Body: STR - Stretch Controls',
-				parent = chain[sec_i],
-			)
+			str_bone = make_str_bone(def_bone, name=str_name)
 			str_bone.scale(0.3)
 
 			str_sections.append([str_bone])

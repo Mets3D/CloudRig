@@ -34,10 +34,9 @@ from ..definitions.driver import *
 from ..definitions.custom_props import CustomProp
 from ..definitions.bone import BoneInfoContainer, BoneInfo
 from .cloud_utils import make_name, slice_name
-from .cloud_base import CloudBaseRig
-from .cloud_chain import CloudChainRig
+from .cloud_fk_chain import CloudFKChainRig
 
-class Rig(CloudChainRig):
+class Rig(CloudFKChainRig):
 	"""CloudRig arms and legs."""
 
 	def find_org_bones(self, bone):
@@ -67,126 +66,87 @@ class Rig(CloudChainRig):
 		self.fk_hinge_prop = self.prop_bone.custom_props[fk_hinge_name] = CustomProp(fk_hinge_name, default=0.0)
 
 	@stage.prepare_bones
-	def prepare_root(self):
-		# Socket/Root bone to parent everything to.
-		root_name = self.base_bone.replace("ORG", "ROOT-")
-		base_bone = self.get_bone(self.base_bone)
-		self.root_bone = self.bone_infos.bone(
-			name 				= root_name, 
-			source 				= base_bone, 
-			only_transform 		= True, 
-			parent 				= self.bones.parent,
-			custom_shape 		= self.load_widget("Cube"),
-			custom_shape_scale 	= 0.5,
-			bone_group			= 'Body: IK - IK Mechanism Bones'
-		)
+	def prepare_fk(self):
+		super().prepare_fk()
 
-	def prepare_foot_ik(self, ik_mstr, ik_chain, org_chain):
-		ik_foot = ik_chain[0]
-		# Create ROLL control behind the foot (Limit Rotation, lock other transforms)
-		sliced_name = shared.slice_name(ik_foot.name)
-		roll_name = shared.make_name(["ROLL"], sliced_name[1], sliced_name[2])
-		roll_ctrl = self.bone_infos.bone(
-			name = roll_name,
-			head = ik_foot.head + Vector((0, self.scale, self.scale/4)),
-			tail = ik_foot.head + Vector((0, self.scale/2, self.scale/4)),
-			roll = pi,
-			custom_shape = self.load_widget('FootRoll'),
-			bone_group = 'Body: Main IK Controls',
-			parent = ik_mstr
-		)
+		hng_child = self.fk_chain[0]
+		for i, fk_bone in enumerate(self.fk_chain):
+			if i == 0 and self.params.double_first_control:
+				# Make a parent for the first control.
+				fk_parent_bone = shared.create_parent_bone(self, fk_bone)
+				fk_parent_bone.custom_shape = self.load_widget("FK_Limb")
+				shared.create_dsp_bone(self, fk_parent_bone, center=True)
 
-		roll_ctrl.add_constraint(self.obj, 'LIMIT_ROTATION', 
-			use_limit_x=True,
-			min_x = -90 * pi/180,
-			max_x = 130 * pi/180,
-			use_limit_y=True,
-			use_limit_z=True,
-			min_z = -pi/2,
-			max_z = pi/2,
-		)
+				# Store in the beginning of the FK list, since it's the new root of the FK chain.
+				#self.fk_chain.insert(0, fk_parent_bone)
+				hng_child = fk_parent_bone
 
-		# Create bone to use as pivot point when rolling back. This is read from the metarig and should be placed at the heel of the shoe, pointing forward.
-		# We hardcode name for ankle pivot for now.
-		ankle_pivot = self.generator.metarig.data.bones.get("AnklePivot" + self.side_suffix)
-		assert ankle_pivot, "ERROR: Could not find AnklePivot bone in the metarig."
+			if i < 2:
+				# Setup DSP bone for all but last bone.
+				shared.create_dsp_bone(self, fk_bone, center=True)
+				pass
 
-		ankle_pivot_ctrl = self.bone_infos.bone(
-			name = "IK-RollBack" + self.side_suffix,
-			head = ankle_pivot.head_local,
-			tail = ankle_pivot.tail_local,
-			roll = pi,
-			bone_group = 'Body: IK - IK Mechanism Bones',
-			parent = ik_foot.parent
-		)
-
-		ankle_pivot_ctrl.add_constraint(self.obj, 'TRANSFORM',
-			subtarget = roll_ctrl.name,
-			map_from = 'ROTATION',
-			map_to = 'ROTATION',
-			from_min_x_rot = -90 * pi/180,
-			to_min_x_rot = -60 * pi/180,
-		)
-		
-		# Create reverse bones
-		rik_chain = []
-		for i, b in reversed(list(enumerate(org_chain))):
-			rik_bone = self.bone_infos.bone(
-				name = b.name.replace("ORG", "RIK"),
-				head = b.tail.copy(),
-				tail = b.head.copy(),
-				parent = ankle_pivot_ctrl
-			)
-			rik_chain.append(rik_bone)
-			ik_chain[i].parent = rik_bone
-
-			if i == 1:
-				rik_bone.add_constraint(self.obj, 'TRANSFORM',
-					subtarget = roll_ctrl.name,
-					map_from = 'ROTATION',
-					map_to = 'ROTATION',
-					from_min_x_rot = 90 * pi/180,
-					from_max_x_rot = 166 * pi/180,
-					to_min_x_rot = 0 * pi/180,
-					to_max_x_rot = 169 * pi/180,
-					from_min_z_rot = -60 * pi/180,
-					from_max_z_rot = 60 * pi/180,
-					to_min_z_rot = 10 * pi/180,
-					to_max_z_rot = -10 * pi/180
-				)
+			if i == 2:
+				if self.params.world_aligned:
+					fk_name = fk_bone.name
+					fk_bone.name = fk_bone.name.replace("FK-", "FK-W-")	# W for World?
+					# Make child control for the world-aligned control, that will have the original transforms and name.
+					fk_child_bone = self.bone_infos.bone(
+						name = fk_name,
+						source = fk_bone,
+						only_transform = True,
+						parent = fk_bone,
+						#custom_shape = self.load_widget("FK_Limb"),
+						custom_shape_scale = 0.5
+					)
+					#self.fk_chain.append(fk_child_bone)
+					
+					fk_bone.flatten()
 			
-			if i == 0:
-				rik_bone.add_constraint(self.obj, 'COPY_LOCATION',
-					true_defaults = True,
-					target = self.obj,
-					subtarget = rik_chain[-2].name,
-					head_tail = 1,
-				)
+			if i == 3 and self.params.type=='LEG':
+				self.fk_toe = fk_bone
+		
+		# Create Hinge helper
+		hng_bone = self.bone_infos.bone(
+			name			= self.base_bone.replace("ORG", "FK-HNG"), # Name it after the first bone in the chain.
+			source			= hng_child, 
+			only_transform	= True,
+			bone_group 		= 'Body: FK Helper Bones',
+		)
+		hng_child.parent = hng_bone
 
-				rik_bone.add_constraint(self.obj, 'TRANSFORM',
-					name = "Transformation Roll",
-					subtarget = roll_ctrl.name,
-					map_from = 'ROTATION',
-					map_to = 'ROTATION',
-					from_min_x_rot = 0 * pi/180,
-					from_max_x_rot = 135 * pi/180,
-					to_min_x_rot = 0 * pi/180,
-					to_max_x_rot = 118 * pi/180,
-					from_min_z_rot = -45 * pi/180,
-					from_max_z_rot = 45 * pi/180,
-					to_min_z_rot = 25 * pi/180,
-					to_max_z_rot = -25 * pi/180
-				)
-				rik_bone.add_constraint(self.obj, 'TRANSFORM',
-					name = "Transformation CounterRoll",
-					subtarget = roll_ctrl.name,
-					map_from = 'ROTATION',
-					map_to = 'ROTATION',
-					from_min_x_rot = 90 * pi/180,
-					from_max_x_rot = 135 * pi/180,
-					to_min_x_rot = 0 * pi/180,
-					to_max_x_rot = -31.8 * pi/180
-				)
+		hng_bone.add_constraint(self.obj, 'ARMATURE', 
+			targets = [
+				{
+					"subtarget" : 'root'
+				},
+				{
+					"subtarget" : self.root_bone.name
+				}
+			],
+		)
+
+		drv1 = Driver()
+		drv1.expression = "var"
+		var1 = drv1.make_var("var")
+		var1.type = 'SINGLE_PROP'
+		var1.targets[0].id_type='OBJECT'
+		var1.targets[0].id = self.obj
+		var1.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.fk_hinge_prop.name)
+
+		drv2 = drv1.clone()
+		drv2.expression = "1-var"
+
+		data_path1 = 'constraints["Armature"].targets[0].weight'
+		data_path2 = 'constraints["Armature"].targets[1].weight'
+		
+		hng_bone.drivers[data_path1] = drv1
+		hng_bone.drivers[data_path2] = drv2
+
+		hng_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True,
+			target = self.obj,
+			subtarget = self.root_bone.name,
+		)
 
 	@stage.prepare_bones
 	def prepare_ik(self):
@@ -333,133 +293,143 @@ class Rig(CloudChainRig):
 		
 		self.ik_chain = ik_chain
 
-	@stage.prepare_bones
-	def prepare_fk(self):
-		fk_chain = []
-		fk_name = ""
-		for i, bn in enumerate(self.bones.org.main):
-			edit_bone = self.get_bone(bn)
-			fk_name = bn.replace("ORG", "FK")
-			fk_bone = self.bone_infos.bone(
-				name				= fk_name, 
-				source				= edit_bone,
-				**self.defaults,
-				custom_shape 		= self.load_widget("FK_Limb"),
-				custom_shape_scale 	= 0.6,
-				parent				= self.root_bone.name
+	def prepare_foot_ik(self, ik_mstr, ik_chain, org_chain):
+		ik_foot = ik_chain[0]
+		# Create ROLL control behind the foot (Limit Rotation, lock other transforms)
+		sliced_name = shared.slice_name(ik_foot.name)
+		roll_name = shared.make_name(["ROLL"], sliced_name[1], sliced_name[2])
+		roll_ctrl = self.bone_infos.bone(
+			name = roll_name,
+			head = ik_foot.head + Vector((0, self.scale, self.scale/4)),
+			tail = ik_foot.head + Vector((0, self.scale/2, self.scale/4)),
+			roll = pi,
+			custom_shape = self.load_widget('FootRoll'),
+			bone_group = 'Body: Main IK Controls',
+			parent = ik_mstr
+		)
+
+		roll_ctrl.add_constraint(self.obj, 'LIMIT_ROTATION', 
+			use_limit_x=True,
+			min_x = -90 * pi/180,
+			max_x = 130 * pi/180,
+			use_limit_y=True,
+			use_limit_z=True,
+			min_z = -pi/2,
+			max_z = pi/2,
+		)
+
+		# Create bone to use as pivot point when rolling back. This is read from the metarig and should be placed at the heel of the shoe, pointing forward.
+		# We hardcode name for ankle pivot for now.
+		ankle_pivot = self.generator.metarig.data.bones.get("AnklePivot" + self.side_suffix)
+		assert ankle_pivot, "ERROR: Could not find AnklePivot bone in the metarig."
+
+		ankle_pivot_ctrl = self.bone_infos.bone(
+			name = "IK-RollBack" + self.side_suffix,
+			head = ankle_pivot.head_local,
+			tail = ankle_pivot.tail_local,
+			roll = pi,
+			bone_group = 'Body: IK - IK Mechanism Bones',
+			parent = ik_foot.parent
+		)
+
+		ankle_pivot_ctrl.add_constraint(self.obj, 'TRANSFORM',
+			subtarget = roll_ctrl.name,
+			map_from = 'ROTATION',
+			map_to = 'ROTATION',
+			from_min_x_rot = -90 * pi/180,
+			to_min_x_rot = -60 * pi/180,
+		)
+		
+		# Create reverse bones
+		rik_chain = []
+		for i, b in reversed(list(enumerate(org_chain))):
+			rik_bone = self.bone_infos.bone(
+				name = b.name.replace("ORG", "RIK"),
+				head = b.tail.copy(),
+				tail = b.head.copy(),
+				parent = ankle_pivot_ctrl
 			)
-			fk_chain.append(fk_bone)
-			
-			if i == 0 and self.params.double_first_control:
-				# Make a parent for the first control.
-				fk_parent_bone = shared.create_parent_bone(self, fk_bone)
-				fk_parent_bone.custom_shape = self.load_widget("FK_Limb")
-				shared.create_dsp_bone(self, fk_parent_bone, center=True)
+			rik_chain.append(rik_bone)
+			ik_chain[i].parent = rik_bone
 
-				# Store in the beginning of the FK list, since it's the new root of the FK chain.
-				fk_chain.insert(0, fk_parent_bone)
-			else:
-				# Parent FK bone to previous FK bone.
-				fk_bone.parent = fk_chain[-2]
+			if i == 1:
+				rik_bone.add_constraint(self.obj, 'TRANSFORM',
+					subtarget = roll_ctrl.name,
+					map_from = 'ROTATION',
+					map_to = 'ROTATION',
+					from_min_x_rot = 90 * pi/180,
+					from_max_x_rot = 166 * pi/180,
+					to_min_x_rot = 0 * pi/180,
+					to_max_x_rot = 169 * pi/180,
+					from_min_z_rot = -60 * pi/180,
+					from_max_z_rot = 60 * pi/180,
+					to_min_z_rot = 10 * pi/180,
+					to_max_z_rot = -10 * pi/180
+				)
 			
-			if i < 2:
-				# Setup DSP bone for all but last bone.
-				shared.create_dsp_bone(self, fk_bone, center=True)
-				pass
-
-			if i == 2:
-				if self.params.world_aligned:
-					fk_name = fk_bone.name
-					fk_bone.name = fk_bone.name.replace("FK-", "FK-W-")	# W for World?
-					# Make child control for the world-aligned control, that will have the original transforms and name.
-					fk_child_bone = self.bone_infos.bone(
-						name = fk_name,
-						source = fk_bone,
-						only_transform = True,
-						parent = fk_bone,
-						#custom_shape = self.load_widget("FK_Limb"),
-						custom_shape_scale = 0.5
-					)
-					fk_chain.append(fk_child_bone)
-					
-					fk_bone.flatten()
-			
-			if i == 3 and self.params.type=='LEG':
-				# TODO: With this setup, we can't really support our old ik/stretch/hinge feature set, but that never really worked well, and it cna't really work well anyways.
-				# FK Toe bone should be parented between FK Foot and IK Toe.
-				fk_bone.parent = None
-				fk_bone.add_constraint(self.obj, 'ARMATURE',
-					targets = [
-						{
-							"subtarget" : fk_chain[-2].name
-						},
-						{
-							"subtarget" : self.ik_chain[-1].name
-						}
-					],
+			if i == 0:
+				rik_bone.add_constraint(self.obj, 'COPY_LOCATION',
+					true_defaults = True,
+					target = self.obj,
+					subtarget = rik_chain[-2].name,
+					head_tail = 1,
 				)
 
-				drv1 = Driver()
-				drv1.expression = "1-ik"
-				var1 = drv1.make_var("ik")
-				var1.type = 'SINGLE_PROP'
-				var1.targets[0].id_type='OBJECT'
-				var1.targets[0].id = self.obj
-				var1.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ikfk_prop.name)
-
-				drv2 = drv1.clone()
-				drv2.expression = "ik"
-
-				data_path1 = 'constraints["Armature"].targets[0].weight'
-				data_path2 = 'constraints["Armature"].targets[1].weight'
-				
-				fk_bone.drivers[data_path1] = drv1
-				fk_bone.drivers[data_path2] = drv2
+				rik_bone.add_constraint(self.obj, 'TRANSFORM',
+					name = "Transformation Roll",
+					subtarget = roll_ctrl.name,
+					map_from = 'ROTATION',
+					map_to = 'ROTATION',
+					from_min_x_rot = 0 * pi/180,
+					from_max_x_rot = 135 * pi/180,
+					to_min_x_rot = 0 * pi/180,
+					to_max_x_rot = 118 * pi/180,
+					from_min_z_rot = -45 * pi/180,
+					from_max_z_rot = 45 * pi/180,
+					to_min_z_rot = 25 * pi/180,
+					to_max_z_rot = -25 * pi/180
+				)
+				rik_bone.add_constraint(self.obj, 'TRANSFORM',
+					name = "Transformation CounterRoll",
+					subtarget = roll_ctrl.name,
+					map_from = 'ROTATION',
+					map_to = 'ROTATION',
+					from_min_x_rot = 90 * pi/180,
+					from_max_x_rot = 135 * pi/180,
+					to_min_x_rot = 0 * pi/180,
+					to_max_x_rot = -31.8 * pi/180
+				)
 		
-		# Create Hinge helper
-		hng_bone = self.bone_infos.bone(
-			name			= self.base_bone.replace("ORG", "FK-HNG"), # Name it after the first bone in the chain.
-			source			= fk_chain[0], 
-			only_transform	= True,
-			bone_group 		= 'Body: FK Helper Bones',
-		)
-		fk_chain[0].parent = hng_bone
-
-		hng_bone.add_constraint(self.obj, 'ARMATURE', 
+		# FK Toe bone should be parented between FK Foot and IK Toe.
+		fk_toe = self.fk_toe
+		fk_toe.parent = None
+		fk_toe.add_constraint(self.obj, 'ARMATURE',
 			targets = [
 				{
-					"subtarget" : 'root'
+					"subtarget" : self.fk_chain[-2].name	# FK Foot
 				},
 				{
-					"subtarget" : self.root_bone.name
+					"subtarget" : ik_chain[-2].name		# IK Toe
 				}
 			],
 		)
 
 		drv1 = Driver()
-		drv1.expression = "var"
-		var1 = drv1.make_var("var")
+		drv1.expression = "1-ik"
+		var1 = drv1.make_var("ik")
 		var1.type = 'SINGLE_PROP'
 		var1.targets[0].id_type='OBJECT'
 		var1.targets[0].id = self.obj
-		var1.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.fk_hinge_prop.name)
+		var1.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ikfk_prop.name)
 
 		drv2 = drv1.clone()
-		drv2.expression = "1-var"
+		drv2.expression = "ik"
 
 		data_path1 = 'constraints["Armature"].targets[0].weight'
 		data_path2 = 'constraints["Armature"].targets[1].weight'
 		
-		hng_bone.drivers[data_path1] = drv1
-		hng_bone.drivers[data_path2] = drv2
-
-		hng_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True,
-			target = self.obj,
-			subtarget = self.root_bone.name,
-		)
-
-		for fkb in fk_chain:
-			fkb.bone_group = "Body: Main FK Controls"
+		fk_toe.drivers[data_path1] = drv1
+		fk_toe.drivers[data_path2] = drv2
 
 	@stage.prepare_bones
 	def prepare_org(self):
@@ -518,7 +488,7 @@ class Rig(CloudChainRig):
 		)
 		params.world_aligned = BoolProperty(
 			name="World Aligned Control", 
-			description="IK/FK controls are aligned with world axes.", 
+			description="Ankle/Wrist IK/FK controls are aligned with world axes.", 
 			default=True,
 		)
 
