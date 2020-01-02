@@ -102,20 +102,25 @@ class CloudChainRig(CloudBaseRig):
 				def_section.append(def_bone)
 			def_sections.append(def_section)
 
-		def make_str_bone(def_bone, name=None):
+		def make_str_bone(def_bone, name=None, head=None, tail=None):
 			if not name:
 				name = def_bone.name.replace("DEF", "STR")
+			if not head:
+				head = def_bone.head
+			if not tail:
+				tail = def_bone.tail
 			str_bone = self.bone_infos.bone(
 				name = name,
-				head = def_bone.head,
-				tail = def_bone.tail,
+				head = head,
+				tail = tail,
 				roll = def_bone.roll,
 				custom_shape = self.load_widget("Sphere"),
 				use_custom_shape_bone_size = False,
-				custom_shape_scale = 0.1,
+				custom_shape_scale = 0.3 * self.params.display_scale,
 				bone_group = 'Body: STR - Stretch Controls',
 				parent = chain[sec_i],
 			)
+			str_bone.scale(0.3)
 			return str_bone
 
 		### Create Stretch controls
@@ -124,10 +129,9 @@ class CloudChainRig(CloudBaseRig):
 			str_section = []
 			for i, def_bone in enumerate(section):
 				str_bone = make_str_bone(def_bone)
-				str_bone.scale(0.3)
 				if i==0:
 					# Make first control bigger.
-					str_bone.custom_shape_scale = 0.15
+					str_bone.custom_shape_scale = 0.5 * self.params.display_scale
 				
 				str_section.append(str_bone)
 			str_sections.append(str_section)
@@ -138,8 +142,13 @@ class CloudChainRig(CloudBaseRig):
 			sliced = slice_name(str_sections[-1][-1].name)
 			sliced[0].append("TIP")
 			str_name = make_name(*sliced)
-			str_bone = make_str_bone(def_bone, name=str_name)
-			str_bone.scale(0.3)
+
+			str_bone = make_str_bone(
+				def_bone, 
+				name = str_name, 
+				head = def_bone.tail, 
+				tail = def_bone.tail+def_bone.vec
+			)
 
 			str_sections.append([str_bone])
 	
@@ -207,6 +216,13 @@ class CloudChainRig(CloudBaseRig):
 		"""
 		super().add_parameters(params)
 
+		params.display_scale = FloatProperty(
+			name="Display Scale",
+			description="Scale Bone Display Sizes",
+			default=1,
+			min=0.1,
+			max=100
+		)
 		params.deform_segments = IntProperty(
 			name="Deform Segments",
 			description="Number of deform bones per limb piece",
@@ -240,6 +256,7 @@ class CloudChainRig(CloudBaseRig):
 		""" Create the ui for the rig parameters.
 		"""
 
+		layout.prop(params, "display_scale")
 		layout.prop(params, "deform_segments")
 		layout.prop(params, "bbone_segments")
 		layout.prop(params, "sharp_sections")

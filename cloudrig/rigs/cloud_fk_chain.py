@@ -68,7 +68,7 @@ class CloudFKChainRig(CloudChainRig):
 				source				= edit_bone,
 				**self.defaults,
 				custom_shape 		= self.load_widget("FK_Limb"),
-				custom_shape_scale 	= 0.6,
+				custom_shape_scale 	= 1,
 				parent				= self.root_bone.name
 			)
 			if i > 0:
@@ -84,7 +84,7 @@ class CloudFKChainRig(CloudChainRig):
 	@stage.prepare_bones
 	def prepare_ik(self):
 		pass
-		
+
 	@stage.prepare_bones
 	def prepare_org(self):
 		# Find existing ORG bones

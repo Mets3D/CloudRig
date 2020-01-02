@@ -87,6 +87,7 @@ class Rig(CloudFKChainRig):
 				pass
 
 			if i == 2:
+				fk_bone.custom_shape_scale = 3
 				if self.params.world_aligned:
 					fk_name = fk_bone.name
 					fk_bone.name = fk_bone.name.replace("FK-", "FK-W-")	# W for World?
@@ -181,7 +182,7 @@ class Rig(CloudFKChainRig):
 				dsp_bone.tail = projected_center + Vector((0, -self.scale/10, 0))
 				dsp_bone.roll = pi/2 * direction
 
-		# Create IK control(s) (Wrist/Ankle)
+		# Create IK control(s) (Hand/Foot)
 		bone_name = chain[2]
 		org_bone = self.get_bone(bone_name)
 		mstr_name = bone_name.replace("ORG", "IK-MSTR")
@@ -190,7 +191,7 @@ class Rig(CloudFKChainRig):
 			name = mstr_name, 
 			source = org_bone, 
 			custom_shape = self.load_widget(wgt_name),
-			custom_shape_scale = 2.5 if limb_type=='LEG' else 1,
+			custom_shape_scale = 2.5 if limb_type=='LEG' else 2.5,
 			parent = None,	# TODO: Parent switching with operator that corrects transforms.
 			bone_group = 'Body: Main IK Controls'
 		)
@@ -211,7 +212,6 @@ class Rig(CloudFKChainRig):
 			ik_mstr.parent = double_control
 		
 		if self.params.world_aligned:
-			
 			ik_mstr.flatten()
 			double_control.flatten()
 		
