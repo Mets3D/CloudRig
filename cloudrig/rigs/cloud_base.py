@@ -109,17 +109,25 @@ class CloudBaseRig(BaseRig):
 		for bone_group in self.obj.pose.bone_groups:
 			self.obj.pose.bone_groups.remove(bone_group)
 
+	def apply_custom_props(self):
+		""" Apply ORG bone custom properties to corresponding actual bone properties.
+			Should be called once in both edit and pose mode.
+		"""
+		# This is kind of useless to apply to the ORG bone directly... Or just useless in general. Probably delete this at some point.
+		for bd in self.bone_infos.bones:
+			if not bd.name.startswith("ORG"): continue
+			org_bone = self.get_bone(bd.name)
+			for prop in org_bone.keys():
+				if prop == '_RNA_UI': continue
+				if hasattr(bd, prop):
+					setattr(bd, prop, org_bone[prop])
+
 	def generate_bones(self):
 		root_bone = self.get_bone("root")
 		root_bone.bbone_x = self.scale/10
 		root_bone.bbone_z = self.scale/10
 
-		# Apply scaling
-		for bd in self.bone_infos.bones:
-			if not bd.use_custom_shape_bone_size:
-				bd.custom_shape_scale *= self.scale
-			bd.bbone_x *= self.scale
-			bd.bbone_z *= self.scale
+		#self.apply_custom_props()
 		
 		for bd in self.bone_infos.bones:
 			if bd.name not in self.obj.data.edit_bones and bd.name not in self.bones.flatten() and bd.name!='root':
@@ -128,12 +136,25 @@ class CloudBaseRig(BaseRig):
 	def parent_bones(self):
 		for bd in self.bone_infos.bones:
 			edit_bone = self.get_bone(bd.name)
+
+			# Apply scaling
+			bd.bbone_x *= self.scale
+			bd.bbone_z *= self.scale
+
 			bd.write_edit_data(self.obj, edit_bone)
 	
 	def configure_bones(self):
+		#self.apply_custom_props()
+
 		for bd in self.bone_infos.bones:
 			pose_bone = self.get_bone(bd.name)
+			
+			# Apply scaling
+			if not bd.use_custom_shape_bone_size:
+				bd.custom_shape_scale *= self.scale
+
 			bd.write_pose_data(pose_bone)
+		
 
 	def apply_bones(self):
 		# In a previous stage, Rigify automatically parents bones that have no parent to the root bone.
