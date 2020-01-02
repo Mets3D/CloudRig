@@ -87,11 +87,12 @@ class Rig(CloudFKChainRig):
 				pass
 
 			if i == 2:
-				fk_bone.custom_shape_scale = 3
+				fk_bone.custom_shape_scale = 0.8
 				if self.params.world_aligned:
 					fk_name = fk_bone.name
 					fk_bone.name = fk_bone.name.replace("FK-", "FK-W-")	# W for World?
 					# Make child control for the world-aligned control, that will have the original transforms and name.
+					# This is currently just the target of a Copy Transforms constraint on the ORG bone and therefore kindof redundant, because if we really wanted, we could use Armature constraints on those ORG bones instead of copy transforms. But then our outliner hierarchy is completely messed up ofc.
 					fk_child_bone = self.bone_infos.bone(
 						name = fk_name,
 						source = fk_bone,
@@ -191,7 +192,7 @@ class Rig(CloudFKChainRig):
 			name = mstr_name, 
 			source = org_bone, 
 			custom_shape = self.load_widget(wgt_name),
-			custom_shape_scale = 2.5 if limb_type=='LEG' else 2.5,
+			custom_shape_scale = 0.8,
 			parent = None,	# TODO: Parent switching with operator that corrects transforms.
 			bone_group = 'Body: Main IK Controls'
 		)

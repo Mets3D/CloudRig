@@ -58,7 +58,7 @@ class CloudBaseRig(BaseRig):
 			"bbone_x" : 0.05,
 			"bbone_z" : 0.05,
 			"rotation_mode" : "XYZ",
-			"use_custom_shape_bone_size" : True
+			"use_custom_shape_bone_size" : False#True
 		}
 		# Bone Info container used for storing new bone info created by the script.
 		self.bone_infos = BoneInfoContainer(self.obj, self.defaults)
