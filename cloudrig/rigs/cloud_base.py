@@ -32,7 +32,6 @@ from .cloud_utils import make_name, slice_name
 class CloudBaseRig(BaseRig):
 	"""Base for all CloudRig rigs."""
 
-	# overrides BaseRig.find_org_bones.
 	def find_org_bones(self, bone):
 		"""Populate self.bones.org."""
 		# For now we just grab all connected children of our main bone and put it in self.bones.org.main.
@@ -46,6 +45,7 @@ class CloudBaseRig(BaseRig):
 		self.prepare_bone_groups()
 
 		self.scale = self.obj.dimensions[2]/10
+		self.display_scale = self.params.display_scale * self.scale
 
 		if self.base_bone.endswith(".L"):
 			self.side_suffix = ".L"
@@ -68,7 +68,6 @@ class CloudBaseRig(BaseRig):
 
 		parent = self.get_bone(self.base_bone).parent
 		self.bones.parent = parent.name if parent else ""
-		
 
 		# Properties bone and Custom Properties
 		self.prop_bone = self.bone_infos.bone(
@@ -76,7 +75,7 @@ class CloudBaseRig(BaseRig):
 			bone_group = 'Properties',
 			custom_shape = self.load_widget("Cogwheel"),
 			head = Vector((0, self.scale*1, 0)),
-			tail = Vector((0, self.scale*1, self.scale*1))
+			tail = Vector((0, self.scale*2, 0))
 		)
 	
 	def load_widget(self, name):
@@ -137,9 +136,9 @@ class CloudBaseRig(BaseRig):
 		for bd in self.bone_infos.bones:
 			edit_bone = self.get_bone(bd.name)
 
-			# Apply scaling
-			bd.bbone_x *= self.scale
-			bd.bbone_z *= self.scale
+			# Apply visual scaling
+			bd.bbone_x *= self.display_scale
+			bd.bbone_z *= self.display_scale
 
 			bd.write_edit_data(self.obj, edit_bone)
 	
@@ -151,7 +150,7 @@ class CloudBaseRig(BaseRig):
 			
 			# Apply scaling
 			if not bd.use_custom_shape_bone_size:
-				bd.custom_shape_scale *= self.scale
+				bd.custom_shape_scale *= self.display_scale
 
 			bd.write_pose_data(pose_bone)
 		
@@ -198,10 +197,16 @@ class CloudBaseRig(BaseRig):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
 		"""
-		pass
+		params.display_scale = FloatProperty(
+			name="Display Scale",
+			description="Scale Bone Display Sizes",
+			default=1,
+			min=0.1,
+			max=100
+		)
 
 	@classmethod
 	def parameters_ui(self, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
-		pass
+		layout.prop(params, "display_scale")

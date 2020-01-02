@@ -199,17 +199,9 @@ class Rig(CloudFKChainRig):
 		# Parent control
 		double_control = None
 		if self.params.double_ik_control:
-			sliced = slice_name(mstr_name)
-			sliced[0].append("P")
-			parent_name = make_name(*sliced)
-			double_control = self.bone_infos.bone(
-				name = parent_name, 
-				source = ik_mstr, 
-				custom_shape_scale = 3 if limb_type=='LEG' else 1.1,
-				bone_group='Body: Main IK Controls Extra Parents'
-			)
+			double_control = shared.create_parent_bone(self, ik_mstr)	# TODO: Test that this works, check other uses of create_parent_bone, make sure it's a good idea to use here.
+			double_control.bone_group = 'Body: Main IK Controls Extra Parents'
 			foot_dsp(double_control)
-			ik_mstr.parent = double_control
 		
 		if self.params.world_aligned:
 			ik_mstr.flatten()

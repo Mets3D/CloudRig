@@ -38,8 +38,8 @@ class CloudFKChainRig(CloudChainRig):
 	"""CloudRig FK chain."""
 
 	def initialize(self):
-		super().initialize()
 		"""Gather and validate data about the rig."""
+		super().initialize()
 
 	@stage.prepare_bones
 	def prepare_root(self):

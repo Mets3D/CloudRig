@@ -116,7 +116,7 @@ class CloudChainRig(CloudBaseRig):
 				roll = def_bone.roll,
 				custom_shape = self.load_widget("Sphere"),
 				use_custom_shape_bone_size = False,
-				custom_shape_scale = 0.3 * self.params.display_scale,
+				custom_shape_scale = 0.4,
 				bone_group = 'Body: STR - Stretch Controls',
 				parent = chain[sec_i],
 			)
@@ -131,7 +131,7 @@ class CloudChainRig(CloudBaseRig):
 				str_bone = make_str_bone(def_bone)
 				if i==0:
 					# Make first control bigger.
-					str_bone.custom_shape_scale = 0.5 * self.params.display_scale
+					str_bone.custom_shape_scale *= 1.3
 				
 				str_section.append(str_bone)
 			str_sections.append(str_section)
@@ -149,6 +149,7 @@ class CloudChainRig(CloudBaseRig):
 				head = def_bone.tail, 
 				tail = def_bone.tail+def_bone.vec
 			)
+			str_bone.custom_shape_scale *= 1.3
 
 			str_sections.append([str_bone])
 	
@@ -216,13 +217,6 @@ class CloudChainRig(CloudBaseRig):
 		"""
 		super().add_parameters(params)
 
-		params.display_scale = FloatProperty(
-			name="Display Scale",
-			description="Scale Bone Display Sizes",
-			default=1,
-			min=0.1,
-			max=100
-		)
 		params.deform_segments = IntProperty(
 			name="Deform Segments",
 			description="Number of deform bones per limb piece",
@@ -255,14 +249,12 @@ class CloudChainRig(CloudBaseRig):
 	def parameters_ui(self, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
+		super().parameters_ui(layout, params)
 
-		layout.prop(params, "display_scale")
 		layout.prop(params, "deform_segments")
 		layout.prop(params, "bbone_segments")
 		layout.prop(params, "sharp_sections")
 		layout.prop(params, "cap_control")
-
-		super().parameters_ui(layout, params)
 
 class Rig(CloudChainRig):
 	pass

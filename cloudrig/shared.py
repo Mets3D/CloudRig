@@ -104,9 +104,9 @@ group_defs = {
 }
 
 def create_parent_bone(self, child, shape=None):
-    sliced_name = slice_name(child.name)
-    sliced_name[1] += "_Parent"
-    parent_name = make_name(*sliced_name)
+    sliced = slice_name(child.name)
+    sliced[0].append("P")
+    parent_name = make_name(*sliced)
     parent_bone = self.bone_infos.bone(
         parent_name, 
         child, 
