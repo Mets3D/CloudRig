@@ -44,7 +44,21 @@ class CloudBaseRig(BaseRig):
 		"""Gather and validate data about the rig."""
 		self.prepare_bone_groups()
 
-		self.scale = self.obj.dimensions[2]/10
+		# Determine rig scale by finding the bounding box of the bones belonging to this rig.
+		lowest_coords = Vector((0,0,0))
+		highest_coords = Vector((0,0,0))
+		for bn in self.bones.org.main:
+			org_bone = self.get_bone(bn).bone
+			points = [org_bone.head_local, org_bone.tail_local]
+			for p in points:
+				for i, co in enumerate(p):
+					if co < lowest_coords[i]:
+						lowest_coords[i] = co
+					elif co > highest_coords[i]:
+						highest_coords[i] = co
+		
+		self.scale = (lowest_coords - highest_coords).length / 10
+		#self.scale = self.obj.dimensions[2]/10
 		self.display_scale = self.params.display_scale * self.scale
 
 		if self.base_bone.endswith(".L"):

@@ -53,6 +53,9 @@ class CloudChainRig(CloudBaseRig):
 		# Each STR section's first and last bones act as a control for the bones inbetween them.
 		
 		### Create deform bones.
+		self.str_bones = []
+		self.def_bones = []
+
 		def_sections = []
 		for org_i, org_name in enumerate(chain):
 			segments = self.params.deform_segments
@@ -85,6 +88,7 @@ class CloudChainRig(CloudBaseRig):
 					bbone_segments = bbone_segments,
 					inherit_scale = 'NONE',
 				)
+				self.def_bones.append(def_bone)
 			
 				if self.params.sharp_sections:
 					# First bone of the segment, but not the first bone of the chain.
@@ -115,12 +119,13 @@ class CloudChainRig(CloudBaseRig):
 				tail = tail,
 				roll = def_bone.roll,
 				custom_shape = self.load_widget("Sphere"),
-				use_custom_shape_bone_size = False,
-				custom_shape_scale = 0.4,
+				#use_custom_shape_bone_size = True,
+				custom_shape_scale = 0.3,
 				bone_group = 'Body: STR - Stretch Controls',
 				parent = chain[sec_i],
 			)
 			str_bone.scale(0.3)
+			self.str_bones.append(str_bone)
 			return str_bone
 
 		### Create Stretch controls

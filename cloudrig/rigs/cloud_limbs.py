@@ -99,7 +99,8 @@ class Rig(CloudFKChainRig):
 						only_transform = True,
 						parent = fk_bone,
 						#custom_shape = self.load_widget("FK_Limb"),
-						custom_shape_scale = 0.5
+						custom_shape_scale = 0.5,
+						bone_group = 'Body: FK Helper Bones'
 					)
 					#self.fk_chain.append(fk_child_bone)
 					
@@ -166,6 +167,7 @@ class Rig(CloudFKChainRig):
 			tail = head + offset*1.1,
 			roll = 0,
 			custom_shape = self.load_widget('ArrowHead'),
+			custom_shape_scale = 0.5,
 			bone_group = 'Body: Main IK Controls'
 		)
 
@@ -340,7 +342,8 @@ class Rig(CloudFKChainRig):
 				name = b.name.replace("ORG", "RIK"),
 				head = b.tail.copy(),
 				tail = b.head.copy(),
-				parent = ankle_pivot_ctrl
+				parent = ankle_pivot_ctrl,
+				bone_group = 'Body: IK - IK Mechanism Bones'
 			)
 			rik_chain.append(rik_bone)
 			ik_chain[i].parent = rik_bone
@@ -426,17 +429,17 @@ class Rig(CloudFKChainRig):
 
 	@stage.prepare_bones
 	def prepare_org(self):
-		# TODO: Foot and Toe should have strictly 1 segment.
 		# Find existing ORG bones
 		# Add Copy Transforms constraints targetting both FK and IK bones.
 		# Put driver on only the second constraint.
 		
+		# TODO: Foot and Toe should have strictly 1 segment.
+		super().prepare_org()
+
 		for i, bn in enumerate(self.bones.org.main):
 			ik_bone = self.bone_infos.find(bn.replace("ORG", "IK"))
-			fk_bone = self.bone_infos.find(bn.replace("ORG", "FK"))
 			org_bone = self.bone_infos.find(bn)
 
-			org_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=fk_bone.name, name="Copy Transforms FK")
 			ik_ct_name = "Copy Transforms IK"
 			ik_con = org_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=ik_bone.name, name=ik_ct_name)
 
