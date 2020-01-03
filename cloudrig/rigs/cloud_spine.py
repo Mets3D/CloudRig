@@ -36,7 +36,7 @@ from ..definitions.bone import BoneInfoContainer, BoneInfo
 from .cloud_utils import make_name, slice_name
 from .cloud_fk_chain import CloudFKChainRig
 
-class Rig(CloudFKChainRig):
+class Rig(CloudChainRig):
 	"""CloudRig arms and legs."""
 	
 	"""
@@ -79,19 +79,34 @@ class Rig(CloudFKChainRig):
 		"""Gather and validate data about the rig."""
 
 	@stage.prepare_bones
-	def prepare_fk(self):
-		super().prepare_fk()
-
-		# The first FK bone should become MSTR-Pelvis.
-		self.mstr_pelvis = self.fk_chain[0]
-
-
-	@stage.prepare_bones
-	def prepare_ik(self):
+	def prepare_ik_spine(self):
 		chain = self.bones.org.main
 
 	@stage.prepare_bones
-	def spine_deform_and_stretch(self):
+	def prepare_fk_spine(self):
+		#Note: Runs after prepare_fk_chain().
+
+		# This should work with an arbitrary spine length. We assume that the chain ends in a neck and head.
+
+		# Create Troso Master control
+		# TODO/NOTE: The pelvis can be placed arbitrarily, but there's no good way currently to do this from the metarig.
+		self.mstr_torso = self.bone_infos.bone(
+			name = "MSTR-Torso",
+			source = self.fk_chain[0],
+			only_transform = True,
+			custom_shape = self.load_widget("Torso_Master"),
+			bone_group = 'Body: Main IK Controls',
+		)
+		if self.params.double_controls:
+			double_mstr_pelvis = shared.create_parent_bone(self, self.mstr_torso)
+			double_mstr_pelvis.bone_group = 'Body: Main IK Controls Extra Parents'
+		
+		self.fk_chain[0].parent = mstr_torso
+		
+		# Shift FK controls up to the center of their ORG bone
+
+	@stage.prepare_bones
+	def prepare_def_str_spine(self):
 		#super().prepare_deform_and_stretch()
 		# Tweak some display things
 		for str_bone in self.str_bones:
@@ -109,17 +124,10 @@ class Rig(CloudFKChainRig):
 				str_bone.parent = self.fk_chain[i]
 
 	@stage.prepare_bones
-	def prepare_org(self):
-
-		print("PELVIS ORG")
-		print(self.org_bones[0].name)
-		print(self.mstr_pelvis.name)
-		org_spine = self.bone_infos.find('ORG-Spine')
-		org_spine.parent = self.mstr_pelvis.name
-		self.org_bones[0].parent = self.mstr_pelvis.name
-		print("I FOUND THE THING LOOKIE HERE: " + org_spine.name)
-		print(org_spine.parent)
-		#super().prepare_org()
+	def prepare_org_spine(self):
+		org_spine = self.org_chain[0]
+		org_spine.parent = self.mstr_torso.name
+		self.org_chain[0].parent = self.mstr_torso.name
 
 	##############################
 	# Parameters

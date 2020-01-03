@@ -103,7 +103,7 @@ group_defs = {
 
 }
 
-def create_parent_bone(self, child, shape=None):
+def create_parent_bone(self, child):
     sliced = slice_name(child.name)
     sliced[0].append("P")
     parent_name = make_name(*sliced)
@@ -123,7 +123,7 @@ def create_parent_bone(self, child, shape=None):
 # DSP bones - Display bones at the mid-point of each bone to use as display transforms for FK.
 def create_dsp_bone(self, parent, center=False):
     """If Display Centered rig option is enabled, we want certain controls to display in the center of the bone rather than at the head."""
-    if not self.params.display_middle: return
+    if not self.params.display_middle: return   # TODO: This check shouldn't be in this function.
     dsp_name = "DSP-" + parent.name
     dsp_bone = self.bone_infos.bone(
         name=dsp_name, 

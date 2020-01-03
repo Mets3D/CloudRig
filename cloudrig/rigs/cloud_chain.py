@@ -42,7 +42,7 @@ class CloudChainRig(CloudBaseRig):
 		"""Gather and validate data about the rig."""
 
 	@stage.prepare_bones
-	def prepare_deform_and_stretch(self):
+	def prepare_def_str_chains(self):
 		chain = self.bones.org.main[:]
 		# We refer to a full limb as a limb. (eg. Arm)
 		# Each part of that limb is a section. (eg. Forearm)

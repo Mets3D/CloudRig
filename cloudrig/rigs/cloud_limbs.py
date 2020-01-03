@@ -66,8 +66,23 @@ class Rig(CloudFKChainRig):
 		self.fk_hinge_prop = self.prop_bone.custom_props[fk_hinge_name] = CustomProp(fk_hinge_name, default=0.0)
 
 	@stage.prepare_bones
-	def prepare_fk(self):
-		super().prepare_fk()
+	def prepare_root_bone(self):
+		# Socket/Root bone to parent IK and FK to.
+		root_name = self.base_bone.replace("ORG", "ROOT")
+		base_bone = self.get_bone(self.base_bone)
+		self.root_bone = self.bone_infos.bone(
+			name 				= root_name, 
+			source 				= base_bone, 
+			only_transform 		= True, 
+			parent 				= self.bones.parent,
+			custom_shape 		= self.load_widget("Cube"),
+			custom_shape_scale 	= 0.5,
+			bone_group			= 'Body: IK - IK Mechanism Bones'
+		)
+
+	@stage.prepare_bones
+	def prepare_fk_limb(self):
+		# Note: This runs after super().prepare_fk_chain().
 
 		hng_child = self.fk_chain[0]
 		for i, fk_bone in enumerate(self.fk_chain):
@@ -152,7 +167,7 @@ class Rig(CloudFKChainRig):
 		)
 
 	@stage.prepare_bones
-	def prepare_ik(self):
+	def prepare_ik_limb(self):
 		limb_type = self.params.type
 		chain = self.bones.org.main
 
@@ -284,11 +299,11 @@ class Rig(CloudFKChainRig):
 		)
 
 		if self.params.type == 'LEG':
-			self.prepare_foot_ik(ik_mstr, ik_chain[-2:], org_chain[-2:])
+			self.prepare_ik_foot(ik_mstr, ik_chain[-2:], org_chain[-2:])
 		
 		self.ik_chain = ik_chain
 
-	def prepare_foot_ik(self, ik_mstr, ik_chain, org_chain):
+	def prepare_ik_foot(self, ik_mstr, ik_chain, org_chain):
 		ik_foot = ik_chain[0]
 		# Create ROLL control behind the foot (Limit Rotation, lock other transforms)
 		sliced_name = shared.slice_name(ik_foot.name)
@@ -428,17 +443,14 @@ class Rig(CloudFKChainRig):
 		fk_toe.drivers[data_path2] = drv2
 
 	@stage.prepare_bones
-	def prepare_org(self):
-		# Find existing ORG bones
+	def prepare_org_limb(self):
+		# Note: Runs after prepare_org_chain().
+		
 		# Add Copy Transforms constraints targetting both FK and IK bones.
 		# Put driver on only the second constraint.
-		
-		# TODO: Foot and Toe should have strictly 1 segment.
-		super().prepare_org()
 
-		for i, bn in enumerate(self.bones.org.main):
-			ik_bone = self.bone_infos.find(bn.replace("ORG", "IK"))
-			org_bone = self.bone_infos.find(bn)
+		for i, org_bone in enumerate(self.org_chain):
+			ik_bone = self.bone_infos.find(org_bone.name.replace("ORG", "IK"))
 
 			ik_ct_name = "Copy Transforms IK"
 			ik_con = org_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=ik_bone.name, name=ik_ct_name)

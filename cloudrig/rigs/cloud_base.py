@@ -138,12 +138,12 @@ class CloudBaseRig(BaseRig):
 	@stage.prepare_bones
 	def load_org_bones(self):
 		# Load ORG bones into BoneInfo instances.
-		self.org_bones = []
+		self.org_chain = []
 		for bn in self.bones.org.main:	# Make sure we don't iterate through the parent bone. This rig should never define a BoneInfo instance for its parent!
 			eb = self.get_bone(bn)
-			if not eb: continue
+			if not eb: continue	# TODO: I don't know why this is necessary - I think it used to error when we used bones.flatten() and bones.parent was None.
 			org_bi = self.bone_infos.bone(bn, eb, self.obj)
-			self.org_bones.append(org_bi)
+			self.org_chain.append(org_bi)
 
 	def generate_bones(self):
 		root_bone = self.get_bone("root")

@@ -42,22 +42,7 @@ class CloudFKChainRig(CloudChainRig):
 		super().initialize()
 
 	@stage.prepare_bones
-	def prepare_root(self):
-		# Socket/Root bone to parent everything to.
-		root_name = self.base_bone.replace("ORG", "ROOT")
-		base_bone = self.get_bone(self.base_bone)
-		self.root_bone = self.bone_infos.bone(
-			name 				= root_name, 
-			source 				= base_bone, 
-			only_transform 		= True, 
-			parent 				= self.bones.parent,
-			custom_shape 		= self.load_widget("Cube"),
-			custom_shape_scale 	= 0.5,
-			bone_group			= 'Body: IK - IK Mechanism Bones'
-		)
-
-	@stage.prepare_bones
-	def prepare_fk(self):
+	def prepare_fk_chain(self):
 		fk_chain = []
 		fk_name = ""
 		for i, bn in enumerate(self.bones.org.main):
@@ -69,7 +54,7 @@ class CloudFKChainRig(CloudChainRig):
 				**self.defaults,
 				custom_shape 		= self.load_widget("FK_Limb"),
 				custom_shape_scale 	= 0.8,
-				parent				= self.root_bone.name
+				parent				= self.bones.parent
 			)
 			if i > 0:
 				# Parent FK bone to previous FK bone.
@@ -82,17 +67,11 @@ class CloudFKChainRig(CloudChainRig):
 		self.fk_chain = fk_chain
 
 	@stage.prepare_bones
-	def prepare_ik(self):
-		pass
-
-	@stage.prepare_bones
-	def prepare_org(self):
+	def prepare_org_chain(self):
 		# Find existing ORG bones
 		# Add Copy Transforms constraints targetting FK.
-		
-		for i, bn in enumerate(self.bones.org.main):
-			fk_bone = self.bone_infos.find(bn.replace("ORG", "FK"))
-			org_bone = self.bone_infos.find(bn)
+		for i, org_bone in enumerate(self.org_chain):
+			fk_bone = self.bone_infos.find(org_bone.name.replace("ORG", "FK"))
 
 			org_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=fk_bone.name, name="Copy Transforms FK")
 
