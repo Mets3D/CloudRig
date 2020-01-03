@@ -34,7 +34,7 @@ from ..definitions.driver import *
 from ..definitions.custom_props import CustomProp
 from ..definitions.bone import BoneInfoContainer, BoneInfo
 from .cloud_utils import make_name, slice_name
-from .cloud_fk_chain import CloudFKChainRig
+from .cloud_fk_chain import CloudChainRig
 
 class Rig(CloudChainRig):
 	"""CloudRig arms and legs."""
@@ -75,8 +75,8 @@ class Rig(CloudChainRig):
 	"""
 
 	def initialize(self):
-		super().initialize()
 		"""Gather and validate data about the rig."""
+		super().initialize()
 
 	@stage.prepare_bones
 	def prepare_ik_spine(self):
@@ -86,31 +86,71 @@ class Rig(CloudChainRig):
 	def prepare_fk_spine(self):
 		#Note: Runs after prepare_fk_chain().
 
+		# Create FK bones
+		self.fk_chain = []
+		fk_name = ""
+		for i, org_bone in enumerate(self.org_chain):
+			fk_name = org_bone.name.replace("ORG", "FK")
+			fk_bone = self.bone_infos.bone(
+				name				= fk_name, 
+				source				= org_bone,
+				**self.defaults,
+				custom_shape 		= self.load_widget("FK_Limb"),
+				custom_shape_scale 	= 0.9 * org_bone.custom_shape_scale,
+				parent				= self.bones.parent,
+				bone_group = "Body: Main FK Controls"
+			)
+			if i > 0:
+				# Parent FK bone to previous FK bone.
+				fk_bone.parent = self.fk_chain[-1]
+			self.fk_chain.append(fk_bone)
+
+			if i < len(self.org_chain)-3:
+				# Shift FK controls up to the center of their ORG bone
+				org_bone = self.org_chain[i]
+				fk_bone.put(org_bone.center)
+				fk_bone.flatten()
+
+				# Create a child corrective - Everything that would normally be parented to this FK bone should actually be parented to this child bone.
+				fk_child_bone = self.bone_infos.bone(
+					name = fk_bone.name.replace("FK", "FK-C"),
+					source = fk_bone,
+					only_transform = True,
+					custom_shape = fk_bone.custom_shape,
+					custom_shape_scale = fk_bone.custom_shape_scale * 0.9,
+					bone_group = 'Body: FK Helper Bones'
+				)
+				# Ideally, we would populate these bones' constraints from the metarig, because I think it will need tweaks for each character. But maybe I'm wrong.
+				# TODO: Add constraints.
+				fk_bone.fk_child = fk_child_bone
+
+				# TODO: Copy Transforms constraint and driver for IK.
+
 		# This should work with an arbitrary spine length. We assume that the chain ends in a neck and head.
 
 		# Create Troso Master control
 		# TODO/NOTE: The pelvis can be placed arbitrarily, but there's no good way currently to do this from the metarig.
+		# To be fair, the more customizability we add to the metarig, the less it becomes a metarig... :/
 		self.mstr_torso = self.bone_infos.bone(
 			name = "MSTR-Torso",
-			source = self.fk_chain[0],
+			source = self.org_chain[0],
 			only_transform = True,
 			custom_shape = self.load_widget("Torso_Master"),
 			bone_group = 'Body: Main IK Controls',
 		)
+		self.mstr_torso.flatten()
 		if self.params.double_controls:
 			double_mstr_pelvis = shared.create_parent_bone(self, self.mstr_torso)
 			double_mstr_pelvis.bone_group = 'Body: Main IK Controls Extra Parents'
-		
-		self.fk_chain[0].parent = mstr_torso
-		
-		# Shift FK controls up to the center of their ORG bone
 
 	@stage.prepare_bones
 	def prepare_def_str_spine(self):
-		#super().prepare_deform_and_stretch()
 		# Tweak some display things
-		for str_bone in self.str_bones:
-			str_bone.custom_shape_scale *= 0.5
+		for i, str_bone in enumerate(self.str_bones):
+			str_bone.use_custom_shape_bone_size = True
+			str_bone.custom_shape_scale = 1.5
+			# if i >= len(self.str_bones)-4:
+			# 	str_bone.custom_shape_scale *= 0.3
 		for def_bone in self.def_bones:
 			def_bone.bbone_x *= 0.3
 			def_bone.bbone_z *= 0.3
@@ -118,10 +158,12 @@ class Rig(CloudChainRig):
 		# STR bones should be parented to their corresponding FK bone.
 		for i, str_bone in enumerate(self.str_bones):
 			parent = None
-			if i >= len(self.fk_chain):
+			if i == 0:
+				str_bone.parent = self.mstr_torso	# TODO: This would actually have to be MSTR-Hips!
+			elif i >= len(self.fk_chain):
 				str_bone.parent = self.fk_chain[-1]
 			else:
-				str_bone.parent = self.fk_chain[i]
+				str_bone.parent = self.fk_chain[i-1]
 
 	@stage.prepare_bones
 	def prepare_org_spine(self):

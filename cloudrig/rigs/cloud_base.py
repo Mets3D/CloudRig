@@ -179,6 +179,8 @@ class CloudBaseRig(BaseRig):
 			bd.write_pose_data(pose_bone)
 
 	def apply_bones(self):
+		#TODO: This can be done via self.generator.disable_auto_parent(bone_name) - I'm just not sure at what stage to run it, since we need a stage after constraints are applied but before this parenting is done by Rigify.
+		
 		# In a previous stage, Rigify automatically parents bones that have no parent to the root bone.
 		# We want to undo this when the bone has an Armature constraint, since such bones should never have a parent.
 		for eb in self.obj.data.edit_bones:

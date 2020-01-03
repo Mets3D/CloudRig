@@ -71,7 +71,8 @@ class CloudChainRig(CloudBaseRig):
 				## Deform
 				def_name = org_name.replace("ORG", "DEF")
 				sliced = slice_name(def_name)
-				def_name = make_name(sliced[0], sliced[1] + str(i+1), sliced[2])
+				number = str(i+1) if segments > 1 else ""
+				def_name = make_name(sliced[0], sliced[1] + number, sliced[2])
 
 				# Move head and tail into correct places
 				org_bone = self.get_bone(org_name)	# TODO: Using BoneInfoContainer.bone() breaks stuff, why?
@@ -146,6 +147,7 @@ class CloudChainRig(CloudBaseRig):
 			last_def = def_sections[-1][-1]
 			sliced = slice_name(str_sections[-1][-1].name)
 			sliced[0].append("TIP")
+			sliced[1] = sliced[1][:-1] # (Remove number from end of name)
 			str_name = make_name(*sliced)
 
 			str_bone = make_str_bone(

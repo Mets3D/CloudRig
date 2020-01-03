@@ -43,7 +43,7 @@ class CloudFKChainRig(CloudChainRig):
 
 	@stage.prepare_bones
 	def prepare_fk_chain(self):
-		fk_chain = []
+		self.fk_chain = []
 		fk_name = ""
 		for i, bn in enumerate(self.bones.org.main):
 			edit_bone = self.get_bone(bn)
@@ -58,13 +58,11 @@ class CloudFKChainRig(CloudChainRig):
 			)
 			if i > 0:
 				# Parent FK bone to previous FK bone.
-				fk_bone.parent = fk_chain[-1]
-			fk_chain.append(fk_bone)
+				fk_bone.parent = self.fk_chain[-1]
+			self.fk_chain.append(fk_bone)
 			
-		for fkb in fk_chain:
+		for fkb in self.fk_chain:
 			fkb.bone_group = "Body: Main FK Controls"
-		
-		self.fk_chain = fk_chain
 
 	@stage.prepare_bones
 	def prepare_org_chain(self):
