@@ -61,14 +61,9 @@ class BoneInfoContainer(ID):
 	# TODO: implement __iter__ and such.
 	def __init__(self, armature, defaults={}):
 		self.bones = []
+		self.armature = armature
 		self.defaults = defaults	# For overriding arbitrary properties' default values when creating bones in this container.
 
-		# Load info about existing bones in the armature...
-		org_mode = armature.mode
-		bpy.ops.object.mode_set(mode='EDIT')
-		for eb in armature.data.edit_bones:
-			self.bone(eb.name, eb, armature)
-		bpy.ops.object.mode_set(mode=org_mode)
 
 	def find(self, name):
 		"""Find a BoneInfo instance by name, return it if found."""
@@ -79,6 +74,7 @@ class BoneInfoContainer(ID):
 	
 	def bone(self, name="Bone", source=None, armature=None, **kwargs):
 		"""Define a bone and add it to the list of bones. If a definition with the same name already existed, OVERWRITE IT."""
+
 		bi = self.find(name)
 		if bi:
 			self.bones.remove(bi)
@@ -195,7 +191,7 @@ class BoneInfo(ID):
 			self.roll=source.roll
 			self.bbone_x=source.bbone_x
 			self.bbone_z=source.bbone_z
-		else:
+		else:	# TODO: These probably don't work properly.
 			if(source and type(source)==BoneInfo):
 				self.copy_info(source)
 			elif(source and type(source)==bpy.types.EditBone):
@@ -311,10 +307,7 @@ class BoneInfo(ID):
 			if(hasattr(edit_bone, key)):
 				target_bone = getattr(edit_bone, key)
 				if key in bone_attribs and target_bone:
-					# TODO: Instead of just saving the name as a string, we should check if our BoneInfoContainer has a bone with this name, and if not, even go as far as to create it.
-					# Look for the BoneInfo object corresponding to this bone in our BoneInfoContainer.
-					bone_info = self.container.bone(name=target_bone.name, armature=armature, source=target_bone)
-					value = bone_info
+					value = target_bone.name
 				else:
 					# EDIT BONE PROPERTIES MUST BE DEEPCOPIED SO THEY AREN'T DESTROYED WHEN LEAVEING EDIT MODE. OTHERWISE IT FAILS SILENTLY!
 					if key in ['layers']:

@@ -135,6 +135,16 @@ class CloudBaseRig(BaseRig):
 				if hasattr(bd, prop):
 					setattr(bd, prop, org_bone[prop])
 
+	@stage.prepare_bones
+	def load_org_bones(self):
+		# Load ORG bones into BoneInfo instances.
+		self.org_bones = []
+		for bn in self.bones.org.main:	# Make sure we don't iterate through the parent bone. This rig should never define a BoneInfo instance for its parent!
+			eb = self.get_bone(bn)
+			if not eb: continue
+			org_bi = self.bone_infos.bone(bn, eb, self.obj)
+			self.org_bones.append(org_bi)
+
 	def generate_bones(self):
 		root_bone = self.get_bone("root")
 		root_bone.bbone_x = self.scale/10
@@ -167,7 +177,6 @@ class CloudBaseRig(BaseRig):
 				bd.custom_shape_scale *= self.display_scale
 
 			bd.write_pose_data(pose_bone)
-		
 
 	def apply_bones(self):
 		# In a previous stage, Rigify automatically parents bones that have no parent to the root bone.

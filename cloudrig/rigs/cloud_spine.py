@@ -39,6 +39,41 @@ from .cloud_fk_chain import CloudFKChainRig
 class Rig(CloudFKChainRig):
 	"""CloudRig arms and legs."""
 	
+	"""
+	What we need in a Spine rig:
+	FK controls should be placed in the center of ORG bones. This does mean that ORG bones can't copy transforms of the FK controls directly.
+	The transforms of the ORG controls don't really matter anyways, only the transforms of the STR controls that they usually own.
+	We could use Armature constraints on the ORG bones instead, but that would destroy their local rotation matrix, which we need to stay clean, or readable from someplace at least.
+	Alternatively we can differentiate between the FK control layer and another FK mechanism layer. The control layer would have no prefix, while the mechanism layer would have the FK prefix.
+	The mechanism layer would not be offset to the halfway point, and it would be parented to the control layer.
+	Then the ORG bones can copy transforms from those guys.
+
+	Okay, cool. What about IK?
+	On Rain's rig, the IK secondary controls are placed in the same place as the FK's - DEF bones halfway point.
+	This works well, but I know we did it out of necessity, not because it works well. So, I wonder if doing it differently could work better.
+	In Rain's rig, the IK and FK controls had to work together, which is not as true for this rig since the control branches off upward of the ORG bones.
+	However, if we ever want to add an IK/FK snap for the spine, we'll need to be able to snap the IK controls to the FK controls and get precisely the same pose.
+	
+	Okay, we'll do it the same way as on Rain - The IK controls are in the same place as the FK controls. 
+	The intermediate layer between IK/FK and ORG will switch between IK/FK via Armature constraint.
+	ORG could just be parented to the intermediate layer, but then we don't get useful local transforms, so we stick with Copy Transforms for that.
+	I guess we can call the intermediate layer IKFK.
+	
+	Alternatively, we can make FK bones Copy Transforms of the IK bones when IK is enabled, just like on Rain. No need for an intermediate layer. Kindof. ORG then just has to be parented to FK.
+
+	So ORG is parented to FK
+	FK follows IK
+	FK and IK are in mid-points of DEF
+
+	ORG owns STR
+	STR drives DEF
+
+	so IK->FK->ORG->STR->DEF
+
+	We could even cut ORG out of the equation. We can now always rely on FK to find local rotation of any spine segment.
+
+	"""
+
 	def initialize(self):
 		super().initialize()
 		"""Gather and validate data about the rig."""
@@ -47,18 +82,44 @@ class Rig(CloudFKChainRig):
 	def prepare_fk(self):
 		super().prepare_fk()
 
+		# The first FK bone should become MSTR-Pelvis.
+		self.mstr_pelvis = self.fk_chain[0]
+
+
 	@stage.prepare_bones
 	def prepare_ik(self):
-		limb_type = self.params.type
 		chain = self.bones.org.main
 
 	@stage.prepare_bones
-	def prepare_org(self):
-		super().prepare_org()
-
-		# Shrink the STR bones a bit.
+	def spine_deform_and_stretch(self):
+		#super().prepare_deform_and_stretch()
+		# Tweak some display things
 		for str_bone in self.str_bones:
 			str_bone.custom_shape_scale *= 0.5
+		for def_bone in self.def_bones:
+			def_bone.bbone_x *= 0.3
+			def_bone.bbone_z *= 0.3
+		
+		# STR bones should be parented to their corresponding FK bone.
+		for i, str_bone in enumerate(self.str_bones):
+			parent = None
+			if i >= len(self.fk_chain):
+				str_bone.parent = self.fk_chain[-1]
+			else:
+				str_bone.parent = self.fk_chain[i]
+
+	@stage.prepare_bones
+	def prepare_org(self):
+
+		print("PELVIS ORG")
+		print(self.org_bones[0].name)
+		print(self.mstr_pelvis.name)
+		org_spine = self.bone_infos.find('ORG-Spine')
+		org_spine.parent = self.mstr_pelvis.name
+		self.org_bones[0].parent = self.mstr_pelvis.name
+		print("I FOUND THE THING LOOKIE HERE: " + org_spine.name)
+		print(org_spine.parent)
+		#super().prepare_org()
 
 	##############################
 	# Parameters
@@ -70,7 +131,15 @@ class Rig(CloudFKChainRig):
 		"""
 		super().add_parameters(params)
 
+		params.double_controls = BoolProperty(
+			name="Double Pelvis and Chest Controls", 
+			description="Make duplicates of the main spine controls",
+			default=True,
+		)
+
 	@classmethod
 	def parameters_ui(self, layout, params):
 		"""Create the ui for the rig parameters."""
 		super().parameters_ui(layout, params)
+
+		layout.prop(params, "double_first_control")

@@ -44,7 +44,7 @@ class CloudFKChainRig(CloudChainRig):
 	@stage.prepare_bones
 	def prepare_root(self):
 		# Socket/Root bone to parent everything to.
-		root_name = self.base_bone.replace("ORG", "ROOT-")
+		root_name = self.base_bone.replace("ORG", "ROOT")
 		base_bone = self.get_bone(self.base_bone)
 		self.root_bone = self.bone_infos.bone(
 			name 				= root_name, 
@@ -88,7 +88,7 @@ class CloudFKChainRig(CloudChainRig):
 	@stage.prepare_bones
 	def prepare_org(self):
 		# Find existing ORG bones
-		# Add Copy Transforms constraints targetting both FK.
+		# Add Copy Transforms constraints targetting FK.
 		
 		for i, bn in enumerate(self.bones.org.main):
 			fk_bone = self.bone_infos.find(bn.replace("ORG", "FK"))
