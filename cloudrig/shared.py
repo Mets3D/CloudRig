@@ -80,6 +80,9 @@ group_defs = {
         'layers' : [IK_SECOND]
     },
     'Body: FK Helper Bones' : {
+        'normal' : presets['PRESET02'][0],
+        'select' : presets['PRESET02'][1],
+        'active' : presets['PRESET02'][2],
         'layers' : [BODY_MECH]
     },
     'Properties' : {

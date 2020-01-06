@@ -72,6 +72,7 @@ class Rig(CloudChainRig):
 
 	We could even cut ORG out of the equation. We can now always rely on FK to find local rotation of any spine segment.
 
+	We could technically define IK after FK. We'd just add the IK constraint to the FK in the IK setup function, which actually kindof makes sense.
 	"""
 
 	def initialize(self):
@@ -79,16 +80,10 @@ class Rig(CloudChainRig):
 		super().initialize()
 
 	@stage.prepare_bones
-	def prepare_ik_spine(self):
-		chain = self.bones.org.main
-
-	@stage.prepare_bones
 	def prepare_fk_spine(self):
-		#Note: Runs after prepare_fk_chain().
-
 		# Create Troso Master control
 		# TODO/NOTE: The pelvis can be placed arbitrarily, but there's no good way currently to do this from the metarig.
-		# To be fair, the more customizability we add to the metarig, the less it becomes a metarig... :/
+		# To be fair, the more customizability we add to the metarig, the less it becomes a metarig...
 		self.mstr_torso = self.bone_infos.bone(
 			name = "MSTR-Torso",
 			source = self.org_chain[0],
@@ -138,11 +133,30 @@ class Rig(CloudChainRig):
 					parent = fk_bone
 				)
 				# Ideally, we would populate these bones' constraints from the metarig, because I think it will need tweaks for each character. But maybe I'm wrong.
-				# TODO: Add constraints.
+				# TODO: Add FK-C constraints (4 Transformation Constraints).
+				# I'm not sure if that should be done through the rig or customizable from the meta-rig. Maybe have defaults in here, but let the metarig overwrite?
+				# But then we could just have defaults in the metarig as well...
+				# But then reproportioning the rig becomes complicated, unless we store the constraint on the original bone, and somehow tell that constraint to go on the FK-C bone and target the FK bone...
+				# It would be doable though... let's say a constraint is named FK-C:Transf_Fwd@FK - It would go on the FK-C-BoneName bone and its target would be FK-BoneName.
+				# Could run into issues with armature constraint since it has multiple targets.
 				next_parent = fk_child_bone
 				fk_bone.fk_child = fk_child_bone
 
 				# TODO: Copy Transforms constraint and driver for IK.
+
+	@stage.prepare_bones
+	def prepare_ik_spine(self):
+		for i, org_bone in self.org_chain:
+			ik_name = org_bone.name.replace("ORG", "IK")	# Equivalent of IK-CTR bones in Rain (Technically animator-facing, but rarely used)
+			ik_bone = self.bone_infos.bone(
+				name				= ik_name, 
+				source				= org_bone,
+				**self.defaults,
+				custom_shape 		= self.load_widget("Oval"),
+				# custom_shape_scale 	= 0.9 * org_bone.custom_shape_scale,
+				parent				= next_parent,
+				bone_group = "Body: Main FK Controls"
+			)
 
 	@stage.prepare_bones
 	def prepare_def_str_spine(self):
@@ -155,16 +169,25 @@ class Rig(CloudChainRig):
 		for def_bone in self.def_bones:
 			def_bone.bbone_x *= 0.3
 			def_bone.bbone_z *= 0.3
+		for org_bone in self.org_chain:
+			org_bone.bbone_x *= 0.3
+			org_bone.bbone_z *= 0.3
 		
+		for i, def_bone in enumerate(self.def_bones):
+			if i == len(self.def_bones)-2:
+				# Neck DEF bone
+				def_bone.bbone_easeout = 0	# TODO: this doesn't work?
+
 		# STR bones should be parented to their corresponding FK bone.
 		for i, str_bone in enumerate(self.str_bones):
 			parent = None
 			if i == 0:
-				str_bone.parent = self.mstr_torso	# TODO: This would actually have to be MSTR-Hips!
-			elif i < len(self.org_chain)-3:
-				str_bone.parent = self.fk_chain[i-1].fk_child
-			elif i >= len(self.fk_chain):
+				str_bone.parent = self.mstr_torso	# TODO: This would actually have to be MSTR-Hips! It just doesn't exist yet.
+			elif i > len(self.fk_chain)-2:
+				# Last two STR bones should both be parented to last FK bone(the head)
 				str_bone.parent = self.fk_chain[-1]
+			elif hasattr(self.fk_chain[i-1], 'fk_child'):
+				str_bone.parent = self.fk_chain[i-1].fk_child
 			else:
 				str_bone.parent = self.fk_chain[i-1]
 
