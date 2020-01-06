@@ -64,7 +64,7 @@ group_defs = {
         'active' : presets['PRESET07'][2],
         'layers' : [DSP]
     },
-    'Body: IK - IK Mechanism Bones' : {
+    'Body: IK-MCH - IK Mechanism Bones' : {
         'layers' : [BODY_MECH]
     },
     'Body: Main IK Controls' : {
@@ -78,6 +78,13 @@ group_defs = {
         'select' : presets['PRESET09'][1],
         'active' : presets['PRESET09'][2],
         'layers' : [IK_SECOND]
+    },
+    'Body: IK - Secondary IK Controls' : {
+        'normal' : presets['PRESET11'][0],
+        'select' : presets['PRESET11'][1],
+        'active' : presets['PRESET11'][2],
+        'layers' : [IK_SECOND]
+
     },
     'Body: FK Helper Bones' : {
         'normal' : presets['PRESET02'][0],

@@ -73,6 +73,9 @@ class Rig(CloudChainRig):
 	We could even cut ORG out of the equation. We can now always rely on FK to find local rotation of any spine segment.
 
 	We could technically define IK after FK. We'd just add the IK constraint to the FK in the IK setup function, which actually kindof makes sense.
+	We need ORG to parent the thighs to the hips in a nice way. This is because the thighs are parented to the ORG bone (automatically, based on metarig), so the ORG bone should move along with it the hip... Not too sure how though...
+	It would be nice to have a reverse hip bone in the metarig, but then I'm not sure how to make that part of the spine rig element.
+	What if we consider ORG-Spine to be a reverse bone? This would require that RibCage isn't hard parented to it anymore.
 	"""
 
 	def initialize(self):
@@ -86,12 +89,12 @@ class Rig(CloudChainRig):
 		# To be fair, the more customizability we add to the metarig, the less it becomes a metarig...
 		self.mstr_torso = self.bone_infos.bone(
 			name = "MSTR-Torso",
-			source = self.org_chain[0],
-			only_transform = True,
+			head = self.org_chain[0].center,
+			tail = self.org_chain[0].center + Vector((0, 0, 0.1)),
 			custom_shape = self.load_widget("Torso_Master"),
 			bone_group = 'Body: Main IK Controls',
 		)
-		self.mstr_torso.flatten()
+		#self.mstr_torso.flatten()
 		if self.params.double_controls:
 			double_mstr_pelvis = shared.create_parent_bone(self, self.mstr_torso)
 			double_mstr_pelvis.bone_group = 'Body: Main IK Controls Extra Parents'
@@ -116,7 +119,7 @@ class Rig(CloudChainRig):
 
 			self.fk_chain.append(fk_bone)
 
-			if i < len(self.org_chain)-3:
+			if i < len(self.org_chain)-2:	# Spine but not head and neck
 				# Shift FK controls up to the center of their ORG bone
 				org_bone = self.org_chain[i]
 				fk_bone.put(org_bone.center)
@@ -146,7 +149,36 @@ class Rig(CloudChainRig):
 
 	@stage.prepare_bones
 	def prepare_ik_spine(self):
-		for i, org_bone in self.org_chain:
+		# Create master chest control
+		# TODO: Once again, the position of this can be arbitrary.
+		self.mstr_chest = self.bone_infos.bone(
+				name				= "MSTR-Chest", 
+				head				= self.org_chain[-3].head,
+				tail 				= self.org_chain[-3].head + Vector((0, 0, 0.1)),
+				**self.defaults,
+				custom_shape 		= self.load_widget("Chest_Master"),
+				custom_shape_scale 	= 0.7,
+				parent				= self.mstr_torso,
+				bone_group = "Body: Main IK Controls"
+			)
+		if self.params.double_controls:
+			double_mstr_chest = shared.create_parent_bone(self, self.mstr_chest)
+			double_mstr_chest.bone_group = 'Body: Main IK Controls Extra Parents'
+		
+		# Create master (reverse) hip control
+		self.mstr_hips = self.bone_infos.bone(
+				name				= "MSTR-Hips", 
+				head				= self.org_chain[0].center,
+				tail 				= self.org_chain[0].center + Vector((0, 0, -0.1)),
+				**self.defaults,
+				custom_shape 		= self.load_widget("Hips"),
+				custom_shape_scale 	= 0.7,
+				parent				= self.mstr_torso,
+				bone_group = "Body: Main IK Controls"
+		)
+
+		self.ik_ctr_chain = []
+		for i, org_bone in enumerate(self.org_chain):
 			ik_name = org_bone.name.replace("ORG", "IK")	# Equivalent of IK-CTR bones in Rain (Technically animator-facing, but rarely used)
 			ik_bone = self.bone_infos.bone(
 				name				= ik_name, 
@@ -154,9 +186,10 @@ class Rig(CloudChainRig):
 				**self.defaults,
 				custom_shape 		= self.load_widget("Oval"),
 				# custom_shape_scale 	= 0.9 * org_bone.custom_shape_scale,
-				parent				= next_parent,
-				bone_group = "Body: Main FK Controls"
+				#parent				= next_parent,
+				bone_group = "Body: IK - Secondary IK Controls"
 			)
+			self.ik_ctr_chain.append(ik_bone)
 
 	@stage.prepare_bones
 	def prepare_def_str_spine(self):
@@ -182,7 +215,7 @@ class Rig(CloudChainRig):
 		for i, str_bone in enumerate(self.str_bones):
 			parent = None
 			if i == 0:
-				str_bone.parent = self.mstr_torso	# TODO: This would actually have to be MSTR-Hips! It just doesn't exist yet.
+				str_bone.parent = self.mstr_hips
 			elif i > len(self.fk_chain)-2:
 				# Last two STR bones should both be parented to last FK bone(the head)
 				str_bone.parent = self.fk_chain[-1]
