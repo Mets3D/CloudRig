@@ -211,24 +211,20 @@ class Rig(CloudChainRig):
 				# Neck DEF bone
 				def_bone.bbone_easeout = 0	# TODO: this doesn't work?
 
-		# STR bones should be parented to their corresponding FK bone.
-		for i, str_bone in enumerate(self.str_bones):
-			parent = None
-			if i == 0:
-				str_bone.parent = self.mstr_hips
-			elif i > len(self.fk_chain)-2:
-				# Last two STR bones should both be parented to last FK bone(the head)
-				str_bone.parent = self.fk_chain[-1]
-			elif hasattr(self.fk_chain[i-1], 'fk_child'):
-				str_bone.parent = self.fk_chain[i-1].fk_child
-			else:
-				str_bone.parent = self.fk_chain[i-1]
-
 	@stage.prepare_bones
 	def prepare_org_spine(self):
-		org_spine = self.org_chain[0]
-		org_spine.parent = self.mstr_torso.name
-		self.org_chain[0].parent = self.mstr_torso.name
+		# Parent ORG to FK
+		for i, org_bone in enumerate(self.org_chain):
+			parent = None
+			if i == 0:
+				org_bone.parent = self.mstr_hips
+			elif i > len(self.org_chain)-2:
+				# Last two STR bones should both be parented to last FK bone(the head)
+				org_bone.parent = self.fk_chain[-1]
+			elif hasattr(self.fk_chain[i-1], 'fk_child'):
+				org_bone.parent = self.fk_chain[i-1].fk_child
+			else:
+				org_bone.parent = self.fk_chain[i-1]
 
 	##############################
 	# Parameters

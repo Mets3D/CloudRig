@@ -47,7 +47,7 @@ HEAD_DEFORM = 27
 HEAD_HIERARCHY = 28
 
 DSP = 10
-PROPERTIES = 30
+PROPERTIES = 17
 BLACK_BOX = 31
 
 # Name : Params dictionary.

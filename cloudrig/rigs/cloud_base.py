@@ -141,6 +141,7 @@ class CloudBaseRig(BaseRig):
 		self.org_chain = []
 		for bn in self.bones.org.main:	# Make sure we don't iterate through the parent bone. This rig should never define a BoneInfo instance for its parent!
 			eb = self.get_bone(bn)
+			eb.use_connect = False
 			if not eb: continue	# TODO: I don't know why this is necessary - I think it used to error when we used bones.flatten() and bones.parent was None.
 			org_bi = self.bone_infos.bone(bn, eb, self.obj)
 			self.org_chain.append(org_bi)
@@ -180,7 +181,7 @@ class CloudBaseRig(BaseRig):
 
 	def apply_bones(self):
 		#TODO: This can be done via self.generator.disable_auto_parent(bone_name) - I'm just not sure at what stage to run it, since we need a stage after constraints are applied but before this parenting is done by Rigify.
-		
+
 		# In a previous stage, Rigify automatically parents bones that have no parent to the root bone.
 		# We want to undo this when the bone has an Armature constraint, since such bones should never have a parent.
 		for eb in self.obj.data.edit_bones:
