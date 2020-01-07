@@ -137,11 +137,11 @@ def create_dsp_bone(self, parent, center=False):
     if not self.params.display_middle: return   # TODO: This check shouldn't be in this function.
     dsp_name = "DSP-" + parent.name
     dsp_bone = self.bone_infos.bone(
-        name=dsp_name, 
-        source=parent,
-        only_transform=True,
-        custom_shape=None, 
-        parent=parent,
+        name = dsp_name, 
+        source = parent,
+        only_transform = True,
+        custom_shape = None, 
+        parent = parent,
         bone_group = 'DSP - Display Transform Helpers'
     )
     if center:

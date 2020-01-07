@@ -195,7 +195,7 @@ class Rig(CloudFKChainRig):
 				direction = 1 if self.side_suffix=='.L' else -1
 				projected_head = Vector((bone.head[0], bone.head[1], 0))
 				projected_tail = Vector((bone.tail[0], bone.tail[1], 0))
-				projected_center = projected_head + (projected_tail-projected_head)/2
+				projected_center = projected_head + (projected_tail-projected_head) / 2
 				dsp_bone.head = projected_center
 				dsp_bone.tail = projected_center + Vector((0, -self.scale/10, 0))
 				dsp_bone.roll = pi/2 * direction
@@ -209,7 +209,7 @@ class Rig(CloudFKChainRig):
 			name = mstr_name, 
 			source = org_bone, 
 			custom_shape = self.load_widget(wgt_name),
-			custom_shape_scale = 0.8,
+			custom_shape_scale = 0.8 if self.params.type=='ARM' else 2.8,
 			parent = None,	# TODO: Parent switching with operator that corrects transforms.
 			bone_group = 'Body: Main IK Controls'
 		)
@@ -313,9 +313,9 @@ class Rig(CloudFKChainRig):
 		
 		self.ik_chain = ik_chain
 
-		mid_str_transform_setup(self.main_str_bones[1])
+		self.mid_str_transform_setup(self.main_str_bones[1])
 
-	def mid_str_transform_setup(mid_str_bone):
+	def mid_str_transform_setup(self, mid_str_bone):
 		""" Set up transformation constraint to mid-limb STR bone """
 		mid_str_bone = self.main_str_bones[1]
 		trans_con_name = 'Transf_IK_Stretch'
@@ -343,7 +343,7 @@ class Rig(CloudFKChainRig):
 		mid_str_bone.drivers[data_path] = trans_drv
 
 		trans_loc_drv = Driver()
-		distance = (self.ik_tgt_bone.head - ik_chain[0].head).length
+		distance = (self.ik_tgt_bone.head - self.ik_chain[0].head).length
 		trans_loc_drv.expression = "max( 0, (distance-%0.4f * scale ) * (1/scale) /2 )" %(distance)
 
 		var_dist = trans_loc_drv.make_var("distance")
@@ -352,7 +352,7 @@ class Rig(CloudFKChainRig):
 		var_dist.targets[0].bone_target = self.ik_tgt_bone.name
 		var_dist.targets[0].transform_space = 'WORLD_SPACE'
 		var_dist.targets[1].id = self.obj
-		var_dist.targets[1].bone_target = ik_chain[0].name
+		var_dist.targets[1].bone_target = self.ik_chain[0].name
 		var_dist.targets[1].transform_space = 'WORLD_SPACE'
 		
 		var_scale = trans_loc_drv.make_var("scale")
