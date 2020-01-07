@@ -247,18 +247,22 @@ class Rig(CloudFKChainRig):
 				ik_bone.parent = ik_chain[-2]
 			
 			if i == 2:
-				# Create separate IK target bone
-				self.ik_tgt_bone = self.bone_infos.bone(
-					name = bn.replace("ORG", "IK-TGT"),
-					source = org_bone,
-					bone_group = 'Body: IK - IK Mechanism Bones',
-					parent = ik_mstr
-				)
+				if self.params.type == 'LEG':
+					# Create separate IK target bone, for keeping track of where IK should be before IK Roll is applied, whether IK Stretch is on or off.
+					self.ik_tgt_bone = self.bone_infos.bone(
+						name = bn.replace("ORG", "IK-TGT"),
+						source = org_bone,
+						bone_group = 'Body: IK - IK Mechanism Bones',
+						parent = ik_mstr
+					)
+				else:
+					self.ik_tgt_bone = ik_bone
+					ik_bone.parent = ik_mstr
 				# Add the IK constraint to the previous bone, targetting this one.
 				ik_chain[-2].add_constraint(self.obj, 'IK', 
 					pole_subtarget = pole_ctrl.name,
 					pole_angle = direction * pi/2,
-					subtarget = self.ik_tgt_bone.name
+					subtarget = ik_bone.name
 				)
 		
 		# Stretch mechanism
@@ -271,25 +275,23 @@ class Rig(CloudFKChainRig):
 			bone_group = 'Body: IK - IK Mechanism Bones'
 		)
 
-		sliced = slice_name(str_name)
-		sliced[0].append("TIP")
-		tip_name = make_name(*sliced)
-
-		tip_bone = self.bone_infos.bone(
-			name = tip_name, 
-			source = org_chain[2], 
-			parent = ik_mstr,#ik_chain[2],
-			bone_group = 'Body: IK - IK Mechanism Bones'
-		)
-
-		tip_bone.add_constraint(self.obj, 'COPY_LOCATION',
+		self.ik_tgt_bone.add_constraint(self.obj, 'COPY_LOCATION',
 			target = self.obj,
 			subtarget = str_bone.name,
 			head_tail = 1,
 			true_defaults=True
 		)
 
-		str_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=self.ik_tgt_bone.name)
+		str_tgt_name = bone_name.replace("ORG", "IK-STR-TGT")
+		# Create bone responsible for keeping track of where the feet should be when stretchy IK is ON.
+		str_tgt_bone = self.bone_infos.bone(
+			name = str_tgt_name, 
+			source = org_chain[2], 
+			parent = ik_mstr,#ik_chain[2],
+			bone_group = 'Body: IK - IK Mechanism Bones'
+		)
+
+		str_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=str_tgt_bone.name)
 		str_bone.add_constraint(self.obj, 'LIMIT_SCALE', 
 			use_max_y = True,
 			max_y = 1.05, # TODO: How to calculate this correctly?
@@ -309,7 +311,7 @@ class Rig(CloudFKChainRig):
 		str_bone.drivers[data_path] = str_drv
 
 		if self.params.type == 'LEG':
-			self.prepare_ik_foot(tip_bone, ik_chain[-2:], org_chain[-2:])
+			self.prepare_ik_foot(self.ik_tgt_bone, ik_chain[-2:], org_chain[-2:])
 		
 		self.ik_chain = ik_chain
 
@@ -365,7 +367,7 @@ class Rig(CloudFKChainRig):
 		data_path2 = 'constraints["%s"].to_min_y' %(trans_con_name)
 		mid_str_bone.drivers[data_path2] = trans_loc_drv
 
-	def prepare_ik_foot(self, ik_mstr, ik_chain, org_chain):
+	def prepare_ik_foot(self, ik_tgt, ik_chain, org_chain):
 		ik_foot = ik_chain[0]
 		# Create ROLL control behind the foot (Limit Rotation, lock other transforms)
 		sliced_name = shared.slice_name(ik_foot.name)
@@ -377,7 +379,7 @@ class Rig(CloudFKChainRig):
 			roll = pi,
 			custom_shape = self.load_widget('FootRoll'),
 			bone_group = 'Body: Main IK Controls',
-			parent = ik_mstr
+			parent = ik_tgt
 		)
 
 		roll_ctrl.add_constraint(self.obj, 'LIMIT_ROTATION', 
@@ -401,7 +403,7 @@ class Rig(CloudFKChainRig):
 			tail = ankle_pivot.tail_local,
 			roll = pi,
 			bone_group = 'Body: IK - IK Mechanism Bones',
-			parent = ik_mstr
+			parent = ik_tgt
 		)
 
 		ankle_pivot_ctrl.add_constraint(self.obj, 'TRANSFORM',
