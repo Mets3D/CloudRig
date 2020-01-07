@@ -225,6 +225,42 @@ class Rig(CloudFKChainRig):
 			ik_mstr.flatten()
 			double_control.flatten()
 		
+		# IK Chain
+		ik_chain = []
+		org_chain = []
+		for i, bn in enumerate(chain):
+			org_bone = self.get_bone(bn)
+			org_chain.append(org_bone)
+			ik_name = bn.replace("ORG", "IK")
+			ik_bone = self.bone_infos.bone(ik_name, org_bone, 
+				#ik_stretch = 0.1,
+				bone_group = 'Body: IK - IK Mechanism Bones',
+			)
+			ik_chain.append(ik_bone)
+			
+			if i == 0:
+				# Parent first bone to the limb root
+				ik_bone.parent = self.root_bone.name
+				# Add aim constraint to pole display bone
+				pole_dsp.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=ik_bone.name, head_tail=1, track_axis='TRACK_NEGATIVE_Y')
+			else:
+				ik_bone.parent = ik_chain[-2]
+			
+			if i == 2:
+				# Create separate IK target bone
+				self.ik_tgt_bone = self.bone_infos.bone(
+					name = bn.replace("ORG", "IK-TGT"),
+					source = org_bone,
+					bone_group = 'Body: IK - IK Mechanism Bones',
+					parent = ik_mstr
+				)
+				# Add the IK constraint to the previous bone, targetting this one.
+				ik_chain[-2].add_constraint(self.obj, 'IK', 
+					pole_subtarget = pole_ctrl.name,
+					pole_angle = direction * pi/2,
+					subtarget = self.ik_tgt_bone.name
+				)
+		
 		# Stretch mechanism
 		str_name = bone_name.replace("ORG", "IK-STR")
 		str_bone = self.bone_infos.bone(
@@ -234,12 +270,30 @@ class Rig(CloudFKChainRig):
 			parent = self.root_bone.name,
 			bone_group = 'Body: IK - IK Mechanism Bones'
 		)
-		
-		str_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=ik_mstr.name)
+
+		sliced = slice_name(str_name)
+		sliced[0].append("TIP")
+		tip_name = make_name(*sliced)
+
+		tip_bone = self.bone_infos.bone(
+			name = tip_name, 
+			source = org_chain[2], 
+			parent = ik_mstr,#ik_chain[2],
+			bone_group = 'Body: IK - IK Mechanism Bones'
+		)
+
+		tip_bone.add_constraint(self.obj, 'COPY_LOCATION',
+			target = self.obj,
+			subtarget = str_bone.name,
+			head_tail = 1,
+			true_defaults=True
+		)
+
+		str_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=self.ik_tgt_bone.name)
 		str_bone.add_constraint(self.obj, 'LIMIT_SCALE', 
 			use_max_y = True,
 			max_y = 1.05, # TODO: How to calculate this correctly?
-			influence = 0 # TODO: Put a driver on this, controlled by IK Stretch switch.
+			influence = 0
 		)
 
 		str_drv = Driver()
@@ -254,52 +308,8 @@ class Rig(CloudFKChainRig):
 		
 		str_bone.drivers[data_path] = str_drv
 
-		sliced = slice_name(str_name)
-		sliced[0].append("TIP")
-		tip_name = make_name(*sliced)
-
-		# Create IK Chain
-		ik_chain = []
-		org_chain = []
-		for i, bn in enumerate(chain):
-			org_bone = self.get_bone(bn)
-			org_chain.append(org_bone)
-			ik_name = bn.replace("ORG", "IK")
-			ik_bone = self.bone_infos.bone(ik_name, org_bone, 
-				ik_stretch = 0.1,
-				bone_group = 'Body: IK - IK Mechanism Bones',
-			)
-			ik_chain.append(ik_bone)
-			
-			if i == 0:
-				# Parent first bone to the limb root
-				ik_bone.parent = self.root_bone.name
-				# Add aim constraint to pole display bone
-				pole_dsp.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=ik_bone.name, head_tail=1, track_axis='TRACK_NEGATIVE_Y')
-			else:
-				ik_bone.parent = ik_chain[-2]
-			
-			if i == 1:
-				# Add the IK constraint to the 2nd bone.
-				ik_bone.add_constraint(self.obj, 'IK', 
-					pole_subtarget = pole_ctrl.name,
-					pole_angle = direction * pi/2,
-					subtarget = tip_name
-				)
-			
-			if i == 2:
-				# Parent to IK master.
-				ik_bone.parent = ik_mstr
-
-		tip_bone = self.bone_infos.bone(
-			name = tip_name, 
-			source = org_chain[2], 
-			parent = ik_chain[2],
-			bone_group = 'Body: IK - IK Mechanism Bones'
-		)
-
 		if self.params.type == 'LEG':
-			self.prepare_ik_foot(ik_mstr, ik_chain[-2:], org_chain[-2:])
+			self.prepare_ik_foot(tip_bone, ik_chain[-2:], org_chain[-2:])
 		
 		self.ik_chain = ik_chain
 
@@ -339,7 +349,7 @@ class Rig(CloudFKChainRig):
 			tail = ankle_pivot.tail_local,
 			roll = pi,
 			bone_group = 'Body: IK - IK Mechanism Bones',
-			parent = ik_foot.parent
+			parent = ik_mstr
 		)
 
 		ankle_pivot_ctrl.add_constraint(self.obj, 'TRANSFORM',
@@ -420,7 +430,7 @@ class Rig(CloudFKChainRig):
 					"subtarget" : self.fk_chain[-2].name	# FK Foot
 				},
 				{
-					"subtarget" : ik_chain[-2].name		# IK Toe
+					"subtarget" : ik_chain[-1].name		# IK Toe
 				}
 			],
 		)
@@ -451,7 +461,9 @@ class Rig(CloudFKChainRig):
 
 		for i, org_bone in enumerate(self.org_chain):
 			ik_bone = self.bone_infos.find(org_bone.name.replace("ORG", "IK"))
-
+			if self.params.type == 'LEG' and i == len(self.org_chain)-1:
+				# Don't add IK constraint to toe bone. It should always use FK control, even in IK mode.
+				continue
 			ik_ct_name = "Copy Transforms IK"
 			ik_con = org_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=ik_bone.name, name=ik_ct_name)
 

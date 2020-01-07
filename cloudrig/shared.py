@@ -124,6 +124,7 @@ def create_parent_bone(self, child):
         custom_shape = child.custom_shape,
         custom_shape_scale = child.custom_shape_scale*1.1,
         bone_group = child.bone_group,
+        parent = child.parent,
         **self.defaults
     )
 
