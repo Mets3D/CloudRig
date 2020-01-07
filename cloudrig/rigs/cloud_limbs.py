@@ -300,7 +300,7 @@ class Rig(CloudFKChainRig):
 		str_drv.expression = "1-stretch"
 		var = str_drv.make_var("stretch")
 		var.type = 'SINGLE_PROP'
-		var.targets[0].id_type='OBJECT'
+		var.targets[0].id_type = 'OBJECT'
 		var.targets[0].id = self.obj
 		var.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ik_stretch_prop.name)
 
@@ -312,6 +312,58 @@ class Rig(CloudFKChainRig):
 			self.prepare_ik_foot(tip_bone, ik_chain[-2:], org_chain[-2:])
 		
 		self.ik_chain = ik_chain
+
+		mid_str_transform_setup(self.main_str_bones[1])
+
+	def mid_str_transform_setup(mid_str_bone):
+		""" Set up transformation constraint to mid-limb STR bone """
+		mid_str_bone = self.main_str_bones[1]
+		trans_con_name = 'Transf_IK_Stretch'
+		mid_str_bone.add_constraint(self.obj, 'TRANSFORM',
+			subtarget = 'root',
+			name = trans_con_name,
+		)
+
+		trans_drv = Driver()		# Influence driver
+		trans_drv.expression = "ik*stretch"
+		var_stretch = trans_drv.make_var("stretch")
+		var_stretch.type = 'SINGLE_PROP'
+		var_stretch.targets[0].id_type = 'OBJECT'
+		var_stretch.targets[0].id = self.obj
+		var_stretch.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ik_stretch_prop.name)
+
+		var_ik = trans_drv.make_var("ik")
+		var_ik.type = 'SINGLE_PROP'
+		var_ik.targets[0].id_type = 'OBJECT'
+		var_ik.targets[0].id = self.obj
+		var_ik.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ikfk_prop.name)
+
+		data_path = 'constraints["%s"].influence' %(trans_con_name)
+
+		mid_str_bone.drivers[data_path] = trans_drv
+
+		trans_loc_drv = Driver()
+		distance = (self.ik_tgt_bone.head - ik_chain[0].head).length
+		trans_loc_drv.expression = "max( 0, (distance-%0.4f * scale ) * (1/scale) /2 )" %(distance)
+
+		var_dist = trans_loc_drv.make_var("distance")
+		var_dist.type = 'LOC_DIFF'
+		var_dist.targets[0].id = self.obj
+		var_dist.targets[0].bone_target = self.ik_tgt_bone.name
+		var_dist.targets[0].transform_space = 'WORLD_SPACE'
+		var_dist.targets[1].id = self.obj
+		var_dist.targets[1].bone_target = ik_chain[0].name
+		var_dist.targets[1].transform_space = 'WORLD_SPACE'
+		
+		var_scale = trans_loc_drv.make_var("scale")
+		var_scale.type = 'TRANSFORMS'
+		var_scale.targets[0].id = self.obj
+		var_scale.targets[0].transform_type = 'SCALE_Y'
+		var_scale.targets[0].transform_space = 'WORLD_SPACE'
+		var_scale.targets[0].bone_target = self.fk_chain[0].name
+
+		data_path2 = 'constraints["%s"].to_min_y' %(trans_con_name)
+		mid_str_bone.drivers[data_path2] = trans_loc_drv
 
 	def prepare_ik_foot(self, ik_mstr, ik_chain, org_chain):
 		ik_foot = ik_chain[0]

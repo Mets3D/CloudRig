@@ -108,7 +108,7 @@ class Driver(ID):
 class DriverVariable(ID):
 	def __init__(self, name="var"):
 		super().__init__()
-		self.targets = [DriverVariableTarget()] * 2
+		self.targets = [DriverVariableTarget(), DriverVariableTarget()]
 		self.name = name
 		self.type = ['SINGLE_PROP', 'TRANSFORMS', 'ROTATION_DIFF', 'LOC_DIFF'][0]
 	

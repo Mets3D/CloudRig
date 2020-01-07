@@ -53,6 +53,7 @@ class CloudChainRig(CloudBaseRig):
 		# Each STR section's first and last bones act as a control for the bones inbetween them.
 		
 		### Create deform bones.
+		self.main_str_bones = []
 		self.str_bones = []
 		self.def_bones = []
 
@@ -138,7 +139,7 @@ class CloudChainRig(CloudBaseRig):
 				if i==0:
 					# Make first control bigger.
 					str_bone.custom_shape_scale *= 1.3
-				
+					self.main_str_bones.append(str_bone)
 				str_section.append(str_bone)
 			str_sections.append(str_section)
 		
