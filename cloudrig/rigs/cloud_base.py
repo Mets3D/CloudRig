@@ -195,6 +195,7 @@ class CloudBaseRig(BaseRig):
 	def organize_widgets(self):
 		# Hijack the widget collection automatically created by Rigify.
 		wgt_collection = self.generator.collection.children.get("Widgets")
+		if not wgt_collection: return #TODO: Idk why this would happen. Maybe when no widgets are created?
 		for wgt in self.widgets:
 			if wgt.name not in wgt_collection.objects:
 				wgt_collection.objects.link(wgt)

@@ -149,6 +149,20 @@ class Rig(CloudChainRig):
 
 	@stage.prepare_bones
 	def prepare_ik_spine(self):
+		""" How does BlenRig's fake-IK-spine work again?
+		We have the MSTR- controls at top level for the end points of the spine, the hip and chest.
+		Then we have IK-CTR bones parented to MSTR, that can change the curvature of the spine.
+			The last two should be parented to the chest master, and everything before that to the pelvis master.
+		There is a reverse IK-R chain that is parented to chest master and Damped Tracks to IK-CTR.
+			There is one less of these than the length of the spine chain. (This results in an awkward naming where there is no RIK-Spine1 but there is RIK-Spine2 - But for us it won't matter since we aren't doing Spine123)
+		Then there's only a the regular "IK" chain, parented to MSTR-Hips.
+		There's no way that last part can't be less confusing. Here's how it should be:
+			Damped Track to the tail of the IK-R bone 2 indices away. (I'm not sure why not the head of the IK-R bone 1 index away)
+			Copy Rotation of same index IK-CTR.
+			Copy Location to tail of IK-R bone with same index. The Influence of this constraint is driven by IK Spine Stretch setting.
+		"""
+
+
 		# Create master chest control
 		# TODO: Once again, the position of this can be arbitrary.
 		self.mstr_chest = self.bone_infos.bone(
@@ -178,14 +192,14 @@ class Rig(CloudChainRig):
 		)
 
 		self.ik_ctr_chain = []
-		for i, org_bone in enumerate(self.org_chain):
-			ik_name = org_bone.name.replace("ORG", "IK")	# Equivalent of IK-CTR bones in Rain (Technically animator-facing, but rarely used)
+		for i, fk_bone in enumerate(self.fk_chain[:-2]):
+			ik_name = fk_bone.name.replace("FK", "IK-CTR")	# Equivalent of IK-CTR bones in Rain (Technically animator-facing, but rarely used)
 			ik_bone = self.bone_infos.bone(
 				name				= ik_name, 
-				source				= org_bone,
+				source				= fk_bone,
 				**self.defaults,
 				custom_shape 		= self.load_widget("Oval"),
-				# custom_shape_scale 	= 0.9 * org_bone.custom_shape_scale,
+				# custom_shape_scale 	= 0.9 * fk_bone.custom_shape_scale,
 				#parent				= next_parent,
 				bone_group = "Body: IK - Secondary IK Controls"
 			)
