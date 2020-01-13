@@ -63,6 +63,17 @@ class Rig(CloudFKChainRig):
 		fk_hinge_name = "fk_hinge_%s_%s" %(limb, side)
 		self.fk_hinge_prop = self.prop_bone.custom_props[fk_hinge_name] = CustomProp(fk_hinge_name, default=0.0)
 
+	def get_segments(self, org_i, chain):
+		segments = self.params.deform_segments
+		bbone_segments = self.params.bbone_segments
+		
+		if self.params.type=='LEG' and org_i > len(chain)-3:
+			return (1, self.params.bbone_segments)
+		elif self.params.type=='ARM' and org_i == len(chain)-1:
+			return (1, 1)
+		
+		return(segments, bbone_segments)
+
 	@stage.prepare_bones
 	def prepare_root_bone(self):
 		# Socket/Root bone to parent IK and FK to.
