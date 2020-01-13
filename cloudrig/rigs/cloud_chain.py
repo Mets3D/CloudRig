@@ -41,6 +41,17 @@ class CloudChainRig(CloudBaseRig):
 		super().initialize()
 		"""Gather and validate data about the rig."""
 
+	def get_segments(self, org_i, chain):
+		"""Temporary way to share code between chain and fk chain rigs - TODO make this nicer."""
+		segments = self.params.deform_segments
+		bbone_segments = self.params.bbone_segments
+		
+		if (org_i == len(chain)-1) and not self.params.cap_control:
+			return (1, 1)
+		
+		return (segments, bbone_segments)
+
+
 	@stage.prepare_bones
 	def prepare_def_str_chains(self):
 		chain = self.bones.org.main[:]
@@ -59,14 +70,10 @@ class CloudChainRig(CloudBaseRig):
 
 		def_sections = []
 		for org_i, org_name in enumerate(chain):
-			segments = self.params.deform_segments
-			bbone_segments = self.params.bbone_segments
 			def_section = []
 
 			# Last bone shouldn't get segmented.
-			if (org_i == len(chain)-1) and not self.params.cap_control:
-				segments = 1
-				bbone_segments = 1
+			segments, bbone_segments = self.get_segments(org_i, chain)
 			
 			for i in range(0, segments):
 				## Deform
