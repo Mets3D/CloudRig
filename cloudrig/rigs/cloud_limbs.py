@@ -16,8 +16,6 @@
 #
 #======================= END GPL LICENSE BLOCK ========================
 
-# <pep8 compliant> (TODO: make it so)
-
 import bpy
 from bpy.props import *
 from mathutils import *
@@ -77,12 +75,15 @@ class Rig(CloudFKChainRig):
 			parent 				= self.bones.parent,
 			custom_shape 		= self.load_widget("Cube"),
 			custom_shape_scale 	= 0.5,
-			bone_group			= 'Body: IK - IK Mechanism Bones'
+			bone_group			= 'Body: IK-MCH - IK Mechanism Bones'
 		)
 
 	@stage.prepare_bones
 	def prepare_fk_limb(self):
 		# Note: This runs after super().prepare_fk_chain().
+
+		# TODO: IMPORTANT: First STR- bone needs a CounterRotate constraint (Look at STR-Upperarm1.L on Rain) (Target equivalent is ORG)
+		# TODO: Need bones to drive shape keys, such as HLP-Wrist2.L, HLP-Elbow2.L.
 
 		hng_child = self.fk_chain[0]
 		for i, fk_bone in enumerate(self.fk_chain):
@@ -185,6 +186,7 @@ class Rig(CloudFKChainRig):
 			custom_shape_scale = 0.5,
 			bone_group = 'Body: Main IK Controls'
 		)
+		# TODO: IK Pole line?? I thought I had that, but, apparently not. Also put a driver on its hide property so it's always the same as the .hide of the pole target.
 
 		pole_dsp = shared.create_dsp_bone(self, pole_ctrl)
 
@@ -234,7 +236,7 @@ class Rig(CloudFKChainRig):
 			ik_name = bn.replace("ORG", "IK")
 			ik_bone = self.bone_infos.bone(ik_name, org_bone, 
 				#ik_stretch = 0.1,
-				bone_group = 'Body: IK - IK Mechanism Bones',
+				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
 			)
 			ik_chain.append(ik_bone)
 			
@@ -252,7 +254,7 @@ class Rig(CloudFKChainRig):
 					self.ik_tgt_bone = self.bone_infos.bone(
 						name = bn.replace("ORG", "IK-TGT"),
 						source = org_bone,
-						bone_group = 'Body: IK - IK Mechanism Bones',
+						bone_group = 'Body: IK-MCH - IK Mechanism Bones',
 						parent = ik_mstr
 					)
 				else:
@@ -272,7 +274,7 @@ class Rig(CloudFKChainRig):
 			source = self.get_bone(chain[0]),
 			tail = Vector(ik_mstr.head[:]),
 			parent = self.root_bone.name,
-			bone_group = 'Body: IK - IK Mechanism Bones'
+			bone_group = 'Body: IK-MCH - IK Mechanism Bones'
 		)
 
 		self.ik_tgt_bone.add_constraint(self.obj, 'COPY_LOCATION',
@@ -288,7 +290,7 @@ class Rig(CloudFKChainRig):
 			name = str_tgt_name, 
 			source = org_chain[2], 
 			parent = ik_mstr,#ik_chain[2],
-			bone_group = 'Body: IK - IK Mechanism Bones'
+			bone_group = 'Body: IK-MCH - IK Mechanism Bones'
 		)
 
 		str_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=str_tgt_bone.name)
@@ -402,7 +404,7 @@ class Rig(CloudFKChainRig):
 			head = ankle_pivot.head_local,
 			tail = ankle_pivot.tail_local,
 			roll = pi,
-			bone_group = 'Body: IK - IK Mechanism Bones',
+			bone_group = 'Body: IK-MCH - IK Mechanism Bones',
 			parent = ik_tgt
 		)
 
@@ -422,7 +424,7 @@ class Rig(CloudFKChainRig):
 				head = b.tail.copy(),
 				tail = b.head.copy(),
 				parent = ankle_pivot_ctrl,
-				bone_group = 'Body: IK - IK Mechanism Bones'
+				bone_group = 'Body: IK-MCH - IK Mechanism Bones'
 			)
 			rik_chain.append(rik_bone)
 			ik_chain[i].parent = rik_bone

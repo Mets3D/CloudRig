@@ -81,6 +81,12 @@ class Rig(CloudChainRig):
 	def initialize(self):
 		"""Gather and validate data about the rig."""
 		super().initialize()
+		
+		ik_name = "ik_spine"
+		self.ik_prop = self.prop_bone.custom_props[ik_name] = CustomProp(ik_name, default=0.0)
+
+		ik_stretch_name = "ik_stretch_spine"
+		self.ik_stretch_prop = self.prop_bone.custom_props[ik_stretch_name] = CustomProp(ik_stretch_name, default=0.0)
 
 	@stage.prepare_bones
 	def prepare_fk_spine(self):
@@ -107,7 +113,7 @@ class Rig(CloudChainRig):
 		for i, org_bone in enumerate(self.org_chain):
 			fk_name = org_bone.name.replace("ORG", "FK")
 			fk_bone = self.bone_infos.bone(
-				name				= fk_name, 
+				name				= fk_name,
 				source				= org_bone,
 				**self.defaults,
 				custom_shape 		= self.load_widget("FK_Limb"),
@@ -123,7 +129,8 @@ class Rig(CloudChainRig):
 				# Shift FK controls up to the center of their ORG bone
 				org_bone = self.org_chain[i]
 				fk_bone.put(org_bone.center)
-				fk_bone.flatten()
+				fk_bone.tail = self.org_chain[i+1].center
+				#fk_bone.flatten()
 
 				# Create a child corrective - Everything that would normally be parented to this FK bone should actually be parented to this child bone.
 				fk_child_bone = self.bone_infos.bone(
@@ -150,25 +157,23 @@ class Rig(CloudChainRig):
 	@stage.prepare_bones
 	def prepare_ik_spine(self):
 		""" How does BlenRig's fake-IK-spine work again?
-		We have the MSTR- controls at top level for the end points of the spine, the hip and chest.
-		Then we have IK-CTR bones parented to MSTR, that can change the curvature of the spine.
-			The last two should be parented to the chest master, and everything before that to the pelvis master.
-		There is a reverse IK-R chain that is parented to chest master and Damped Tracks to IK-CTR.
-			There is one less of these than the length of the spine chain. (This results in an awkward naming where there is no RIK-Spine1 but there is RIK-Spine2 - But for us it won't matter since we aren't doing Spine123)
-		Then there's only a the regular "IK" chain, parented to MSTR-Hips.
-		There's no way that last part can't be less confusing. Here's how it should be:
-			Damped Track to the tail of the IK-R bone 2 indices away. (I'm not sure why not the head of the IK-R bone 1 index away)
-			Copy Rotation of same index IK-CTR.
-			Copy Location to tail of IK-R bone with same index. The Influence of this constraint is driven by IK Spine Stretch setting.
+	V	We have the MSTR- controls at top level for the end points of the spine, the hip and chest.
+	V	Then we have IK-CTR bones parented to MSTR, that can change the curvature of the spine.
+	V		The last two should be parented to the chest master, and everything before that to the pelvis master.
+	V	There is a reverse IK-R chain that is parented to chest master and Damped Tracks to IK-CTR.
+	V		There is one less of these than the length of the spine chain. (This results in an awkward naming where there is no RIK-Spine1 but there is RIK-Spine2 - But for us it won't matter since we aren't doing Spine123)
+	V	Then there's the regular "IK" chain, parented to MSTR-Hips.
+	V		Damped Track to the tail of the IK-R bone 2 indices away. (I'm not sure why not the head of the IK-R bone 1 index away)
+	V		Copy Rotation of same index IK-CTR.
+	TODO	Copy Location to tail of IK-R bone with same index. The Influence of this constraint is driven by IK Spine Stretch setting.
 		"""
-
 
 		# Create master chest control
 		# TODO: Once again, the position of this can be arbitrary.
 		self.mstr_chest = self.bone_infos.bone(
 				name				= "MSTR-Chest", 
-				head				= self.org_chain[-3].head,
-				tail 				= self.org_chain[-3].head + Vector((0, 0, 0.1)),
+				head				= self.org_chain[-4].center,
+				tail 				= self.org_chain[-4].center + Vector((0, 0, 0.1)),
 				**self.defaults,
 				custom_shape 		= self.load_widget("Chest_Master"),
 				custom_shape_scale 	= 0.7,
@@ -181,7 +186,7 @@ class Rig(CloudChainRig):
 		
 		# Create master (reverse) hip control
 		self.mstr_hips = self.bone_infos.bone(
-				name				= "MSTR-Hips", 
+				name				= "MSTR-Hips",
 				head				= self.org_chain[0].center,
 				tail 				= self.org_chain[0].center + Vector((0, 0, -0.1)),
 				**self.defaults,
@@ -193,17 +198,72 @@ class Rig(CloudChainRig):
 
 		self.ik_ctr_chain = []
 		for i, fk_bone in enumerate(self.fk_chain[:-2]):
-			ik_name = fk_bone.name.replace("FK", "IK-CTR")	# Equivalent of IK-CTR bones in Rain (Technically animator-facing, but rarely used)
-			ik_bone = self.bone_infos.bone(
-				name				= ik_name, 
+			ik_ctr_name = fk_bone.name.replace("FK", "IK-CTR")	# Equivalent of IK-CTR bones in Rain (Technically animator-facing, but rarely used)
+			ik_ctr_bone = self.bone_infos.bone(
+				name				= ik_ctr_name, 
 				source				= fk_bone,
+				only_transform=True,
 				**self.defaults,
 				custom_shape 		= self.load_widget("Oval"),
 				# custom_shape_scale 	= 0.9 * fk_bone.custom_shape_scale,
-				#parent				= next_parent,
+				# parent				= next_parent,
 				bone_group = "Body: IK - Secondary IK Controls"
 			)
-			self.ik_ctr_chain.append(ik_bone)
+			if i > len(self.fk_chain)-5:
+				ik_ctr_bone.parent = self.mstr_chest
+			else:
+				ik_ctr_bone.parent = self.mstr_torso
+			self.ik_ctr_chain.append(ik_ctr_bone)
+		
+		# Reverse IK (IK-R) chain - root parented to MSTR-Chest. Damped track to IK-CTR of one lower index.
+		next_parent = self.mstr_chest
+		self.ik_r_chain = []
+		for i, fk_bone in enumerate(reversed(self.fk_chain[1:-2])):	# We skip the first spine, the neck and the head.
+			ik_r_name = fk_bone.name.replace("FK", "IK-R")
+			ik_r_bone = self.bone_infos.bone(
+				name		= ik_r_name,
+				head 		= fk_bone.head,
+				tail 		= self.fk_chain[-i+1].head,
+				parent		= next_parent,
+				bone_group = 'Body: IK-MCH - IK Mechanism Bones'
+			)
+			next_parent = ik_r_bone
+			self.ik_r_chain.append(ik_r_bone)
+			ik_r_bone.add_constraint(self.obj, 'DAMPED_TRACK',
+				subtarget = self.ik_ctr_chain[-i+1].name
+			)
+		
+		next_parent = self.mstr_hips
+		self.ik_chain = []
+		for i, fk_bone in enumerate(self.fk_chain[:-2]):
+			ik_name = fk_bone.name.replace("FK", "IK")
+			ik_bone = self.bone_infos.bone(
+				name = ik_name,
+				head = self.fk_chain[i-1].head if i>0 else self.def_bones[0].head,
+				tail = fk_bone.head,
+				parent = next_parent,
+				bone_group = 'Body: IK-MCH - IK Mechanism Bones'
+			)
+			self.ik_chain.append(ik_bone)
+			next_parent = ik_bone
+			damped_track_target = self.ik_r_chain[-i+1].name
+			if i == len(self.fk_chain)-3:
+				damped_track_target = self.ik_ctr_chain[-1].name
+				self.mstr_chest.custom_shape_transform = ik_bone
+				if self.params.double_controls:
+					self.mstr_chest.parent.custom_shape_transform = ik_bone
+			
+			if i > 0:
+				ik_bone.add_constraint(self.obj, 'COPY_ROTATION', true_defaults=True,
+					target = self.obj,
+					subtarget = self.ik_ctr_chain[i-1].name
+				)
+				self.ik_ctr_chain[i-1].custom_shape_transform = ik_bone
+			
+			ik_bone.add_constraint(self.obj, 'DAMPED_TRACK',
+				subtarget = damped_track_target,
+				head_tail = 1
+			)
 
 	@stage.prepare_bones
 	def prepare_def_str_spine(self):
@@ -227,8 +287,18 @@ class Rig(CloudChainRig):
 
 	@stage.prepare_bones
 	def prepare_org_spine(self):
+		# I guess we have three ways to do IK:
+		# 	an Armature constraint on the ORG bones that switches parenting between IK and FK.
+		#		Can't drive shape keys with anything pretty much.
+		#	Another layer of bones before ORG, that ORG is parented to, and that Copy Transformses between IK and FK.
+		#		Drive shape keys with rotation of that extra layer
+		#	FK Follows IK with Copy Transforms (same as Rain)
+		#		Drive shape keys with FK bone rotation
+		#		Let's do this one for now.
+
 		# Parent ORG to FK
 		for i, org_bone in enumerate(self.org_chain):
+			org_bone.constraints = []	# TODO: Why is this needed??? Without this, the first two Spine ORG bones get a Copy Transforms constraint...!? Why!?
 			parent = None
 			if i == 0:
 				org_bone.parent = self.mstr_hips
@@ -239,6 +309,15 @@ class Rig(CloudChainRig):
 				org_bone.parent = self.fk_chain[i-1].fk_child
 			else:
 				org_bone.parent = self.fk_chain[i-1]
+		
+		# Attach FK to IK
+		for i, ik_bone in enumerate(self.ik_chain[1:]):
+			fk_bone = self.fk_chain[i]
+			fk_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True,
+				target = self.obj,
+				subtarget = ik_bone.name
+			)
+			#TODO: Driver.
 
 	##############################
 	# Parameters
