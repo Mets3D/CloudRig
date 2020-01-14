@@ -118,7 +118,6 @@ class CloudBaseRig(BaseRig):
 
 	def prepare_bone_groups(self):
 		# Wipe any existing bone groups.
-		# TODO this might work poorly when there's more than one type of CloudRig element in a rig.
 		for bone_group in self.obj.pose.bone_groups:
 			self.obj.pose.bone_groups.remove(bone_group)
 
@@ -139,10 +138,9 @@ class CloudBaseRig(BaseRig):
 	def load_org_bones(self):
 		# Load ORG bones into BoneInfo instances.
 		self.org_chain = []
-		for bn in self.bones.org.main:	# Make sure we don't iterate through the parent bone. This rig should never define a BoneInfo instance for its parent!
+		for bn in self.bones.org.main:	# NOTE: Make sure we don't define the parent bone. This rig should never define a BoneInfo instance for its parent!
 			eb = self.get_bone(bn)
 			eb.use_connect = False
-			if not eb: continue	# TODO: I don't know why this is necessary - I think it used to error when we used bones.flatten() and bones.parent was None.
 			org_bi = self.bone_infos.bone(bn, eb, self.obj)
 			self.org_chain.append(org_bi)
 
@@ -182,10 +180,9 @@ class CloudBaseRig(BaseRig):
 			bd.write_pose_data(pose_bone)
 
 	def apply_bones(self):
-		#TODO: This can be done via self.generator.disable_auto_parent(bone_name) - I'm just not sure at what stage to run it, since we need a stage after constraints are applied but before this parenting is done by Rigify.
-
-		# In a previous stage, Rigify automatically parents bones that have no parent to the root bone.
-		# We want to undo this when the bone has an Armature constraint, since such bones should never have a parent.
+		# Rigify automatically parents bones that have no parent to the root bone.
+		# This is fine, but we want to undo this when the bone has an Armature constraint, since such bones should never have a parent.
+		# NOTE: This could be done via self.generator.disable_auto_parent(bone_name), but I prefer doing it this way.
 		for eb in self.obj.data.edit_bones:
 			pb = self.obj.pose.bones.get(eb.name)
 			for c in pb.constraints:
@@ -197,7 +194,9 @@ class CloudBaseRig(BaseRig):
 	def organize_widgets(self):
 		# Hijack the widget collection automatically created by Rigify.
 		wgt_collection = self.generator.collection.children.get("Widgets")
-		if not wgt_collection: return #TODO: Idk why this would happen. Maybe when no widgets are created?
+		if not wgt_collection: 
+			print("WARNING: Could not find Widgets collection.")
+			return
 		for wgt in self.widgets:
 			if wgt.name not in wgt_collection.objects:
 				wgt_collection.objects.link(wgt)

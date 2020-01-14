@@ -83,7 +83,7 @@ class CloudChainRig(CloudBaseRig):
 				def_name = make_name(sliced[0], sliced[1] + number, sliced[2])
 
 				# Move head and tail into correct places
-				org_bone = self.get_bone(org_name)	# TODO: Using BoneInfoContainer.bone() breaks stuff, why?
+				org_bone = self.get_bone(org_name)
 				org_vec = org_bone.tail-org_bone.head
 				unit = org_vec / segments
 
@@ -246,8 +246,6 @@ class CloudChainRig(CloudBaseRig):
 			description="BBone EaseIn/Out is set to 0 for controls connectiong two chain sections",
 			default=True
 		)
-		# TODO: Not sure if this is a good idea yet. I guess we don't want to use this in cases where we want to connect another chain to this one.
-		# Current use case idea is for the spine/head, where we want the final control for the head to exist. Also for a generic chain like a ponytail or a scarf.
 		params.cap_control = BoolProperty(
 			name="Final Control",
 			description="Add the final control at the end of the chain (Turn off if you connect another chain to this one)",
