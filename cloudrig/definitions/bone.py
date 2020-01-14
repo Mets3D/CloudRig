@@ -469,9 +469,6 @@ class BoneInfo(ID):
 			prop.make_real(pose_bone)
 		
 		# Bone Property Drivers.
-		print(pose_bone)
-		print(pose_bone.name)
-		print(self.drivers)
 		for path, d in self.drivers.items():
 			driv = d.make_real(pose_bone.id_data, 'pose.bones["%s"].%s' %(pose_bone.name, path) )
 	

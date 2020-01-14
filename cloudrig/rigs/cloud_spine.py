@@ -192,7 +192,7 @@ class Rig(CloudChainRig):
 			ik_name = fk_bone.name.replace("FK", "IK")
 			ik_bone = self.bone_infos.bone(
 				name = ik_name,
-				head = self.fk_chain[i-1].head if i>0 else self.def_bones[0].head,
+				head = copy.copy(self.fk_chain[i-1].head) if i>0 else copy.copy(self.def_bones[0].head),
 				tail = fk_bone.head,
 				parent = next_parent,
 				bone_group = 'Body: IK-MCH - IK Mechanism Bones'
@@ -207,15 +207,25 @@ class Rig(CloudChainRig):
 					self.mstr_chest.parent.custom_shape_transform = ik_bone
 			
 			if i > 0:
-				influence_unit = 1 / len(self.ik_chain)
+				influence_unit = 0.5   #1 / (len(self.fk_chain) - 3)	# Minus three because there are no IK bones for the head and neck, and no stretchy constraint on the first IK spine bone.
+				influence = influence_unit * i
 				# IK Stretch Copy Location
 				ik_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True,
 					name = "Copy Location (Stretchy Spine)",
 					target = self.obj,
 					subtarget = self.ik_r_chain[i-2].name,
 					head_tail = 1,
-					influence = influence_unit * i #TODO: IK Stretch property & Driver
 				)
+				drv = Driver()
+				drv.expression = "var * %f" %influence
+				var = drv.make_var("var")
+				var.type = 'SINGLE_PROP'
+				var.targets[0].id_type='OBJECT'
+				var.targets[0].id = self.obj
+				var.targets[0].data_path = 'pose.bones["%s"]["%s"]' %(self.prop_bone.name, self.ik_stretch_prop.name)
+
+				data_path = 'constraints["Copy Location (Stretchy Spine)"].influence'
+				ik_bone.drivers[data_path] = drv
 
 				ik_bone.add_constraint(self.obj, 'COPY_ROTATION', true_defaults=True,
 					target = self.obj,
@@ -232,7 +242,7 @@ class Rig(CloudChainRig):
 		for i, ik_bone in enumerate(self.ik_chain[1:]):
 			fk_bone = self.fk_chain[i]
 			fk_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True,
-				name = "Copy Transforms",
+				name = "Copy Transforms IK",
 				target = self.obj,
 				subtarget = ik_bone.name
 			)
@@ -244,10 +254,7 @@ class Rig(CloudChainRig):
 			var.targets[0].id = self.obj
 			var.targets[0].data_path = 'pose.bones["%s"]["%s"]' %(self.prop_bone.name, self.ik_prop.name)
 
-			data_path = 'constraints["Copy Transforms"].influence'
-			print("FK BONE")
-			print(fk_bone)
-			print(fk_bone.name)
+			data_path = 'constraints["Copy Transforms IK"].influence'
 			fk_bone.drivers[data_path] = drv
 
 	@stage.prepare_bones
