@@ -194,6 +194,11 @@ class BoneInfo(ID):
 			self.roll = source.roll
 			self.bbone_x = source.bbone_x
 			self.bbone_z = source.bbone_z
+			if source.parent:
+				if type(source)==bpy.types.EditBone:
+					self.parent = source.parent.name
+				else:
+					self.parent = source.parent 
 		
 		# Apply property values from container's defaults
 		for key, value in self.container.defaults.items():

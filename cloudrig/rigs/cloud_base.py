@@ -72,7 +72,7 @@ class CloudBaseRig(BaseRig):
 			"bbone_x" : 0.05,
 			"bbone_z" : 0.05,
 			"rotation_mode" : "XYZ",
-			"use_custom_shape_bone_size" : False#True
+			#"use_custom_shape_bone_size" : False#True
 		}
 		# Bone Info container used for storing new bone info created by the script.
 		self.bone_infos = BoneInfoContainer(self.obj, self.defaults)
@@ -142,6 +142,13 @@ class CloudBaseRig(BaseRig):
 			eb = self.get_bone(bn)
 			eb.use_connect = False
 			org_bi = self.bone_infos.bone(bn, eb, self.obj)
+			
+			# Rigify discards the bbone scale values from the metarig, but I'd like to keep them for easy visual scaling.
+			meta_org_name = eb.name.replace("ORG-", "")
+			meta_org = self.generator.metarig.pose.bones.get(meta_org_name)
+			org_bi.bbone_x = meta_org.bone.bbone_x / self.display_scale
+			org_bi.bbone_z = meta_org.bone.bbone_z / self.display_scale
+
 			self.org_chain.append(org_bi)
 
 	def generate_bones(self):
@@ -238,3 +245,6 @@ class CloudBaseRig(BaseRig):
 		""" Create the ui for the rig parameters.
 		"""
 		layout.prop(params, "display_scale")
+
+class Rig(CloudBaseRig):
+	pass	# For testing purposes

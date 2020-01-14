@@ -51,7 +51,6 @@ class CloudChainRig(CloudBaseRig):
 		
 		return (segments, bbone_segments)
 
-
 	@stage.prepare_bones
 	def prepare_def_str_chains(self):
 		chain = self.bones.org.main[:]

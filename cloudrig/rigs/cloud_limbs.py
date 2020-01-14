@@ -182,17 +182,32 @@ class Rig(CloudFKChainRig):
 
 		# Create IK Pole Control
 		first_bn = chain[0]
-		head = Vector( self.get_bone(chain[0]).tail[:] )
+		first_bone = self.get_bone(chain[0])
+		elbow = copy.copy(first_bone.tail)
 		direction = 1 if limb_type=='ARM' else -1
-		offset = Vector((0, direction*self.scale*3, 0))
+		offset_scale = 3 if limb_type=='ARM' else 6
+		offset = Vector((0, direction*offset_scale*self.scale, 0))
 		pole_ctrl = self.bone_infos.bone(
 			name = "IK-POLE-" + limb_type.capitalize() + self.side_suffix,
-			head = head + offset,
-			tail = head + offset*1.1,
+			head = elbow + offset,
+			tail = elbow + offset*1.1,
 			roll = 0,
 			custom_shape = self.load_widget('ArrowHead'),
 			custom_shape_scale = 0.5,
-			bone_group = 'Body: Main IK Controls'
+			bone_group = 'Body: Main IK Controls',
+		)
+		pole_line = self.bone_infos.bone(
+			name = "IK-POLE-LINE" + limb_type.capitalize() + self.side_suffix,
+			head = pole_ctrl.head,
+			tail = elbow,
+			custom_shape = self.load_widget('Pole_Line'),
+			use_custom_shape_bone_size = True,
+			parent = pole_ctrl,
+			bone_group = 'Body: Main IK Controls',
+		)
+		pole_line.add_constraint(self.obj, 'STRETCH_TO', 
+			subtarget = first_bone.name, 
+			head_tail = 1,
 		)
 		
 		pole_dsp = shared.create_dsp_bone(self, pole_ctrl)
