@@ -173,7 +173,6 @@ class CloudChainRig(CloudBaseRig):
 				str_h_bone = self.bone_infos.bone(
 					name = str_bone.name.replace("STR-", "STR-H-"),
 					source = str_bone,
-					only_transform = True,
 					bone_group = 'Body: STR-H - Stretch Helpers',
 					parent = str_bone.parent
 				)

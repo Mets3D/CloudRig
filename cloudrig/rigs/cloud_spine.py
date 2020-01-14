@@ -79,6 +79,7 @@ class Rig(CloudChainRig):
 			fk_bone = self.bone_infos.bone(
 				name				= fk_name,
 				source				= org_bone,
+				only_transform 		= True,
 				**self.defaults,
 				custom_shape 		= self.load_widget("FK_Limb"),
 				custom_shape_scale 	= 0.9 * org_bone.custom_shape_scale,
@@ -227,12 +228,34 @@ class Rig(CloudChainRig):
 				head_tail = 1
 			)
 
+		# Attach FK to IK
+		for i, ik_bone in enumerate(self.ik_chain[1:]):
+			fk_bone = self.fk_chain[i]
+			fk_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True,
+				name = "Copy Transforms",
+				target = self.obj,
+				subtarget = ik_bone.name
+			)
+			drv = Driver()
+			drv.expression = "var"
+			var = drv.make_var("var")
+			var.type = 'SINGLE_PROP'
+			var.targets[0].id_type='OBJECT'
+			var.targets[0].id = self.obj
+			var.targets[0].data_path = 'pose.bones["%s"]["%s"]' %(self.prop_bone.name, self.ik_prop.name)
+
+			data_path = 'constraints["Copy Transforms"].influence'
+			print("FK BONE")
+			print(fk_bone)
+			print(fk_bone.name)
+			fk_bone.drivers[data_path] = drv
+
 	@stage.prepare_bones
 	def prepare_def_str_spine(self):
 		# Tweak some display things
 		for i, str_bone in enumerate(self.str_bones):
-			str_bone.use_custom_shape_bone_size = True
-			str_bone.custom_shape_scale = 1.5
+			str_bone.use_custom_shape_bone_size = False
+			str_bone.custom_shape_scale = 0.15
 		
 		for i, def_bone in enumerate(self.def_bones):
 			if i == len(self.def_bones)-2:
@@ -246,7 +269,6 @@ class Rig(CloudChainRig):
 
 		# Parent ORG to FK
 		for i, org_bone in enumerate(self.org_chain):
-			org_bone.constraints = []	# TODO: Why is this needed??? Without this, the first two Spine ORG bones get a Copy Transforms constraint...!? Why!?
 			parent = None
 			if i == 0:
 				org_bone.parent = self.mstr_hips
@@ -257,15 +279,6 @@ class Rig(CloudChainRig):
 				org_bone.parent = self.fk_chain[i-1].fk_child
 			else:
 				org_bone.parent = self.fk_chain[i-1]
-		
-		# Attach FK to IK
-		for i, ik_bone in enumerate(self.ik_chain[1:]):
-			fk_bone = self.fk_chain[i]
-			fk_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True,
-				target = self.obj,
-				subtarget = ik_bone.name
-			)
-			#TODO: Driver.
 
 	##############################
 	# Parameters

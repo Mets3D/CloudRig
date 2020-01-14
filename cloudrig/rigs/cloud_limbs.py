@@ -82,7 +82,6 @@ class Rig(CloudFKChainRig):
 		self.root_bone = self.bone_infos.bone(
 			name 				= root_name, 
 			source 				= base_bone, 
-			only_transform 		= True, 
 			parent 				= self.bones.parent,
 			custom_shape 		= self.load_widget("Cube"),
 			custom_shape_scale 	= 0.5,
@@ -123,7 +122,6 @@ class Rig(CloudFKChainRig):
 					fk_child_bone = self.bone_infos.bone(
 						name = fk_name,
 						source = fk_bone,
-						only_transform = True,
 						parent = fk_bone,
 						#custom_shape = self.load_widget("FK_Limb"),
 						custom_shape_scale = 0.5,
@@ -140,7 +138,6 @@ class Rig(CloudFKChainRig):
 		hng_bone = self.bone_infos.bone(
 			name			= self.base_bone.replace("ORG", "FK-HNG"), # Name it after the first bone in the chain.
 			source			= hng_child, 
-			only_transform	= True,
 			bone_group 		= 'Body: FK Helper Bones',
 		)
 		hng_child.parent = hng_bone

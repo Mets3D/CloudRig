@@ -179,6 +179,11 @@ class CloudBaseRig(BaseRig):
 			if not bd.use_custom_shape_bone_size:
 				bd.custom_shape_scale *= self.display_scale
 
+			print("")
+			print("HELLO")
+			print(bd)
+			print(bd.name)
+			print(bd.drivers)
 			bd.write_pose_data(pose_bone)
 
 	def apply_bones(self):

@@ -117,8 +117,13 @@ class BoneInfoContainer(ID):
 
 class BoneInfo(ID):
 	"""Container of all info relating to a Bone."""
-	def __init__(self, container, name="Bone", source=None, armature=None, only_transform=False, **kwargs):
-		# Need a reference to what BoneInfoContainer this BoneInfo belongs to.
+	def __init__(self, container, name="Bone", source=None, armature=None, **kwargs):
+		""" 
+		container: Need a reference to what BoneInfoContainer this BoneInfo belongs to.
+		source:	Bone to take transforms from (head, tail, roll, bbone_x, bbone_z).
+		kwargs: Allow setting arbitrary bone properties at initialization.
+		"""
+		
 		self.container = container
 
 		### The following dictionaries store pure information, never references to the real thing. ###
@@ -183,18 +188,12 @@ class BoneInfo(ID):
 
 		self.custom_shape_transform = None # Bone name
 		
-		if only_transform:
-			assert source, "If only_transform==True, source cannot be None!"
-			self.head=copy.copy(source.head)
-			self.tail=copy.copy(source.tail)
-			self.roll=source.roll
-			self.bbone_x=source.bbone_x
-			self.bbone_z=source.bbone_z
-		else:	# TODO: These probably don't work properly.
-			if(source and type(source)==BoneInfo):
-				self.copy_info(source)
-			elif(source and type(source)==bpy.types.EditBone):
-				self.copy_bone(armature, source)
+		if source:
+			self.head = copy.copy(source.head)
+			self.tail = copy.copy(source.tail)
+			self.roll = source.roll
+			self.bbone_x = source.bbone_x
+			self.bbone_z = source.bbone_z
 		
 		# Apply property values from container's defaults
 		for key, value in self.container.defaults.items():
@@ -470,6 +469,9 @@ class BoneInfo(ID):
 			prop.make_real(pose_bone)
 		
 		# Bone Property Drivers.
+		print(pose_bone)
+		print(pose_bone.name)
+		print(self.drivers)
 		for path, d in self.drivers.items():
 			driv = d.make_real(pose_bone.id_data, 'pose.bones["%s"].%s' %(pose_bone.name, path) )
 	
