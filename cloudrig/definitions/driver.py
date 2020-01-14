@@ -123,7 +123,6 @@ class DriverVariable(ID):
 			new.targets[i].data_path = self.targets[i].data_path
 			new.targets[i].transform_type = self.targets[i].transform_type
 			new.targets[i].transform_space = self.targets[i].transform_space
-			new.targets[i].transform_space = self.targets[i].transform_space
 			new.targets[i].rotation_mode = self.targets[i].rotation_mode
 		return new
 	
@@ -131,8 +130,9 @@ class DriverVariable(ID):
 		"""Add this variable to a driver."""
 		BPY_d_var = BPY_driver.variables.new()
 		super().make_real(BPY_d_var)
-		for i, t in enumerate(self.targets):
-			t.make_real(BPY_d_var, i)
+		self.targets[0].make_real(BPY_d_var, 0)
+		if self.type in ['ROTATION_DIFF', 'LOC_DIFF']:
+			self.targets[1].make_real(BPY_d_var, 1)
 
 class DriverVariableTarget(ID):
 	def __init__(self):
@@ -147,6 +147,17 @@ class DriverVariableTarget(ID):
 
 	def make_real(self, BPY_variable, index):
 		"""Set this target on a variable."""
+		BPY_target = BPY_variable.targets[0]
+		if BPY_variable.type == 'SINGLE_PROP':
+			BPY_target.id_type = self.id_type
+		BPY_target.id = self.id
+		BPY_target.bone_target = self.bone_target
+		BPY_target.data_path = self.data_path
+		BPY_target.transform_type = self.transform_type
+		BPY_target.transform_space = self.transform_space
+		#BPY_target.rotation_mode = self.rotaion_mode
+		return
+
 		skip = []
 		if BPY_variable.type != 'SINGLE_PROP':
 			skip = ['id_type']

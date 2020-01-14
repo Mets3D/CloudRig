@@ -197,7 +197,7 @@ class Rig(CloudFKChainRig):
 			bone_group = 'Body: Main IK Controls',
 		)
 		pole_line = self.bone_infos.bone(
-			name = "IK-POLE-LINE" + limb_type.capitalize() + self.side_suffix,
+			name = "IK-POLE-LINE-" + limb_type.capitalize() + self.side_suffix,
 			head = pole_ctrl.head,
 			tail = elbow,
 			custom_shape = self.load_widget('Pole_Line'),
@@ -209,6 +209,16 @@ class Rig(CloudFKChainRig):
 			subtarget = first_bone.name, 
 			head_tail = 1,
 		)
+		# Add a driver to the Line's hide property so it's hidden exactly when the pole target is hidden.
+		drv = Driver()
+		var = drv.make_var("var")
+		var.type = 'SINGLE_PROP'
+		var.targets[0].id_type = 'ARMATURE'
+		var.targets[0].id = self.obj.data
+		var.targets[0].data_path = 'bones["%s"].hide' %pole_ctrl.name
+
+		pole_line.bone_drivers['hide'] = drv
+		pole_line.hide_select=True
 		
 		pole_dsp = shared.create_dsp_bone(self, pole_ctrl)
 

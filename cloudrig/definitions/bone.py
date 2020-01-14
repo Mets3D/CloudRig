@@ -133,6 +133,7 @@ class BoneInfo(ID):
 		self.custom_props_edit = {}
 		# data_path:Driver dictionary, where data_path is from the bone. Only for drivers that are directly on a bone property! Not a sub-ID like constraints.
 		self.drivers = {}
+		self.bone_drivers = {}
 
 		# List of (Type, attribs{}) tuples where attribs{} is a dictionary with the attributes of the constraint.
 		# "drivers" is a valid attribute which expects the same content as self.drivers, and it holds the constraints for constraint properties.
@@ -473,10 +474,19 @@ class BoneInfo(ID):
 		for key, prop in self.custom_props.items():
 			prop.make_real(pose_bone)
 		
-		# Bone Property Drivers.
+		# Pose Bone Property Drivers.
 		for path, d in self.drivers.items():
-			driv = d.make_real(pose_bone.id_data, 'pose.bones["%s"].%s' %(pose_bone.name, path) )
+			data_path = 'pose.bones["%s"].%s' %(pose_bone.name, path)
+			driv = d.make_real(pose_bone.id_data, data_path)
 	
+		# Data Bone Property Drivers.
+		for path, d in self.bone_drivers.items():
+			#HACK: If we want to add drivers to bone properties that are shared between pose and edit mode, they aren't stored under armature.pose.bones[0].property but instead armature.bones[0].property... The entire way we handle drivers should be scrapped tbh. :P
+			# But scrapping that requires scrapping the way we handle bones, so... just keep making it work.
+			data_path = 'bones["%s"].%s' %(pose_bone.name, path)
+			driv = d.make_real(pose_bone.id_data.data, data_path)
+			
+
 	def make_real(self, armature):
 		# Create a single bone and its constraints. Needs to switch between object modes.
 		# It is preferred to create bones in bulk via BoneDataContainer.create_all_bones().
