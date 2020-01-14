@@ -194,8 +194,7 @@ class Rig(CloudFKChainRig):
 			custom_shape_scale = 0.5,
 			bone_group = 'Body: Main IK Controls'
 		)
-		# TODO: IK Pole line?? I thought I had that, but, apparently not. Also put a driver on its hide property so it's always the same as the .hide of the pole target.
-
+		
 		pole_dsp = shared.create_dsp_bone(self, pole_ctrl)
 
 		def foot_dsp(bone):
@@ -227,7 +226,7 @@ class Rig(CloudFKChainRig):
 		# Parent control
 		double_control = None
 		if self.params.double_ik_control:
-			double_control = shared.create_parent_bone(self, ik_mstr)	# TODO: Test that this works, check other uses of create_parent_bone, make sure it's a good idea to use here.
+			double_control = shared.create_parent_bone(self, ik_mstr)
 			double_control.bone_group = 'Body: Main IK Controls Extra Parents'
 			foot_dsp(double_control)
 		
@@ -301,10 +300,12 @@ class Rig(CloudFKChainRig):
 			bone_group = 'Body: IK-MCH - IK Mechanism Bones'
 		)
 
+		arm_length = ik_chain[0].length + ik_chain[1].length
+		length_factor = arm_length / str_bone.length
 		str_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=str_tgt_bone.name)
 		str_bone.add_constraint(self.obj, 'LIMIT_SCALE', 
 			use_max_y = True,
-			max_y = 1.05, # TODO: How to calculate this correctly?
+			max_y = length_factor,
 			influence = 0
 		)
 

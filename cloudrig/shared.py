@@ -131,9 +131,8 @@ def create_parent_bone(self, child):
     child.parent = parent_bone
     return parent_bone
 
-# DSP bones - Display bones at the mid-point of each bone to use as display transforms for FK.
 def create_dsp_bone(self, parent, center=False):
-    """If Display Centered rig option is enabled, we want certain controls to display in the center of the bone rather than at the head."""
+    """Create a bone to be used as another control's custom_shape_transform."""
     if not self.params.display_middle: return   # TODO: This check shouldn't be in this function.
     dsp_name = "DSP-" + parent.name
     dsp_bone = self.bone_infos.bone(

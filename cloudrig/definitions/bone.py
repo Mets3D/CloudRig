@@ -231,7 +231,7 @@ class BoneInfo(ID):
 
 	@property
 	def length(self):
-		return (self.tail-self.head).size
+		return (self.tail-self.head).length
 
 	@length.setter
 	def length(self, value):
