@@ -151,10 +151,12 @@ class CloudBaseRig(BaseRig):
 		root_bone.bbone_x = self.scale/10
 		root_bone.bbone_z = self.scale/10
 
-		#self.apply_custom_props()
-		
 		for bd in self.bone_infos.bones:
-			if bd.name not in self.obj.data.edit_bones and bd.name not in self.bones.flatten() and bd.name!='root':
+			if (
+				bd.name not in self.obj.data.edit_bones and
+				bd.name not in self.bones.flatten() and
+				bd.name != 'root'
+			):
 				bone_name = self.new_bone(bd.name)
 	
 	def parent_bones(self):

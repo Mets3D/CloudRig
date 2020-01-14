@@ -115,17 +115,13 @@ class CloudChainRig(CloudBaseRig):
 				def_section.append(def_bone)
 			def_sections.append(def_section)
 
-		def make_str_bone(def_bone, name=None, head=None, tail=None):
+		def make_str_bone(def_bone, name=None):
 			if not name:
 				name = def_bone.name.replace("DEF", "STR")
-			if not head:
-				head = def_bone.head
-			if not tail:
-				tail = def_bone.tail
 			str_bone = self.bone_infos.bone(
 				name = name,
-				head = head,
-				tail = tail,
+				head = def_bone.head,
+				tail = def_bone.tail,
 				roll = def_bone.roll,
 				custom_shape = self.load_widget("Sphere"),
 				#use_custom_shape_bone_size = True,
@@ -155,19 +151,18 @@ class CloudChainRig(CloudBaseRig):
 			last_def = def_sections[-1][-1]
 			sliced = slice_name(str_sections[-1][-1].name)
 			sliced[0].append("TIP")
-			sliced[1] = sliced[1][:-1] # (Remove number from end of name)
+			if sliced[1][-1] in "1234567890":
+				sliced[1] = sliced[1][:-1] # (Remove number from end of name)
 			str_name = make_name(*sliced)
 
-			str_bone = make_str_bone(
-				def_bone, 
-				name = str_name, 
-				head = def_bone.tail, 
-				tail = def_bone.tail+def_bone.vec
-			)
+			str_bone = make_str_bone(last_def, str_name)
+			str_bone.head = last_def.tail
+			str_bone.tail = last_def.tail + last_def.vec
 			str_bone.custom_shape_scale *= 1.3
+			str_section = []
+			str_section.append(str_bone)
+			str_sections.append(str_section)
 
-			str_sections.append([str_bone])
-	
 		### Create Stretch Helpers and parent STR to them
 		for sec_i, section in enumerate(str_sections):
 			for i, str_bone in enumerate(section):
@@ -206,6 +201,7 @@ class CloudChainRig(CloudBaseRig):
 				
 				# Set BBone start handle to the same index STR bone.
 				def_bone.bbone_custom_handle_start = str_sections[sec_i][i].name
+				
 				next_str = ""
 				if i < len(section)-1:
 					# Set BBone end handle to the next index STR bone.

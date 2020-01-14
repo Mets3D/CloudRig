@@ -37,51 +37,15 @@ from .cloud_utils import make_name, slice_name
 from .cloud_fk_chain import CloudChainRig
 
 class Rig(CloudChainRig):
-	"""CloudRig arms and legs."""
-	
-	"""
-	What we need in a Spine rig:
-	FK controls should be placed in the center of ORG bones. This does mean that ORG bones can't copy transforms of the FK controls directly.
-	The transforms of the ORG controls don't really matter anyways, only the transforms of the STR controls that they usually own.
-	We could use Armature constraints on the ORG bones instead, but that would destroy their local rotation matrix, which we need to stay clean, or readable from someplace at least.
-	Alternatively we can differentiate between the FK control layer and another FK mechanism layer. The control layer would have no prefix, while the mechanism layer would have the FK prefix.
-	The mechanism layer would not be offset to the halfway point, and it would be parented to the control layer.
-	Then the ORG bones can copy transforms from those guys.
-
-	Okay, cool. What about IK?
-	On Rain's rig, the IK secondary controls are placed in the same place as the FK's - DEF bones halfway point.
-	This works well, but I know we did it out of necessity, not because it works well. So, I wonder if doing it differently could work better.
-	In Rain's rig, the IK and FK controls had to work together, which is not as true for this rig since the control branches off upward of the ORG bones.
-	However, if we ever want to add an IK/FK snap for the spine, we'll need to be able to snap the IK controls to the FK controls and get precisely the same pose.
-	
-	Okay, we'll do it the same way as on Rain - The IK controls are in the same place as the FK controls. 
-	The intermediate layer between IK/FK and ORG will switch between IK/FK via Armature constraint.
-	ORG could just be parented to the intermediate layer, but then we don't get useful local transforms, so we stick with Copy Transforms for that.
-	I guess we can call the intermediate layer IKFK.
-	
-	Alternatively, we can make FK bones Copy Transforms of the IK bones when IK is enabled, just like on Rain. No need for an intermediate layer. Kindof. ORG then just has to be parented to FK.
-
-	So ORG is parented to FK
-	FK follows IK
-	FK and IK are in mid-points of DEF
-
-	ORG owns STR
-	STR drives DEF
-
-	so IK->FK->ORG->STR->DEF
-
-	We could even cut ORG out of the equation. We can now always rely on FK to find local rotation of any spine segment.
-
-	We could technically define IK after FK. We'd just add the IK constraint to the FK in the IK setup function, which actually kindof makes sense.
-	We need ORG to parent the thighs to the hips in a nice way. This is because the thighs are parented to the ORG bone (automatically, based on metarig), so the ORG bone should move along with it the hip... Not too sure how though...
-	It would be nice to have a reverse hip bone in the metarig, but then I'm not sure how to make that part of the spine rig element.
-	What if we consider ORG-Spine to be a reverse bone? This would require that RibCage isn't hard parented to it anymore.
-	"""
+	"""CloudRig spine"""
 
 	def initialize(self):
 		"""Gather and validate data about the rig."""
 		super().initialize()
 		
+		self.defaults['bbone_x'] = self.defaults['bbone_z'] = 0.025
+		self.display_scale *= 3
+
 		ik_name = "ik_spine"
 		self.ik_prop = self.prop_bone.custom_props[ik_name] = CustomProp(ik_name, default=0.0)
 
@@ -156,18 +120,6 @@ class Rig(CloudChainRig):
 
 	@stage.prepare_bones
 	def prepare_ik_spine(self):
-		""" How does BlenRig's fake-IK-spine work again?
-	V	We have the MSTR- controls at top level for the end points of the spine, the hip and chest.
-	V	Then we have IK-CTR bones parented to MSTR, that can change the curvature of the spine.
-	V		The last two should be parented to the chest master, and everything before that to the pelvis master.
-	V	There is a reverse IK-R chain that is parented to chest master and Damped Tracks to IK-CTR.
-	V		There is one less of these than the length of the spine chain. (This results in an awkward naming where there is no RIK-Spine1 but there is RIK-Spine2 - But for us it won't matter since we aren't doing Spine123)
-	V	Then there's the regular "IK" chain, parented to MSTR-Hips.
-	V		Damped Track to the tail of the IK-R bone 2 indices away. (I'm not sure why not the head of the IK-R bone 1 index away)
-	V		Copy Rotation of same index IK-CTR.
-	TODO	Copy Location to tail of IK-R bone with same index. The Influence of this constraint is driven by IK Spine Stretch setting.
-		"""
-
 		# Create master chest control
 		# TODO: Once again, the position of this can be arbitrary.
 		self.mstr_chest = self.bone_infos.bone(
@@ -254,6 +206,16 @@ class Rig(CloudChainRig):
 					self.mstr_chest.parent.custom_shape_transform = ik_bone
 			
 			if i > 0:
+				influence_unit = 1 / len(self.ik_chain)
+				# IK Stretch Copy Location
+				ik_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True,
+					name = "Copy Location (Stretchy Spine)",
+					target = self.obj,
+					subtarget = self.ik_r_chain[i-2].name,
+					head_tail = 1,
+					influence = influence_unit * i #TODO: IK Stretch property & Driver
+				)
+
 				ik_bone.add_constraint(self.obj, 'COPY_ROTATION', true_defaults=True,
 					target = self.obj,
 					subtarget = self.ik_ctr_chain[i-1].name
@@ -271,14 +233,6 @@ class Rig(CloudChainRig):
 		for i, str_bone in enumerate(self.str_bones):
 			str_bone.use_custom_shape_bone_size = True
 			str_bone.custom_shape_scale = 1.5
-			# if i >= len(self.str_bones)-4:
-			# 	str_bone.custom_shape_scale *= 0.3
-		for def_bone in self.def_bones:
-			def_bone.bbone_x *= 0.3
-			def_bone.bbone_z *= 0.3
-		for org_bone in self.org_chain:
-			org_bone.bbone_x *= 0.3
-			org_bone.bbone_z *= 0.3
 		
 		for i, def_bone in enumerate(self.def_bones):
 			if i == len(self.def_bones)-2:
@@ -287,14 +241,8 @@ class Rig(CloudChainRig):
 
 	@stage.prepare_bones
 	def prepare_org_spine(self):
-		# I guess we have three ways to do IK:
-		# 	an Armature constraint on the ORG bones that switches parenting between IK and FK.
-		#		Can't drive shape keys with anything pretty much.
-		#	Another layer of bones before ORG, that ORG is parented to, and that Copy Transformses between IK and FK.
-		#		Drive shape keys with rotation of that extra layer
 		#	FK Follows IK with Copy Transforms (same as Rain)
-		#		Drive shape keys with FK bone rotation
-		#		Let's do this one for now.
+		#	(We can drive shape keys with FK rotation)
 
 		# Parent ORG to FK
 		for i, org_bone in enumerate(self.org_chain):

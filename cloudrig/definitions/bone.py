@@ -64,7 +64,6 @@ class BoneInfoContainer(ID):
 		self.armature = armature
 		self.defaults = defaults	# For overriding arbitrary properties' default values when creating bones in this container.
 
-
 	def find(self, name):
 		"""Find a BoneInfo instance by name, return it if found."""
 		for bd in self.bones:
