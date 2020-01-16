@@ -42,7 +42,7 @@ class CloudChainRig(CloudBaseRig):
 		"""Gather and validate data about the rig."""
 
 	def get_segments(self, org_i, chain):
-		"""Temporary way to share code between chain and fk chain rigs - TODO make this nicer."""
+		"""Calculate how many segments should be in a section of the chain."""
 		segments = self.params.deform_segments
 		bbone_segments = self.params.bbone_segments
 		
@@ -183,7 +183,7 @@ class CloudChainRig(CloudBaseRig):
 				str_h_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True, target=self.obj, subtarget=first_str)
 				str_h_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True, target=self.obj, subtarget=last_str, influence=0.5)
 				str_h_bone.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=last_str)
-		
+
 		### Configure Deform (parent to STR or previous DEF, set BBone handle)
 		for sec_i, section in enumerate(def_sections):
 			for i, def_bone in enumerate(section):
@@ -215,6 +215,19 @@ class CloudChainRig(CloudBaseRig):
 
 				# BBone scale drivers
 				shared.make_bbone_scale_drivers(self.obj, def_bone)
+
+		# Connect parent chain rig.
+		# (If the parent rig is a chain rig with cap_control=False, make the last DEF bone stretch to this rig's first STR.)
+		parent_rig = self.rigify_parent
+		if isinstance(parent_rig, CloudChainRig):
+			if not parent_rig.params.cap_control:
+				meta_org_bone = self.generator.metarig.data.bones.get(self.org_chain[0].name.replace("ORG-", ""))
+				if meta_org_bone.use_connect:
+					def_bone = parent_rig.def_bones[-1]
+					str_bone = self.str_bones[0]
+					def_bone.bbone_custom_handle_end = str_bone.name
+					def_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget = str_bone.name)
+					shared.make_bbone_scale_drivers(self.obj, def_bone)
 
 	##############################
 	# Parameters
