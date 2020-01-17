@@ -147,7 +147,7 @@ class DriverVariableTarget(ID):
 
 	def make_real(self, BPY_variable, index):
 		"""Set this target on a variable."""
-		BPY_target = BPY_variable.targets[0]
+		BPY_target = BPY_variable.targets[index]
 		if BPY_variable.type == 'SINGLE_PROP':
 			BPY_target.id_type = self.id_type
 		BPY_target.id = self.id

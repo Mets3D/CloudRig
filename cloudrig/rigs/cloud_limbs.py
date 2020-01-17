@@ -55,10 +55,10 @@ class Rig(CloudFKChainRig):
 		side = "left" if self.base_bone.endswith("L") else "right"
 		
 		ikfk_name = "ik_%s_%s" %(limb, side)
-		self.ikfk_prop = self.prop_bone.custom_props[ikfk_name] = CustomProp(ikfk_name, default=0.0)
+		self.ikfk_prop = self.prop_bone.custom_props[ikfk_name] = CustomProp(ikfk_name, default=1.0)
 		
 		ik_stretch_name = "ik_stretch_%s_%s" %(limb, side)
-		self.ik_stretch_prop = self.prop_bone.custom_props[ik_stretch_name] = CustomProp(ik_stretch_name, default=0.0)
+		self.ik_stretch_prop = self.prop_bone.custom_props[ik_stretch_name] = CustomProp(ik_stretch_name, default=1.0)
 
 		fk_hinge_name = "fk_hinge_%s_%s" %(limb, side)
 		self.fk_hinge_prop = self.prop_bone.custom_props[fk_hinge_name] = CustomProp(fk_hinge_name, default=0.0)
@@ -92,7 +92,6 @@ class Rig(CloudFKChainRig):
 	def prepare_fk_limb(self):
 		# Note: This runs after super().prepare_fk_chain().
 
-		# TODO: IMPORTANT: First STR- bone needs a CounterRotate constraint (Look at STR-Upperarm1.L on Rain) (Target equivalent is ORG)
 		# TODO: Need bones to drive shape keys, such as HLP-Wrist2.L, HLP-Elbow2.L.
 
 		hng_child = self.fk_chain[0]
@@ -184,8 +183,8 @@ class Rig(CloudFKChainRig):
 		first_bn = chain[0]
 		first_bone = self.get_bone(chain[0])
 		elbow = copy.copy(first_bone.tail)
-		direction = 1 if limb_type=='ARM' else -1
-		offset_scale = 3 if limb_type=='ARM' else 6
+		direction = 1 if limb_type=='ARM' else -1					# Character is expected to face +Y direction.
+		offset_scale = 3 if limb_type=='ARM' else 5					# Scalar on distance from the body.
 		offset = Vector((0, direction*offset_scale*self.scale, 0))
 		pole_ctrl = self.bone_infos.bone(
 			name = "IK-POLE-" + limb_type.capitalize() + self.side_suffix,
@@ -356,6 +355,10 @@ class Rig(CloudFKChainRig):
 		self.ik_chain = ik_chain
 
 		self.mid_str_transform_setup(self.main_str_bones[1])
+
+	def first_str_counterrotate_setup(self, first_str_bone):
+		# TODO: IMPORTANT: First STR- bone needs a CounterRotate constraint (Look at STR-Upperarm1.L on Rain) (Target equivalent is ORG)
+		pass
 
 	def mid_str_transform_setup(self, mid_str_bone):
 		""" Set up transformation constraint to mid-limb STR bone """

@@ -47,10 +47,10 @@ class Rig(CloudChainRig):
 		self.display_scale *= 3
 
 		ik_name = "ik_spine"
-		self.ik_prop = self.prop_bone.custom_props[ik_name] = CustomProp(ik_name, default=0.0)
+		self.ik_prop = self.prop_bone.custom_props[ik_name] = CustomProp(ik_name, default=1.0)
 
 		ik_stretch_name = "ik_stretch_spine"
-		self.ik_stretch_prop = self.prop_bone.custom_props[ik_stretch_name] = CustomProp(ik_stretch_name, default=0.0)
+		self.ik_stretch_prop = self.prop_bone.custom_props[ik_stretch_name] = CustomProp(ik_stretch_name, default=1.0)
 
 	def get_segments(self, org_i, chain):
 		"""Calculate how many segments should be in a section of the chain."""

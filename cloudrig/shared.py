@@ -112,7 +112,6 @@ group_defs = {
     'Body: STR-H - Stretch Helpers' : {
         'layers' : [BODY_MECH]
     },
-
 }
 
 def create_parent_bone(self, child):
