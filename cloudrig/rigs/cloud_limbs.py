@@ -354,11 +354,25 @@ class Rig(CloudFKChainRig):
 		
 		self.ik_chain = ik_chain
 
+		for i in range(0, self.params.deform_segments):
+			factor_unit = 0.9 / self.params.deform_segments
+			factor = 0.9 - factor_unit * i
+			self.first_str_counterrotate_setup(self.str_bones[i], self.org_chain[0], factor)
+
 		self.mid_str_transform_setup(self.main_str_bones[1])
 
-	def first_str_counterrotate_setup(self, first_str_bone):
-		# TODO: IMPORTANT: First STR- bone needs a CounterRotate constraint (Look at STR-Upperarm1.L on Rain) (Target equivalent is ORG)
-		pass
+	def first_str_counterrotate_setup(self, str_bone, org_bone, factor):
+		str_bone.add_constraint(self.obj, 'TRANSFORM',
+			name = "Transformation (Counter-Rotate)",
+			subtarget = org_bone.name,
+			map_from = 'ROTATION', map_to = 'ROTATION',
+			use_motion_extrapolate = True,
+			from_min_y_rot =   -1, 
+			from_max_y_rot =    1,
+			to_min_y_rot   =  factor,
+			to_max_y_rot   = -factor,
+			from_rotation_mode = 'SWING_TWIST_Y'
+		)
 
 	def mid_str_transform_setup(self, mid_str_bone):
 		""" Set up transformation constraint to mid-limb STR bone """
