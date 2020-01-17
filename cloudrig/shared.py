@@ -26,7 +26,7 @@ presets = {
 # layers
 IK_MAIN = 0
 IK_SECOND = 16
-FK_MAIN = 3
+FK_MAIN = 1
 FK_SECOND = 17
 STRETCH = 2
 FACE_PRIMARY = 3
@@ -49,6 +49,8 @@ HEAD_HIERARCHY = 28
 DSP = 10
 PROPERTIES = 17
 BLACK_BOX = 31
+
+default_active_layers = [IK_MAIN, FK_MAIN, PROPERTIES]
 
 # Name : Params dictionary.
 group_defs = {

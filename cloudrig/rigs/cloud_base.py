@@ -28,6 +28,7 @@ from ..definitions.driver import *
 from ..definitions.custom_props import CustomProp
 from ..definitions.bone import BoneInfoContainer, BoneInfo
 from .cloud_utils import make_name, slice_name
+from .. import shared
 
 class CloudBaseRig(BaseRig):
 	"""Base for all CloudRig rigs."""
@@ -76,10 +77,20 @@ class CloudBaseRig(BaseRig):
 			name = "Properties_IKFK", 
 			bone_group = 'Properties',
 			custom_shape = self.load_widget("Cogwheel"),
-			head = Vector((0, self.scale*3, 0)),
+			head = Vector((0, self.scale*2, 0)),
+			tail = Vector((0, self.scale*4, 0)),
+			bbone_x = self.scale/8,
+			bbone_z = self.scale/8
+		)
+
+		# Root bone
+		self.root_bone = self.bone_infos.bone(
+			name = "root",
+			bone_group = 'Body: Main IK Controls',
+			head = Vector((0, 0, 0)),
 			tail = Vector((0, self.scale*5, 0)),
-			bbone_x = self.scale/5,
-			bbone_z = self.scale/5
+			bbone_x = self.scale/3,
+			bbone_z = self.scale/3,
 		)
 	
 	def load_widget(self, name):
@@ -174,7 +185,8 @@ class CloudBaseRig(BaseRig):
 				bd.custom_shape_scale *= self.display_scale * bd.scale_mult
 			bd.write_pose_data(pose_bone)
 
-	def apply_bones(self):
+	@stage.apply_bones
+	def unparent_bones(self):
 		# Rigify automatically parents bones that have no parent to the root bone.
 		# This is fine, but we want to undo this when the bone has an Armature constraint, since such bones should never have a parent.
 		# NOTE: This could be done via self.generator.disable_auto_parent(bone_name), but I prefer doing it this way.
@@ -184,6 +196,27 @@ class CloudBaseRig(BaseRig):
 				if c.type=='ARMATURE':
 					eb.parent = None
 					break
+
+	@stage.finalize
+	def select_layers(self):
+		layers = [False] * 32
+
+		# Select default layers
+		for layer in shared.default_active_layers:
+			layers[layer] = True
+		
+		self.obj.data.layers = layers[:]
+	
+	@stage.finalize
+	def root_layers(self):
+		# Quick and dirtily Force root bone on the desired layers
+		layers = [False] * 32
+		layers[0] = True
+		layers[1] = True
+		layers[16] = True
+		layers[17] = True
+		root_bone = self.get_bone("root")
+		root_bone.bone.layers = layers
 
 	@stage.finalize
 	def organize_widgets(self):

@@ -52,6 +52,16 @@ class Rig(CloudChainRig):
 		ik_stretch_name = "ik_stretch_spine"
 		self.ik_stretch_prop = self.prop_bone.custom_props[ik_stretch_name] = CustomProp(ik_stretch_name, default=0.0)
 
+	def get_segments(self, org_i, chain):
+		"""Calculate how many segments should be in a section of the chain."""
+		segments = self.params.deform_segments
+		bbone_segments = self.params.bbone_segments
+		
+		if (org_i == len(chain)-1):
+			return (1, 1)
+		
+		return (segments, bbone_segments)
+
 	@stage.prepare_bones
 	def prepare_fk_spine(self):
 		# Create Troso Master control
