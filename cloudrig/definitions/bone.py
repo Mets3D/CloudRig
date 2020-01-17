@@ -121,6 +121,7 @@ class BoneInfo(ID):
 		""" 
 		container: Need a reference to what BoneInfoContainer this BoneInfo belongs to.
 		source:	Bone to take transforms from (head, tail, roll, bbone_x, bbone_z).
+			NOTE: Ideally a source should always be specified, or bbone_x/z specified, otherwise blender will use the default 0.1, which can result in giant or tiny bones.
 		kwargs: Allow setting arbitrary bone properties at initialization.
 		"""
 		

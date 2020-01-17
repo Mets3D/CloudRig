@@ -44,21 +44,9 @@ class CloudBaseRig(BaseRig):
 		"""Gather and validate data about the rig."""
 		self.prepare_bone_groups()
 
-		# Determine rig scale by finding the bounding box of the bones belonging to this rig.
-		lowest_coords = Vector((0,0,0))
-		highest_coords = Vector((0,0,0))
-		for bn in self.bones.org.main:
-			org_bone = self.get_bone(bn).bone
-			points = [org_bone.head_local, org_bone.tail_local]
-			for p in points:
-				for i, co in enumerate(p):
-					if co < lowest_coords[i]:
-						lowest_coords[i] = co
-					elif co > highest_coords[i]:
-						highest_coords[i] = co
-		
-		self.scale = (lowest_coords - highest_coords).length / 10
-		#self.scale = self.obj.dimensions[2]/10
+		# Determine rig scale by armature height.
+		self.scale = self.obj.dimensions[2]/10
+		# Slap user-provided multiplier on top.
 		self.display_scale = self.params.display_scale * self.scale
 
 		if self.base_bone.endswith(".L"):
@@ -69,8 +57,8 @@ class CloudBaseRig(BaseRig):
 			self.side_suffix = ""
 
 		self.defaults = {
-			"bbone_x" : 0.05,
-			"bbone_z" : 0.05,
+			# "bbone_x" : 0.05,
+			# "bbone_z" : 0.05,
 			"rotation_mode" : "XYZ",
 			#"use_custom_shape_bone_size" : False#True
 		}
@@ -88,8 +76,10 @@ class CloudBaseRig(BaseRig):
 			name = "Properties_IKFK", 
 			bone_group = 'Properties',
 			custom_shape = self.load_widget("Cogwheel"),
-			head = Vector((0, self.scale*1, 0)),
-			tail = Vector((0, self.scale*2, 0))
+			head = Vector((0, self.scale*3, 0)),
+			tail = Vector((0, self.scale*5, 0)),
+			bbone_x = self.scale/5,
+			bbone_z = self.scale/5
 		)
 	
 	def load_widget(self, name):
@@ -146,8 +136,8 @@ class CloudBaseRig(BaseRig):
 			# Rigify discards the bbone scale values from the metarig, but I'd like to keep them for easy visual scaling.
 			meta_org_name = eb.name.replace("ORG-", "")
 			meta_org = self.generator.metarig.pose.bones.get(meta_org_name)
-			org_bi.bbone_x = meta_org.bone.bbone_x / self.display_scale
-			org_bi.bbone_z = meta_org.bone.bbone_z / self.display_scale
+			org_bi.bbone_x = meta_org.bone.bbone_x
+			org_bi.bbone_z = meta_org.bone.bbone_z
 
 			self.org_chain.append(org_bi)
 
@@ -168,9 +158,8 @@ class CloudBaseRig(BaseRig):
 		for bd in self.bone_infos.bones:
 			edit_bone = self.get_bone(bd.name)
 
-			# Apply visual scaling
-			bd.bbone_x *= self.display_scale
-			bd.bbone_z *= self.display_scale
+			# Get a bone-specific scale factor based on the bone's original bbone scale.
+			bd.scale_mult = (bd.bbone_x*10) / self.scale
 
 			bd.write_edit_data(self.obj, edit_bone)
 	
@@ -182,7 +171,7 @@ class CloudBaseRig(BaseRig):
 			
 			# Apply scaling
 			if not bd.use_custom_shape_bone_size:
-				bd.custom_shape_scale *= self.display_scale
+				bd.custom_shape_scale *= self.display_scale * bd.scale_mult
 			bd.write_pose_data(pose_bone)
 
 	def apply_bones(self):

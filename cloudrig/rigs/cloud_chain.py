@@ -88,6 +88,7 @@ class CloudChainRig(CloudBaseRig):
 
 				def_bone = self.bone_infos.bone(
 					name = def_name,
+					source = org_bone,
 					head = org_bone.head + (unit * i),
 					tail = org_bone.head + (unit * (i+1)),
 					roll = org_bone.roll,
@@ -119,6 +120,7 @@ class CloudChainRig(CloudBaseRig):
 				name = def_bone.name.replace("DEF", "STR")
 			str_bone = self.bone_infos.bone(
 				name = name,
+				source = def_bone,
 				head = def_bone.head,
 				tail = def_bone.tail,
 				roll = def_bone.roll,

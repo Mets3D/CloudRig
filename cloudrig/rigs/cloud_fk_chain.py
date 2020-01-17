@@ -45,15 +45,14 @@ class CloudFKChainRig(CloudChainRig):
 	def prepare_fk_chain(self):
 		self.fk_chain = []
 		fk_name = ""
-		for i, bn in enumerate(self.bones.org.main):
-			edit_bone = self.get_bone(bn)
-			fk_name = bn.replace("ORG", "FK")
+		for i, org_bone in enumerate(self.org_chain):
+			fk_name = org_bone.name.replace("ORG", "FK")
 			fk_bone = self.bone_infos.bone(
 				name				= fk_name, 
-				source				= edit_bone,
+				source				= org_bone,
 				**self.defaults,
 				custom_shape 		= self.load_widget("FK_Limb"),
-				custom_shape_scale 	= 0.8,
+				custom_shape_scale 	= org_bone.custom_shape_scale,# * 0.8,
 				parent				= self.bones.parent
 			)
 			if i > 0:

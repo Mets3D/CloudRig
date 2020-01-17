@@ -43,7 +43,7 @@ class Rig(CloudChainRig):
 		"""Gather and validate data about the rig."""
 		super().initialize()
 		
-		self.defaults['bbone_x'] = self.defaults['bbone_z'] = 0.025
+		#self.defaults['bbone_x'] = self.defaults['bbone_z'] = 0.025
 		self.display_scale *= 3
 
 		ik_name = "ik_spine"
@@ -59,8 +59,9 @@ class Rig(CloudChainRig):
 		# To be fair, the more customizability we add to the metarig, the less it becomes a metarig...
 		self.mstr_torso = self.bone_infos.bone(
 			name = "MSTR-Torso",
+			source = self.org_chain[0],
 			head = self.org_chain[0].center,
-			tail = self.org_chain[0].center + Vector((0, 0, 0.1)),
+			tail = self.org_chain[0].center + Vector((0, 0, self.scale)),
 			custom_shape = self.load_widget("Torso_Master"),
 			bone_group = 'Body: Main IK Controls',
 		)
@@ -125,8 +126,9 @@ class Rig(CloudChainRig):
 		# TODO: Once again, the position of this can be arbitrary.
 		self.mstr_chest = self.bone_infos.bone(
 				name				= "MSTR-Chest", 
+				source 				= self.org_chain[-4],
 				head				= self.org_chain[-4].center,
-				tail 				= self.org_chain[-4].center + Vector((0, 0, 0.1)),
+				tail 				= self.org_chain[-4].center + Vector((0, 0, self.scale)),
 				**self.defaults,
 				custom_shape 		= self.load_widget("Chest_Master"),
 				custom_shape_scale 	= 0.7,
@@ -140,8 +142,9 @@ class Rig(CloudChainRig):
 		# Create master (reverse) hip control
 		self.mstr_hips = self.bone_infos.bone(
 				name				= "MSTR-Hips",
+				source				= self.org_chain[0],
 				head				= self.org_chain[0].center,
-				tail 				= self.org_chain[0].center + Vector((0, 0, -0.1)),
+				tail 				= self.org_chain[0].center + Vector((0, 0, -self.scale)),
 				**self.defaults,
 				custom_shape 		= self.load_widget("Hips"),
 				custom_shape_scale 	= 0.7,
@@ -175,7 +178,7 @@ class Rig(CloudChainRig):
 			ik_r_name = fk_bone.name.replace("FK", "IK-R")
 			ik_r_bone = self.bone_infos.bone(
 				name		= ik_r_name,
-				head 		= fk_bone.head,
+				source 		= fk_bone,
 				tail 		= self.fk_chain[-i+1].head,
 				parent		= next_parent,
 				bone_group = 'Body: IK-MCH - IK Mechanism Bones'
@@ -192,6 +195,7 @@ class Rig(CloudChainRig):
 			ik_name = fk_bone.name.replace("FK", "IK")
 			ik_bone = self.bone_infos.bone(
 				name = ik_name,
+				source = fk_bone,
 				head = copy.copy(self.fk_chain[i-1].head) if i>0 else copy.copy(self.def_bones[0].head),
 				tail = fk_bone.head,
 				parent = next_parent,

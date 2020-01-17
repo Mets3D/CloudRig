@@ -189,6 +189,8 @@ class Rig(CloudFKChainRig):
 		offset = Vector((0, direction*offset_scale*self.scale, 0))
 		pole_ctrl = self.bone_infos.bone(
 			name = "IK-POLE-" + limb_type.capitalize() + self.side_suffix,
+			bbone_x = first_bone.bbone_x,
+			bbone_z = first_bone.bbone_x,
 			head = elbow + offset,
 			tail = elbow + offset*1.1,
 			roll = 0,
@@ -198,7 +200,7 @@ class Rig(CloudFKChainRig):
 		)
 		pole_line = self.bone_infos.bone(
 			name = "IK-POLE-LINE-" + limb_type.capitalize() + self.side_suffix,
-			head = pole_ctrl.head,
+			source = pole_ctrl,
 			tail = elbow,
 			custom_shape = self.load_widget('Pole_Line'),
 			use_custom_shape_bone_size = True,
@@ -239,7 +241,7 @@ class Rig(CloudFKChainRig):
 		org_bone = self.get_bone(bone_name)
 		mstr_name = bone_name.replace("ORG", "IK-MSTR")
 		wgt_name = 'Hand_IK' if limb_type=='ARM' else 'Foot_IK'
-		ik_mstr = self.bone_infos.bone(
+		self.ik_mstr = self.bone_infos.bone(
 			name = mstr_name, 
 			source = org_bone, 
 			custom_shape = self.load_widget(wgt_name),
@@ -247,16 +249,16 @@ class Rig(CloudFKChainRig):
 			parent = None,	# TODO: Parent switching with operator that corrects transforms.
 			bone_group = 'Body: Main IK Controls'
 		)
-		foot_dsp(ik_mstr)
+		foot_dsp(self.ik_mstr)
 		# Parent control
 		double_control = None
 		if self.params.double_ik_control:
-			double_control = shared.create_parent_bone(self, ik_mstr)
+			double_control = shared.create_parent_bone(self, self.ik_mstr)
 			double_control.bone_group = 'Body: Main IK Controls Extra Parents'
 			foot_dsp(double_control)
 		
 		if self.params.world_aligned:
-			ik_mstr.flatten()
+			self.ik_mstr.flatten()
 			double_control.flatten()
 		
 		# IK Chain
@@ -287,11 +289,11 @@ class Rig(CloudFKChainRig):
 						name = bn.replace("ORG", "IK-TGT"),
 						source = org_bone,
 						bone_group = 'Body: IK-MCH - IK Mechanism Bones',
-						parent = ik_mstr
+						parent = self.ik_mstr
 					)
 				else:
 					self.ik_tgt_bone = ik_bone
-					ik_bone.parent = ik_mstr
+					ik_bone.parent = self.ik_mstr
 				# Add the IK constraint to the previous bone, targetting this one.
 				ik_chain[-2].add_constraint(self.obj, 'IK', 
 					pole_subtarget = pole_ctrl.name,
@@ -304,10 +306,12 @@ class Rig(CloudFKChainRig):
 		str_bone = self.bone_infos.bone(
 			name = str_name, 
 			source = self.get_bone(chain[0]),
-			tail = Vector(ik_mstr.head[:]),
+			tail = copy.copy(self.ik_mstr.head),
 			parent = self.root_bone.name,
 			bone_group = 'Body: IK-MCH - IK Mechanism Bones'
 		)
+		str_bone.bbone_x *= 0.4
+		str_bone.bbone_z *= 0.4
 
 		self.ik_tgt_bone.add_constraint(self.obj, 'COPY_LOCATION',
 			target = self.obj,
@@ -321,7 +325,7 @@ class Rig(CloudFKChainRig):
 		str_tgt_bone = self.bone_infos.bone(
 			name = str_tgt_name, 
 			source = org_chain[2], 
-			parent = ik_mstr,#ik_chain[2],
+			parent = self.ik_mstr,
 			bone_group = 'Body: IK-MCH - IK Mechanism Bones'
 		)
 
@@ -410,6 +414,8 @@ class Rig(CloudFKChainRig):
 		roll_name = shared.make_name(["ROLL"], sliced_name[1], sliced_name[2])
 		roll_ctrl = self.bone_infos.bone(
 			name = roll_name,
+			bbone_x = self.scale/18,
+			bbone_z = self.scale/18,
 			head = ik_foot.head + Vector((0, self.scale, self.scale/4)),
 			tail = ik_foot.head + Vector((0, self.scale/2, self.scale/4)),
 			roll = pi,
@@ -429,12 +435,21 @@ class Rig(CloudFKChainRig):
 		)
 
 		# Create bone to use as pivot point when rolling back. This is read from the metarig and should be placed at the heel of the shoe, pointing forward.
-		# We hardcode name for ankle pivot for now.
+		# We hardcode name for ankle pivot for now. (TODO? I don't know if this could/should be avoided.)
 		ankle_pivot = self.generator.metarig.data.bones.get("AnklePivot" + self.side_suffix)
 		assert ankle_pivot, "ERROR: Could not find AnklePivot bone in the metarig."
+		
+		# I want to be able to customize the shape size of the foot controls from the metarig, via ankle pivot bone bbone scale. It's quite arbitrary, but it feels right.
+		self.ik_mstr.bbone_x = ankle_pivot.bbone_x
+		self.ik_mstr.bbone_z = ankle_pivot.bbone_z
+		if self.params.double_ik_control:
+			self.ik_mstr.parent.bbone_x = ankle_pivot.bbone_x
+			self.ik_mstr.parent.bbone_z = ankle_pivot.bbone_z
 
 		ankle_pivot_ctrl = self.bone_infos.bone(
 			name = "IK-RollBack" + self.side_suffix,
+			bbone_x = self.org_chain[-1].bbone_x,
+			bbone_z = self.org_chain[-1].bbone_z,
 			head = ankle_pivot.head_local,
 			tail = ankle_pivot.tail_local,
 			roll = pi,
@@ -455,6 +470,7 @@ class Rig(CloudFKChainRig):
 		for i, b in reversed(list(enumerate(org_chain))):
 			rik_bone = self.bone_infos.bone(
 				name = b.name.replace("ORG", "RIK"),
+				source = b,
 				head = b.tail.copy(),
 				tail = b.head.copy(),
 				parent = ankle_pivot_ctrl,
