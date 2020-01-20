@@ -51,12 +51,13 @@ class Rig(CloudFKChainRig):
 		self.type = self.params.type
 
 		# Properties bone and Custom Properties
-		limb = "arm" if self.params.type=='ARM' else "leg"
-		side = "left" if self.base_bone.endswith("L") else "right"
-		
+		side = self.side_prefix.lower()
+		limb = self.params.type.lower()
+		self.limb_name = self.side_prefix + " " + limb.capitalize()	 # TODO: This really only allows for 2 arms and 2 legs per character. Might need more!
+
 		ikfk_name = "ik_%s_%s" %(limb, side)
 		self.ikfk_prop = self.prop_bone.custom_props[ikfk_name] = CustomProp(ikfk_name, default=1.0)
-		
+
 		ik_stretch_name = "ik_stretch_%s_%s" %(limb, side)
 		self.ik_stretch_prop = self.prop_bone.custom_props[ik_stretch_name] = CustomProp(ik_stretch_name, default=1.0)
 
@@ -93,6 +94,7 @@ class Rig(CloudFKChainRig):
 		# Note: This runs after super().prepare_fk_chain().
 
 		# TODO: Need bones to drive shape keys, such as HLP-Wrist2.L, HLP-Elbow2.L.
+		# TODO: Elbow and Knee should be locked on 2 rotation axes.
 
 		hng_child = self.fk_chain[0]
 		for i, fk_bone in enumerate(self.fk_chain):
@@ -187,7 +189,7 @@ class Rig(CloudFKChainRig):
 		offset_scale = 3 if limb_type=='ARM' else 5					# Scalar on distance from the body.
 		offset = Vector((0, direction*offset_scale*self.scale, 0))
 		pole_ctrl = self.bone_infos.bone(
-			name = "IK-POLE-" + limb_type.capitalize() + self.side_suffix,
+			name = make_name(["IK", "POLE"], limb_type.capitalize(), [self.side_suffix]),
 			bbone_x = first_bone.bbone_x,
 			bbone_z = first_bone.bbone_x,
 			head = elbow + offset,
@@ -198,7 +200,7 @@ class Rig(CloudFKChainRig):
 			bone_group = 'Body: Main IK Controls',
 		)
 		pole_line = self.bone_infos.bone(
-			name = "IK-POLE-LINE-" + limb_type.capitalize() + self.side_suffix,
+			name = make_name(["IK", "POLE", "LINE"], limb_type.capitalize(), [self.side_suffix]),
 			source = pole_ctrl,
 			tail = elbow,
 			custom_shape = self.load_widget('Pole_Line'),
@@ -227,7 +229,7 @@ class Rig(CloudFKChainRig):
 			# Create foot DSP helpers
 			if limb_type=='LEG':
 				dsp_bone = shared.create_dsp_bone(self, bone)
-				direction = 1 if self.side_suffix=='.L' else -1
+				direction = 1 if self.side_suffix=='L' else -1
 				projected_head = Vector((bone.head[0], bone.head[1], 0))
 				projected_tail = Vector((bone.tail[0], bone.tail[1], 0))
 				projected_center = projected_head + (projected_tail-projected_head) / 2
@@ -361,6 +363,39 @@ class Rig(CloudFKChainRig):
 
 		self.mid_str_transform_setup(self.main_str_bones[1])
 
+		self.prepare_and_store_ikfk_info(self.fk_chain, self.ik_chain, pole_ctrl)
+
+	def prepare_and_store_ikfk_info(self, fk_chain, ik_chain, ik_pole):
+		""" Prepare the data needed to be stored on the armature object for IK/FK snapping. """
+		fk_names = [b.name for b in fk_chain]
+		ik_names = [b.name for b in ik_chain]
+		if self.params.double_first_control:
+			fk_names.insert(0, fk_chain[0].parent.name)
+			ik_names.insert(0, ik_names[0])
+		
+		self.store_ikfk_info(self.limb_name, self.ikfk_prop.name, fk_names, ik_names, ik_pole.name)
+
+	def store_ikfk_info(self, limb_name, ikfk_prop, fk_names, ik_names, ik_pole_name):
+		""" Store all the data needed by the IK/FK switch mechanism in the ik_chains dictionary custom property on the rig object.
+		The UI drawing and IK/FK snapping is handled by the (non-generated) UI script, cloudrig.py.
+		"""
+		info = {
+			"prop_name" : ikfk_prop,
+			"fk_names" : fk_names,
+			"ik_names" : ik_names,
+			"ik_pole_name" : ik_pole_name,
+			"double_ik_control" : self.params.double_ik_control
+		}
+		
+		if "ik_chains" not in self.obj:
+			self.obj["ik_chains"] = {}
+
+		limbs = "arms" if self.params.type == 'ARM' else "legs"
+		if limbs not in self.obj["ik_chains"]:
+			self.obj["ik_chains"][limbs] = {}
+
+		self.obj["ik_chains"][limbs][limb_name] = info
+
 	def first_str_counterrotate_setup(self, str_bone, org_bone, factor):
 		str_bone.add_constraint(self.obj, 'TRANSFORM',
 			name = "Transformation (Counter-Rotate)",
@@ -453,7 +488,7 @@ class Rig(CloudFKChainRig):
 
 		# Create bone to use as pivot point when rolling back. This is read from the metarig and should be placed at the heel of the shoe, pointing forward.
 		# We hardcode name for ankle pivot for now. (TODO? I don't know if this could/should be avoided.)
-		ankle_pivot = self.generator.metarig.data.bones.get("AnklePivot" + self.side_suffix)
+		ankle_pivot = self.generator.metarig.data.bones.get("AnklePivot." + self.side_suffix)
 		assert ankle_pivot, "ERROR: Could not find AnklePivot bone in the metarig."
 		
 		# I want to be able to customize the shape size of the foot controls from the metarig, via ankle pivot bone bbone scale. It's quite arbitrary, but it feels right.
@@ -464,7 +499,7 @@ class Rig(CloudFKChainRig):
 			self.ik_mstr.parent.bbone_z = ankle_pivot.bbone_z
 
 		ankle_pivot_ctrl = self.bone_infos.bone(
-			name = "IK-RollBack" + self.side_suffix,
+			name = "IK-RollBack." + self.side_suffix,
 			bbone_x = self.org_chain[-1].bbone_x,
 			bbone_z = self.org_chain[-1].bbone_z,
 			head = ankle_pivot.head_local,
@@ -607,7 +642,7 @@ class Rig(CloudFKChainRig):
 			RigifyParameters PropertyGroup
 		"""
 		super().add_parameters(params)
-
+		# TODO: Add "Custom Limb Name"(boolean checkbox) and "Limb Name" parameters, to allow for more than 4 limbs in a character.
 		params.type = EnumProperty(name="Type",
 		items = (
 			("ARM", "Arm", "Arm"),

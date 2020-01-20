@@ -29,6 +29,7 @@ from ..definitions.custom_props import CustomProp
 from ..definitions.bone import BoneInfoContainer, BoneInfo
 from .cloud_utils import make_name, slice_name
 from .. import shared
+from . import cloud_utils
 
 class CloudBaseRig(BaseRig):
 	"""Base for all CloudRig rigs."""
@@ -50,12 +51,15 @@ class CloudBaseRig(BaseRig):
 		# Slap user-provided multiplier on top.
 		self.display_scale = self.params.display_scale * self.scale
 
-		if self.base_bone.endswith(".L"):
-			self.side_suffix = ".L"
-		elif self.base_bone.endswith(".R"):
-			self.side_suffix = ".R"
-		else:
-			self.side_suffix = ""
+		self.side_suffix = ""
+		self.side_prefix = ""
+		base_bone_name = cloud_utils.slice_name(self.base_bone)
+		if "L" in base_bone_name[2]:
+			self.side_suffix = "L"
+			self.side_prefix = "Left"
+		elif "R" in base_bone_name[2]:
+			self.side_suffix = "R"
+			self.side_prefix = "Right"
 
 		self.defaults = {
 			# "bbone_x" : 0.05,
