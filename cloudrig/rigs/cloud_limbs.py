@@ -53,13 +53,11 @@ class Rig(CloudFKChainRig):
 		# Properties bone and Custom Properties
 		side = self.side_prefix.lower()
 		limb = self.params.type.lower()
+		self.limb_name_short = self.side_suffix + " " + limb.capitalize()
 		self.limb_name = self.side_prefix + " " + limb.capitalize()	 # TODO: This really only allows for 2 arms and 2 legs per character. Might need more!
 
 		ikfk_name = "ik_%s_%s" %(limb, side)
 		self.ikfk_prop = self.prop_bone.custom_props[ikfk_name] = CustomProp(ikfk_name, default=1.0)
-
-		ik_parents_name = "ik_parents_%s_%s" %(limb, side)
-		self.ik_parents_prop = self.prop_bone.custom_props[ik_parents_name] = CustomProp(ik_parents_name, default=1.0)
 
 		ik_stretch_name = "ik_stretch_%s_%s" %(limb, side)
 		self.ik_stretch_prop = self.prop_bone.custom_props[ik_stretch_name] = CustomProp(ik_stretch_name, default=1.0)
@@ -366,19 +364,26 @@ class Rig(CloudFKChainRig):
 
 		self.mid_str_transform_setup(self.main_str_bones[1])
 
-		self.prepare_and_store_ikfk_info(self.fk_chain, self.ik_chain, pole_ctrl)
 		ik_ctrl = self.ik_mstr.parent if self.params.double_ik_control else self.ik_mstr
+		self.prepare_and_store_ikfk_info(self.fk_chain, self.ik_chain, pole_ctrl)
 		self.prepare_and_store_parent_switch_info(ik_ctrl, [self.root_bone, self.limb_root_bone])
 
 	def prepare_and_store_parent_switch_info(self, child_bones, parent_bones):
 		bone_names = child_bones.name	# CURRENTLY JUST ONE BONE, TODO
-		parent_names = [b.name for b in parent_bones]
+		#parent_names = [b.name for b in parent_bones]
+		parent_names = ["Root", "Clavicle"]
 
-		
+		side = self.side_prefix.lower()
+		limb = self.params.type.lower()
+		ik_parents_prop_name = "ik_parents_%s_%s" %(limb, side)
 
-		self.store_parent_switch_info(self.limb_name, bone_names, parent_names, self.prop_bone.name, self.ik_parents_prop.name)
+		# for c in child_bones... TODO
+		shared.rig_child(self, child_bones, parent_bones, self.prop_bone, ik_parents_prop_name)
+
+		self.store_parent_switch_info(self.limb_name_short, bone_names, parent_names, self.prop_bone.name, ik_parents_prop_name)
 
 	def store_parent_switch_info(self, limb_name, bone_names, parent_names, prop_bone, prop_name):
+		# TODO: I think for good code architecture, this function should be in shared.py, and not refer to self. (Instead, pass in the armature object, and everything else)
 		info = {
 			"bone_names" : bone_names,	#JUST ONE BONE FOR NOW.		# List of child bone names that will be affected by the parent swapping. Often just one.
 			"parent_names" : parent_names,		# List of (arbitrary) names, in order, that should be displayed for each parent option in the UI.
@@ -389,14 +394,22 @@ class Rig(CloudFKChainRig):
 		if "parents" not in self.obj:
 			self.obj["parents"] = {}
 
-		limbs = "arms ik" if self.params.type == 'ARM' else "legs ik"
-		if limbs not in self.obj["parents"]:
-			self.obj["parents"][limbs] = {}
+		category = "arms ik" if self.params.type == 'ARM' else "legs ik"
+		if category not in self.obj["parents"]:
+			self.obj["parents"][category] = {}
 		
-		self.obj["parents"][limbs][limb_name] = info
+		self.obj["parents"][category][limb_name] = info
 
 	def prepare_and_store_ikfk_info(self, fk_chain, ik_chain, ik_pole):
 		""" Prepare the data needed to be stored on the armature object for IK/FK snapping. """
+		if self.params.type=='LEG':
+			# Ignore toes on the chains.
+			fk_chain = fk_chain[:-1]
+			ik_chain = ik_chain[:-1]
+
+		# Replace last IK bone with IK Master control
+		ik_chain[-1] = self.ik_mstr
+		
 		fk_names = [b.name for b in fk_chain]
 		ik_names = [b.name for b in ik_chain]
 		if self.params.double_first_control:
@@ -434,7 +447,7 @@ class Rig(CloudFKChainRig):
 			map_from = 'ROTATION', map_to = 'ROTATION',
 			use_motion_extrapolate = True,
 			from_min_y_rot =   -1, 
-			from_max_y_rot =    1,
+			from_max_y_rot =	1,
 			to_min_y_rot   =  factor,
 			to_max_y_rot   = -factor,
 			from_rotation_mode = 'SWING_TWIST_Y'

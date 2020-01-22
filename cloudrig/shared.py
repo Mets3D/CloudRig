@@ -4,6 +4,7 @@
 from .rigs.cloud_utils import make_name, slice_name
 
 from .definitions.driver import *
+from .definitions.custom_props import CustomProp
 
 presets = {
 	'PRESET01' : [(0.6039215922355652, 0.0, 0.0), (0.7411764860153198, 0.06666667014360428, 0.06666667014360428), (0.9686275124549866, 0.03921568766236305, 0.03921568766236305)],
@@ -54,168 +55,200 @@ default_active_layers = [IK_MAIN, FK_MAIN, PROPERTIES]
 
 # Name : Params dictionary.
 group_defs = {
-    'Body: Main FK Controls' : {
-        'normal' : presets['PRESET02'][0],
-        'select' : presets['PRESET02'][1],
-        'active' : presets['PRESET02'][2],
-        'layers' : [FK_MAIN]
-    },
-    'DSP - Display Transform Helpers' : {
-        'normal' : presets['PRESET07'][0],
-        'select' : presets['PRESET07'][1],
-        'active' : presets['PRESET07'][2],
-        'layers' : [DSP]
-    },
-    'Body: IK-MCH - IK Mechanism Bones' : {
-        'layers' : [BODY_MECH]
-    },
-    'Body: Main IK Controls' : {
-        'normal' : presets['PRESET03'][0],
-        'select' : presets['PRESET03'][1],
-        'active' : presets['PRESET03'][2],
-        'layers' : [IK_MAIN]
-    },
-    'Body: Main IK Controls Extra Parents' : {
-        'normal' : presets['PRESET09'][0],
-        'select' : presets['PRESET09'][1],
-        'active' : presets['PRESET09'][2],
-        'layers' : [IK_SECOND]
-    },
-    'Body: IK - Secondary IK Controls' : {
-        'normal' : presets['PRESET11'][0],
-        'select' : presets['PRESET11'][1],
-        'active' : presets['PRESET11'][2],
-        'layers' : [IK_SECOND]
+	'Body: Main FK Controls' : {
+		'normal' : presets['PRESET02'][0],
+		'select' : presets['PRESET02'][1],
+		'active' : presets['PRESET02'][2],
+		'layers' : [FK_MAIN]
+	},
+	'DSP - Display Transform Helpers' : {
+		'normal' : presets['PRESET07'][0],
+		'select' : presets['PRESET07'][1],
+		'active' : presets['PRESET07'][2],
+		'layers' : [DSP]
+	},
+	'Body: IK-MCH - IK Mechanism Bones' : {
+		'layers' : [BODY_MECH]
+	},
+	'Body: Main IK Controls' : {
+		'normal' : presets['PRESET03'][0],
+		'select' : presets['PRESET03'][1],
+		'active' : presets['PRESET03'][2],
+		'layers' : [IK_SECOND]
+	},
+	'Body: Main IK Controls Extra Parents' : {
+		'normal' : presets['PRESET09'][0],
+		'select' : presets['PRESET09'][1],
+		'active' : presets['PRESET09'][2],
+		'layers' : [IK_MAIN]
+	},
+	'Body: IK - Secondary IK Controls' : {
+		'normal' : presets['PRESET11'][0],
+		'select' : presets['PRESET11'][1],
+		'active' : presets['PRESET11'][2],
+		'layers' : [IK_SECOND]
 
-    },
-    'Body: FK Helper Bones' : {
-        'normal' : presets['PRESET02'][0],
-        'select' : presets['PRESET02'][1],
-        'active' : presets['PRESET02'][2],
-        'layers' : [BODY_MECH]
-    },
-    'Properties' : {
-        'normal' : presets['PRESET03'][0],
-        'select' : presets['PRESET03'][1],
-        'active' : presets['PRESET03'][2],
-        'layers' : [PROPERTIES]
-    },
-    'Body: STR - Stretch Controls' : {
-        'normal' : presets['PRESET09'][0],
-        'select' : presets['PRESET09'][1],
-        'active' : presets['PRESET09'][2],
-        'layers' : [STRETCH]
-    },
-    'Body: DEF - Limb Deform Bones' : {
-        'layers' : [BODY_DEFORM]
-    },
-    'Body: STR-H - Stretch Helpers' : {
-        'layers' : [BODY_MECH]
-    },
+	},
+	'Body: FK Helper Bones' : {
+		'normal' : presets['PRESET02'][0],
+		'select' : presets['PRESET02'][1],
+		'active' : presets['PRESET02'][2],
+		'layers' : [BODY_MECH]
+	},
+	'Properties' : {
+		'normal' : presets['PRESET03'][0],
+		'select' : presets['PRESET03'][1],
+		'active' : presets['PRESET03'][2],
+		'layers' : [PROPERTIES]
+	},
+	'Body: STR - Stretch Controls' : {
+		'normal' : presets['PRESET09'][0],
+		'select' : presets['PRESET09'][1],
+		'active' : presets['PRESET09'][2],
+		'layers' : [STRETCH]
+	},
+	'Body: DEF - Limb Deform Bones' : {
+		'layers' : [BODY_DEFORM]
+	},
+	'Body: STR-H - Stretch Helpers' : {
+		'layers' : [BODY_MECH]
+	},
 }
 
 def rig_child(self, child_bone, parent_bones, prop_bone, prop_name):
-    pass #TODO
+	""" Rig a child with multiple switchable parents, using Armature constraint and drivers. Custom property is expected to already exist.
+	# TODO: Maybe custom property should be created here as well, actually... or re-created if already exists.
+	"""
 
+	# Create custom property
+	parents_prop = prop_bone.custom_props[prop_name] = CustomProp(prop_name, default=1, min=0, max=len(parent_bones)-1)
+
+	# Create parent bone for the bone that stores the Armature constraint - Without this, we cannot figure out the corrected pose-space matrix for the child bone after the property is switched.
+	arm_con_bone = create_parent_bone(self, child_bone)
+	arm_con_bone.name = "Parents_" + child_bone.name
+	arm_con_bone.custom_shape = None,
+
+	targets = []
+	for i, pb in enumerate(parent_bones):
+		targets.append({
+			"subtarget" : pb.name
+		})
+
+		drv = Driver()
+		drv.expression = "var==%d" %i
+		var = drv.make_var("var")
+		var.type = 'SINGLE_PROP'
+		var.targets[0].id_type = 'OBJECT'
+		var.targets[0].id = self.obj
+		var.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (prop_bone.name, prop_name)
+
+		data_path = 'constraints["Armature"].targets[%d].weight' %i
+		
+		arm_con_bone.drivers[data_path] = drv
+
+	# Add armature constraint
+	arm_con_bone.add_constraint(self.obj, 'ARMATURE', 
+		targets = targets
+	)
 
 def create_parent_bone(self, child):
-    sliced = slice_name(child.name)
-    sliced[0].append("P")
-    parent_name = make_name(*sliced)
-    parent_bone = self.bone_infos.bone(
-        parent_name, 
-        child, 
-        only_transform=True, 
-        custom_shape = child.custom_shape,
-        custom_shape_scale = child.custom_shape_scale*1.1,
-        bone_group = child.bone_group,
-        parent = child.parent,
-        **self.defaults
-    )
+	sliced = slice_name(child.name)
+	sliced[0].append("P")
+	parent_name = make_name(*sliced)
+	parent_bone = self.bone_infos.bone(
+		parent_name, 
+		child, 
+		only_transform=True, 
+		custom_shape = child.custom_shape,
+		custom_shape_scale = child.custom_shape_scale*1.1,
+		bone_group = child.bone_group,
+		parent = child.parent,
+		**self.defaults
+	)
 
-    child.parent = parent_bone
-    return parent_bone
+	child.parent = parent_bone
+	return parent_bone
 
 def create_dsp_bone(self, parent, center=False):
-    """Create a bone to be used as another control's custom_shape_transform."""
-    if not self.params.display_middle: return   # TODO: This check shouldn't be in this function.
-    dsp_name = "DSP-" + parent.name
-    dsp_bone = self.bone_infos.bone(
-        name = dsp_name, 
-        source = parent,
-        bbone_x = parent.bbone_x*0.5,
-        bbone_z = parent.bbone_z*0.5,
-        only_transform = True,
-        custom_shape = None, 
-        parent = parent,
-        bone_group = 'DSP - Display Transform Helpers'
-    )
-    if center:
-        dsp_bone.put(parent.center, scale=0.3, bbone_scale=1.5)
-    parent.custom_shape_transform = dsp_bone
-    return dsp_bone
+	"""Create a bone to be used as another control's custom_shape_transform."""
+	if not self.params.display_middle: return   # TODO: This check shouldn't be in this function.
+	dsp_name = "DSP-" + parent.name
+	dsp_bone = self.bone_infos.bone(
+		name = dsp_name, 
+		source = parent,
+		bbone_x = parent.bbone_x*0.5,
+		bbone_z = parent.bbone_z*0.5,
+		only_transform = True,
+		custom_shape = None, 
+		parent = parent,
+		bone_group = 'DSP - Display Transform Helpers'
+	)
+	if center:
+		dsp_bone.put(parent.center, scale=0.3, bbone_scale=1.5)
+	parent.custom_shape_transform = dsp_bone
+	return dsp_bone
 
 def make_bbone_scale_drivers(armature, bi):
-    my_d = Driver()
-    my_d.expression = "var/scale"
-    my_var = my_d.make_var("var")
-    my_var.type = 'TRANSFORMS'
-    
-    var_tgt = my_var.targets[0]
-    var_tgt.id = armature
-    var_tgt.transform_space = 'WORLD_SPACE'
-    
-    scale_var = my_d.make_var("scale")
-    scale_var.type = 'TRANSFORMS'
-    scale_tgt = scale_var.targets[0]
-    scale_tgt.id = armature
-    scale_tgt.transform_space = 'WORLD_SPACE'
-    scale_tgt.transform_type = 'SCALE_Y'
-    
-    # Scale In X/Y
-    if (bi.bbone_handle_type_start == 'TANGENT' and bi.bbone_custom_handle_start):
-        var_tgt.bone_target = bi.bbone_custom_handle_start
+	my_d = Driver()
+	my_d.expression = "var/scale"
+	my_var = my_d.make_var("var")
+	my_var.type = 'TRANSFORMS'
+	
+	var_tgt = my_var.targets[0]
+	var_tgt.id = armature
+	var_tgt.transform_space = 'WORLD_SPACE'
+	
+	scale_var = my_d.make_var("scale")
+	scale_var.type = 'TRANSFORMS'
+	scale_tgt = scale_var.targets[0]
+	scale_tgt.id = armature
+	scale_tgt.transform_space = 'WORLD_SPACE'
+	scale_tgt.transform_type = 'SCALE_Y'
+	
+	# Scale In X/Y
+	if (bi.bbone_handle_type_start == 'TANGENT' and bi.bbone_custom_handle_start):
+		var_tgt.bone_target = bi.bbone_custom_handle_start
 
-        var_tgt.transform_type = 'SCALE_X'
-        bi.drivers["bbone_scaleinx"] = my_d.clone()
+		var_tgt.transform_type = 'SCALE_X'
+		bi.drivers["bbone_scaleinx"] = my_d.clone()
 
-        var_tgt.transform_type = 'SCALE_Z'
-        bi.drivers["bbone_scaleiny"] = my_d.clone()
-    
-    # Scale Out X/Y
-    if (bi.bbone_handle_type_end == 'TANGENT' and bi.bbone_custom_handle_end):
-        var_tgt.bone_target = bi.bbone_custom_handle_end
-        
-        var_tgt.transform_type = 'SCALE_Z'
-        bi.drivers["bbone_scaleouty"] = my_d.clone()
+		var_tgt.transform_type = 'SCALE_Z'
+		bi.drivers["bbone_scaleiny"] = my_d.clone()
+	
+	# Scale Out X/Y
+	if (bi.bbone_handle_type_end == 'TANGENT' and bi.bbone_custom_handle_end):
+		var_tgt.bone_target = bi.bbone_custom_handle_end
+		
+		var_tgt.transform_type = 'SCALE_Z'
+		bi.drivers["bbone_scaleouty"] = my_d.clone()
 
-        var_tgt.transform_type = 'SCALE_X'
-        bi.drivers["bbone_scaleoutx"] = my_d.clone()
+		var_tgt.transform_type = 'SCALE_X'
+		bi.drivers["bbone_scaleoutx"] = my_d.clone()
 
-    ### Ease In/Out
-    my_d = Driver()
-    my_d.expression = "scale-Y"
+	### Ease In/Out
+	my_d = Driver()
+	my_d.expression = "scale-Y"
 
-    scale_var = my_d.make_var("scale")
-    scale_var.type = 'TRANSFORMS'
-    scale_tgt = scale_var.targets[0]
-    scale_tgt.id = armature
-    scale_tgt.transform_type = 'SCALE_Y'
-    scale_tgt.transform_space = 'LOCAL_SPACE'
+	scale_var = my_d.make_var("scale")
+	scale_var.type = 'TRANSFORMS'
+	scale_tgt = scale_var.targets[0]
+	scale_tgt.id = armature
+	scale_tgt.transform_type = 'SCALE_Y'
+	scale_tgt.transform_space = 'LOCAL_SPACE'
 
-    Y_var = my_d.make_var("Y")
-    Y_var.type = 'TRANSFORMS'
-    Y_tgt = Y_var.targets[0]
-    Y_tgt.id = armature
-    Y_tgt.transform_type = 'SCALE_AVG'
-    Y_tgt.transform_space = 'LOCAL_SPACE'
+	Y_var = my_d.make_var("Y")
+	Y_var.type = 'TRANSFORMS'
+	Y_tgt = Y_var.targets[0]
+	Y_tgt.id = armature
+	Y_tgt.transform_type = 'SCALE_AVG'
+	Y_tgt.transform_space = 'LOCAL_SPACE'
 
-    # Ease In
-    if (bi.bbone_handle_type_start == 'TANGENT' and bi.bbone_custom_handle_start):
-        Y_tgt.bone_target = scale_tgt.bone_target = bi.bbone_custom_handle_start
-        bi.drivers["bbone_easein"] = my_d.clone()
+	# Ease In
+	if (bi.bbone_handle_type_start == 'TANGENT' and bi.bbone_custom_handle_start):
+		Y_tgt.bone_target = scale_tgt.bone_target = bi.bbone_custom_handle_start
+		bi.drivers["bbone_easein"] = my_d.clone()
 
-    # Ease Out
-    if (bi.bbone_handle_type_end == 'TANGENT' and bi.bbone_custom_handle_end):
-        Y_tgt.bone_target = scale_tgt.bone_target = bi.bbone_custom_handle_end
-        bi.drivers["bbone_easeout"] = my_d.clone()
+	# Ease Out
+	if (bi.bbone_handle_type_end == 'TANGENT' and bi.bbone_custom_handle_end):
+		Y_tgt.bone_target = scale_tgt.bone_target = bi.bbone_custom_handle_end
+		bi.drivers["bbone_easeout"] = my_d.clone()
