@@ -114,6 +114,10 @@ group_defs = {
     },
 }
 
+def rig_child(self, child_bone, parent_bones, prop_bone, prop_name):
+    pass #TODO
+
+
 def create_parent_bone(self, child):
     sliced = slice_name(child.name)
     sliced[0].append("P")

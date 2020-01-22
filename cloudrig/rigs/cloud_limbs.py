@@ -58,6 +58,9 @@ class Rig(CloudFKChainRig):
 		ikfk_name = "ik_%s_%s" %(limb, side)
 		self.ikfk_prop = self.prop_bone.custom_props[ikfk_name] = CustomProp(ikfk_name, default=1.0)
 
+		ik_parents_name = "ik_parents_%s_%s" %(limb, side)
+		self.ik_parents_prop = self.prop_bone.custom_props[ik_parents_name] = CustomProp(ik_parents_name, default=1.0)
+
 		ik_stretch_name = "ik_stretch_%s_%s" %(limb, side)
 		self.ik_stretch_prop = self.prop_bone.custom_props[ik_stretch_name] = CustomProp(ik_stretch_name, default=1.0)
 
@@ -80,7 +83,7 @@ class Rig(CloudFKChainRig):
 		# Socket/Root bone to parent IK and FK to.
 		root_name = self.base_bone.replace("ORG", "ROOT")
 		base_bone = self.get_bone(self.base_bone)
-		self.root_bone = self.bone_infos.bone(
+		self.limb_root_bone = self.bone_infos.bone(
 			name 				= root_name, 
 			source 				= base_bone, 
 			parent 				= self.bones.parent,
@@ -149,7 +152,7 @@ class Rig(CloudFKChainRig):
 					"subtarget" : 'root'
 				},
 				{
-					"subtarget" : self.root_bone.name
+					"subtarget" : self.limb_root_bone.name
 				}
 			],
 		)
@@ -173,7 +176,7 @@ class Rig(CloudFKChainRig):
 
 		hng_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True,
 			target = self.obj,
-			subtarget = self.root_bone.name,
+			subtarget = self.limb_root_bone.name,
 		)
 
 	@stage.prepare_bones
@@ -277,7 +280,7 @@ class Rig(CloudFKChainRig):
 			
 			if i == 0:
 				# Parent first bone to the limb root
-				ik_bone.parent = self.root_bone.name
+				ik_bone.parent = self.limb_root_bone.name
 				# Add aim constraint to pole display bone
 				pole_dsp.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=ik_bone.name, head_tail=1, track_axis='TRACK_NEGATIVE_Y')
 			else:
@@ -308,7 +311,7 @@ class Rig(CloudFKChainRig):
 			name = str_name, 
 			source = self.get_bone(chain[0]),
 			tail = copy.copy(self.ik_mstr.head),
-			parent = self.root_bone.name,
+			parent = self.limb_root_bone.name,
 			bone_group = 'Body: IK-MCH - IK Mechanism Bones'
 		)
 		str_bone.bbone_x *= 0.4
@@ -364,6 +367,33 @@ class Rig(CloudFKChainRig):
 		self.mid_str_transform_setup(self.main_str_bones[1])
 
 		self.prepare_and_store_ikfk_info(self.fk_chain, self.ik_chain, pole_ctrl)
+		ik_ctrl = self.ik_mstr.parent if self.params.double_ik_control else self.ik_mstr
+		self.prepare_and_store_parent_switch_info(ik_ctrl, [self.root_bone, self.limb_root_bone])
+
+	def prepare_and_store_parent_switch_info(self, child_bones, parent_bones):
+		bone_names = child_bones.name	# CURRENTLY JUST ONE BONE, TODO
+		parent_names = [b.name for b in parent_bones]
+
+		
+
+		self.store_parent_switch_info(self.limb_name, bone_names, parent_names, self.prop_bone.name, self.ik_parents_prop.name)
+
+	def store_parent_switch_info(self, limb_name, bone_names, parent_names, prop_bone, prop_name):
+		info = {
+			"bone_names" : bone_names,	#JUST ONE BONE FOR NOW.		# List of child bone names that will be affected by the parent swapping. Often just one.
+			"parent_names" : parent_names,		# List of (arbitrary) names, in order, that should be displayed for each parent option in the UI.
+			"prop_bone" : prop_bone,			# Name of the properties bone that contains the property that should be changed by the parent switch operator.
+			"prop_name" : prop_name, 			# Name of the property
+		}
+
+		if "parents" not in self.obj:
+			self.obj["parents"] = {}
+
+		limbs = "arms ik" if self.params.type == 'ARM' else "legs ik"
+		if limbs not in self.obj["parents"]:
+			self.obj["parents"][limbs] = {}
+		
+		self.obj["parents"][limbs][limb_name] = info
 
 	def prepare_and_store_ikfk_info(self, fk_chain, ik_chain, ik_pole):
 		""" Prepare the data needed to be stored on the armature object for IK/FK snapping. """
@@ -373,17 +403,18 @@ class Rig(CloudFKChainRig):
 			fk_names.insert(0, fk_chain[0].parent.name)
 			ik_names.insert(0, ik_names[0])
 		
-		self.store_ikfk_info(self.limb_name, self.ikfk_prop.name, fk_names, ik_names, ik_pole.name)
+		self.store_ikfk_info(self.limb_name, self.prop_bone.name, self.ikfk_prop.name, fk_names, ik_names, ik_pole.name)
 
-	def store_ikfk_info(self, limb_name, ikfk_prop, fk_names, ik_names, ik_pole_name):
+	def store_ikfk_info(self, limb_name, prop_bone, prop_name, fk_names, ik_names, ik_pole_name):
 		""" Store all the data needed by the IK/FK switch mechanism in the ik_chains dictionary custom property on the rig object.
 		The UI drawing and IK/FK snapping is handled by the (non-generated) UI script, cloudrig.py.
 		"""
 		info = {
-			"prop_name" : ikfk_prop,
-			"fk_names" : fk_names,
-			"ik_names" : ik_names,
-			"ik_pole_name" : ik_pole_name,
+			"prop_bone"			: prop_bone,
+			"prop_name" 		: prop_name,
+			"fk_names" 			: fk_names,
+			"ik_names" 			: ik_names,
+			"ik_pole_name" 		: ik_pole_name,
 			"double_ik_control" : self.params.double_ik_control
 		}
 		
