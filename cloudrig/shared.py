@@ -116,8 +116,7 @@ group_defs = {
 }
 
 def rig_child(self, child_bone, parent_bones, prop_bone, prop_name):
-	""" Rig a child with multiple switchable parents, using Armature constraint and drivers. Custom property is expected to already exist.
-	# TODO: Maybe custom property should be created here as well, actually... or re-created if already exists.
+	""" Rig a child with multiple switchable parents, using Armature constraint and drivers. Also creates a custom property to drive those drivers.
 	"""
 
 	# Create custom property

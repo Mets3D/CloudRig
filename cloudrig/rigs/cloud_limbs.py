@@ -352,6 +352,10 @@ class Rig(CloudFKChainRig):
 		
 		str_bone.drivers[data_path] = str_drv
 
+		#######################
+		##### MORE STUFF ######
+		#######################
+
 		if self.params.type == 'LEG':
 			self.prepare_ik_foot(self.ik_tgt_bone, ik_chain[-2:], org_chain[-2:])
 		
@@ -365,11 +369,16 @@ class Rig(CloudFKChainRig):
 		self.mid_str_transform_setup(self.main_str_bones[1])
 
 		ik_ctrl = self.ik_mstr.parent if self.params.double_ik_control else self.ik_mstr
+		
 		self.prepare_and_store_ikfk_info(self.fk_chain, self.ik_chain, pole_ctrl)
-		self.prepare_and_store_parent_switch_info(ik_ctrl, [self.root_bone, self.limb_root_bone])
+		
+		self.prepare_and_store_parent_switch_info(
+			child_bones = [pole_ctrl, ik_ctrl], 
+			parent_bones = [self.root_bone, self.limb_root_bone]
+		)
 
 	def prepare_and_store_parent_switch_info(self, child_bones, parent_bones):
-		bone_names = child_bones.name	# CURRENTLY JUST ONE BONE, TODO
+		child_names = [b.name for b in child_bones]
 		#parent_names = [b.name for b in parent_bones]
 		parent_names = ["Root", "Clavicle"]
 
@@ -377,15 +386,15 @@ class Rig(CloudFKChainRig):
 		limb = self.params.type.lower()
 		ik_parents_prop_name = "ik_parents_%s_%s" %(limb, side)
 
-		# for c in child_bones... TODO
-		shared.rig_child(self, child_bones, parent_bones, self.prop_bone, ik_parents_prop_name)
+		for cb in child_bones:
+			shared.rig_child(self, cb, parent_bones, self.prop_bone, ik_parents_prop_name)
 
-		self.store_parent_switch_info(self.limb_name_short, bone_names, parent_names, self.prop_bone.name, ik_parents_prop_name)
+		self.store_parent_switch_info(self.limb_name_short, child_names, parent_names, self.prop_bone.name, ik_parents_prop_name)
 
-	def store_parent_switch_info(self, limb_name, bone_names, parent_names, prop_bone, prop_name):
+	def store_parent_switch_info(self, limb_name, child_names, parent_names, prop_bone, prop_name):
 		# TODO: I think for good code architecture, this function should be in shared.py, and not refer to self. (Instead, pass in the armature object, and everything else)
 		info = {
-			"bone_names" : bone_names,	#JUST ONE BONE FOR NOW.		# List of child bone names that will be affected by the parent swapping. Often just one.
+			"child_names" : child_names,		# List of child bone names that will be affected by the parent swapping. Often just one.
 			"parent_names" : parent_names,		# List of (arbitrary) names, in order, that should be displayed for each parent option in the UI.
 			"prop_bone" : prop_bone,			# Name of the properties bone that contains the property that should be changed by the parent switch operator.
 			"prop_name" : prop_name, 			# Name of the property
@@ -454,7 +463,7 @@ class Rig(CloudFKChainRig):
 		)
 
 	def mid_str_transform_setup(self, mid_str_bone):
-		""" Set up transformation constraint to mid-limb STR bone """
+		""" Set up transformation constraint to mid-limb STR bone that ensures that it stays in between the root of the limb and the IK master control during IK stretching. """
 		mid_str_bone = self.main_str_bones[1]
 		trans_con_name = 'Transf_IK_Stretch'
 		mid_str_bone.add_constraint(self.obj, 'TRANSFORM',
