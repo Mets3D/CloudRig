@@ -372,15 +372,30 @@ class Rig(CloudFKChainRig):
 		
 		self.prepare_and_store_ikfk_info(self.fk_chain, self.ik_chain, pole_ctrl)
 		
+
+		
+		# Nevermind, this doesn't work because the code that sets these hasn't run yet... Only good way to avoid imo would be to refactor everything at this point to adhere more to rigify code style.
+		# mstr_torso = self.rigify_parent.mstr_torso
+		# mstr_chest = self.rigify_parent.mstr_chest
+		# mstr_hips = self.rigify_parent.mstr_hips
 		self.prepare_and_store_parent_switch_info(
 			child_bones = [pole_ctrl, ik_ctrl], 
-			parent_bones = [self.root_bone, self.limb_root_bone]
+			parent_bones = [
+				self.root_bone, 
+				# mstr_pelvis, 
+				# mstr_chest if self.params.type == 'ARM' else mstr_hips,
+				self.limb_root_bone
+			],
+			parent_names = [
+				"Root",
+				# "Torso",
+				# "Chest" if self.params.type == 'ARM' else "Hips",
+				self.params.type.capitalize(),
+			]
 		)
 
-	def prepare_and_store_parent_switch_info(self, child_bones, parent_bones):
+	def prepare_and_store_parent_switch_info(self, child_bones, parent_bones, parent_names):
 		child_names = [b.name for b in child_bones]
-		#parent_names = [b.name for b in parent_bones]
-		parent_names = ["Root", "Clavicle"]
 
 		side = self.side_prefix.lower()
 		limb = self.params.type.lower()
