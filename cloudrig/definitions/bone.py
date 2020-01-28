@@ -5,7 +5,7 @@ from .id import *
 from mathutils import *
 from mets_tools.utils import *
 import copy
-from ..shared import group_defs
+from ..shared import group_defs, set_layers
 
 # Attributes that reference an actual bone ID. These should get special treatment, because we don't want to store said bone ID. 
 # Ideally we would store a BoneInfo, but a string is allowed too(less safe).
@@ -264,21 +264,8 @@ class BoneInfo(ID):
 	def center(self):
 		return self.head + self.vec/2
 
-	def set_layers(self, layerlist, wipe=True):
-		"""Layer setting function that can take either a list of booleans or a list of ints.
-		In case of booleans, it must be a 32 length list, and we set the bone's layer list to the passed list.
-		In case of ints, enable the layers with the indicies in the passed list.
-		"""
-
-		if wipe:
-			self.layers = [False]*32
-		
-		for i, e in enumerate(layerlist):
-			if type(e)==bool:
-				assert len(layerlist)==32, "ERROR: Layer assignment expected a list of 32 booleans, got %d."%len(layerlist)
-				self.layers[i] = e
-			elif type(e)==int:
-				self.layers[e] = True
+	def set_layers(self, layerlist, additive=False):
+		set_layers(self, layerlist, additive)
 
 	def put(self, loc, length=None, width=None, scale=None, bbone_scale=None):
 		offset = loc-self.head

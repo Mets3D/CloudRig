@@ -378,7 +378,7 @@ class Rig(CloudFKChainRig):
 		# mstr_torso = self.rigify_parent.mstr_torso
 		# mstr_chest = self.rigify_parent.mstr_chest
 		# mstr_hips = self.rigify_parent.mstr_hips
-		self.prepare_and_store_parent_switch_info(
+		self.prepare_parent_switch(
 			child_bones = [pole_ctrl, ik_ctrl], 
 			parent_bones = [
 				self.root_bone, 
@@ -394,7 +394,7 @@ class Rig(CloudFKChainRig):
 			]
 		)
 
-	def prepare_and_store_parent_switch_info(self, child_bones, parent_bones, parent_names):
+	def prepare_parent_switch(self, child_bones, parent_bones, parent_names):
 		child_names = [b.name for b in child_bones]
 
 		side = self.side_prefix.lower()
@@ -404,25 +404,8 @@ class Rig(CloudFKChainRig):
 		for cb in child_bones:
 			shared.rig_child(self, cb, parent_bones, self.prop_bone, ik_parents_prop_name)
 
-		self.store_parent_switch_info(self.limb_name_short, child_names, parent_names, self.prop_bone.name, ik_parents_prop_name)
-
-	def store_parent_switch_info(self, limb_name, child_names, parent_names, prop_bone, prop_name):
-		# TODO: I think for good code architecture, this function should be in shared.py, and not refer to self. (Instead, pass in the armature object, and everything else)
-		info = {
-			"child_names" : child_names,		# List of child bone names that will be affected by the parent swapping. Often just one.
-			"parent_names" : parent_names,		# List of (arbitrary) names, in order, that should be displayed for each parent option in the UI.
-			"prop_bone" : prop_bone,			# Name of the properties bone that contains the property that should be changed by the parent switch operator.
-			"prop_name" : prop_name, 			# Name of the property
-		}
-
-		if "parents" not in self.obj:
-			self.obj["parents"] = {}
-
 		category = "arms ik" if self.params.type == 'ARM' else "legs ik"
-		if category not in self.obj["parents"]:
-			self.obj["parents"][category] = {}
-		
-		self.obj["parents"][category][limb_name] = info
+		self.store_parent_switch_info(self.limb_name_short, child_names, parent_names, self.prop_bone.name, ik_parents_prop_name, category)
 
 	def prepare_and_store_ikfk_info(self, fk_chain, ik_chain, ik_pole):
 		""" Prepare the data needed to be stored on the armature object for IK/FK snapping. """

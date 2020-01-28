@@ -27,11 +27,10 @@ from rigify.utils.rig import connected_children_names
 from ..definitions.driver import *
 from ..definitions.custom_props import CustomProp
 from ..definitions.bone import BoneInfoContainer, BoneInfo
-from .cloud_utils import make_name, slice_name
 from .. import shared
-from . import cloud_utils
+from .cloud_utils import *
 
-class CloudBaseRig(BaseRig):
+class CloudBaseRig(BaseRig, CloudUtilities):
 	"""Base for all CloudRig rigs."""
 
 	def find_org_bones(self, bone):
@@ -53,7 +52,7 @@ class CloudBaseRig(BaseRig):
 
 		self.side_suffix = ""
 		self.side_prefix = ""
-		base_bone_name = cloud_utils.slice_name(self.base_bone)
+		base_bone_name = self.slice_name(self.base_bone)
 		if "L" in base_bone_name[2]:
 			self.side_suffix = "L"
 			self.side_prefix = "Left"
@@ -95,49 +94,16 @@ class CloudBaseRig(BaseRig):
 			tail = Vector((0, self.scale*5, 0)),
 			bbone_x = self.scale/3,
 			bbone_z = self.scale/3,
+			custom_shape = self.load_widget("Root")
 		)
+
+		self.obj.name = self.generator.metarig.name.replace("META", "RIG")
+		self.obj['cloudrig'] = 1.0
 	
-	def load_widget(self, name):
-		""" Load custom shapes by appending them from a blend file, unless they already exist in this file. """
-		# If it's already loaded, return it.
-		wgt_name = "WGT_"+name
-		wgt_ob = bpy.data.objects.get(wgt_name)
-		if not wgt_ob:
-			# Loading bone shape object from file
-			filename = "Widgets.blend"
-			filedir = os.path.dirname(os.path.realpath(__file__))
-			blend_path = os.path.join(filedir, filename)
-
-			with bpy.data.libraries.load(blend_path) as (data_from, data_to):
-				for o in data_from.objects:
-					if o == wgt_name:
-						data_to.objects.append(o)
-			
-			wgt_ob = bpy.data.objects.get(wgt_name)
-			if not wgt_ob:
-				print("WARNING: Failed to load bone shape: " + wgt_name)
-		if wgt_ob not in self.widgets:
-			self.widgets.append(wgt_ob)
-		
-		return wgt_ob
-
 	def prepare_bone_groups(self):
 		# Wipe any existing bone groups.
 		for bone_group in self.obj.pose.bone_groups:
 			self.obj.pose.bone_groups.remove(bone_group)
-
-	def apply_custom_props(self):
-		""" Apply ORG bone custom properties to corresponding actual bone properties.
-			Should be called once in both edit and pose mode.
-		"""
-		# This is kind of useless to apply to the ORG bone directly... Or just useless in general. Probably delete this at some point.
-		for bd in self.bone_infos.bones:
-			if not bd.name.startswith("ORG"): continue
-			org_bone = self.get_bone(bd.name)
-			for prop in org_bone.keys():
-				if prop == '_RNA_UI': continue
-				if hasattr(bd, prop):
-					setattr(bd, prop, org_bone[prop])
 
 	@stage.prepare_bones
 	def load_org_bones(self):
@@ -179,8 +145,6 @@ class CloudBaseRig(BaseRig):
 			bd.write_edit_data(self.obj, edit_bone)
 	
 	def configure_bones(self):
-		#self.apply_custom_props()
-
 		for bd in self.bone_infos.bones:
 			pose_bone = self.get_bone(bd.name)
 			
@@ -201,28 +165,25 @@ class CloudBaseRig(BaseRig):
 					eb.parent = None
 					break
 
-	@stage.finalize
-	def select_layers(self):
-		layers = [False] * 32
+	@stage.rig_bones
+	def rig_parent_switching(self):
+		""" Rigging of parent switching is best done in a later stage rather than prepare_bones, 
+		to ensure that parent rigs have been generated, 
+		so that we can trust the required parent bones to actually exist.
+		"""
+		pass
 
-		# Select default layers
-		for layer in shared.default_active_layers:
-			layers[layer] = True
-		
-		self.obj.data.layers = layers[:]
-	
-	@stage.finalize
-	def root_layers(self):
-		# Quick and dirtily Force root bone on the desired layers
-		layers = [False] * 32
-		layers[0] = True
-		layers[1] = True
-		layers[16] = True
-		layers[17] = True
+
+	def finalize(self):
+		self.select_layers(shared.default_active_layers)
+		self.organize_widgets()
+		self.configure_display()
+		self.transform_locks()
+
+		# Set root bone layers
 		root_bone = self.get_bone("root")
-		root_bone.bone.layers = layers
+		shared.set_layers(root_bone.bone, [0, 1, 16, 17])
 
-	@stage.finalize
 	def organize_widgets(self):
 		# Hijack the widget collection automatically created by Rigify.
 		wgt_collection = self.generator.collection.children.get("Widgets")
@@ -233,16 +194,14 @@ class CloudBaseRig(BaseRig):
 			if wgt.name not in wgt_collection.objects:
 				wgt_collection.objects.link(wgt)
 
-	@stage.finalize
 	def configure_display(self):
 		# Armature display settings
 		self.obj.display_type = 'SOLID'
 		self.obj.data.display_type = 'BBONE'
-	
-	@stage.finalize
+
 	def transform_locks(self):
 		# Rigify automatically locks transforms of bones whose names match this regex: "[A-Z][A-Z][A-Z]-"
-		# We want to undo this... For now, we just don't want anything to be locked. In future, maybe lock based on bone groups.
+		# We want to undo this... For now, we just don't want anything to be locked. In future, maybe lock based on bone groups. (TODO)
 		for pb in self.obj.pose.bones:
 			pb.lock_location = (False, False, False)
 			pb.lock_rotation = (False, False, False)

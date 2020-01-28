@@ -1,5 +1,6 @@
 # Well, this could probably be a lot more elegant.
 # TODO: This entire file should be merged into cloud_base.py.
+# No. Layer-related stuff should be moved into its own layers.py. Other stuff should be moved into I guess cloud_utils.py.
 
 from .rigs.cloud_utils import make_name, slice_name
 
@@ -51,7 +52,7 @@ DSP = 10
 PROPERTIES = 17
 BLACK_BOX = 31
 
-default_active_layers = [IK_MAIN, FK_MAIN, PROPERTIES]
+default_active_layers = [IK_MAIN, IK_SECOND, FK_MAIN, PROPERTIES]
 
 # Name : Params dictionary.
 group_defs = {
@@ -115,17 +116,39 @@ group_defs = {
 	},
 }
 
-def rig_child(self, child_bone, parent_bones, prop_bone, prop_name):
+def set_layers(obj, layerlist, additive=False):
+	"""Layer setting function that can take either a list of booleans or a list of ints.
+	In case of booleans, it must be a 32 length list, and we set the bone's layer list to the passed list.
+	In case of ints, enable the layers with the indicies in the passed list.
+	
+	obj can either be a bone or an armature.
+	"""
+	layers = obj.layers[:]
+
+	if not additive:
+		layers = [False]*32
+	
+	for i, e in enumerate(layerlist):
+		if type(e)==bool:
+			assert len(layerlist)==32, "ERROR: Layer assignment expected a list of 32 booleans, got %d."%len(layerlist)
+			layers[i] = e
+		elif type(e)==int:
+			layers[e] = True
+	
+	obj.layers = layers[:]
+
+def rig_child(self, child_bone, parent_bones, prop_bone, prop_name, default_value=0):
 	""" Rig a child with multiple switchable parents, using Armature constraint and drivers. Also creates a custom property to drive those drivers.
 	"""
 
 	# Create custom property
-	parents_prop = prop_bone.custom_props[prop_name] = CustomProp(prop_name, default=1, min=0, max=len(parent_bones)-1)
+	parents_prop = prop_bone.custom_props[prop_name] = CustomProp(prop_name, default=default_value, min=0, max=len(parent_bones)-1)
 
 	# Create parent bone for the bone that stores the Armature constraint - Without this, we cannot figure out the corrected pose-space matrix for the child bone after the property is switched.
 	arm_con_bone = create_parent_bone(self, child_bone)
 	arm_con_bone.name = "Parents_" + child_bone.name
-	arm_con_bone.custom_shape = None,
+	arm_con_bone.custom_shape = None
+	arm_con_bone.bone_group = "Body: IK-MCH - IK Mechanism Bones"
 
 	targets = []
 	for i, pb in enumerate(parent_bones):
