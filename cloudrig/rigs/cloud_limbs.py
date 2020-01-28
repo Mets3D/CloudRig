@@ -70,8 +70,10 @@ class Rig(CloudFKChainRig):
 		bbone_segments = self.params.bbone_segments
 		
 		if self.params.type=='LEG' and org_i > len(chain)-3:
+			# Force strictly 1 segment on the foot and the toe.
 			return (1, self.params.bbone_segments)
 		elif self.params.type=='ARM' and org_i == len(chain)-1:
+			# Force strictly 1 segment and no BBone on the wrist.
 			return (1, 1)
 		
 		return(segments, bbone_segments)
@@ -94,8 +96,9 @@ class Rig(CloudFKChainRig):
 	def prepare_fk_limb(self):
 		# Note: This runs after super().prepare_fk_chain().
 
-		# TODO: Need bones to drive shape keys, such as HLP-Wrist2.L, HLP-Elbow2.L.
+		# TODO: Need bones to drive shape keys, such as HLP-Wrist2.L, HLP-Elbow2.L. (We cannot rely on ORG bone local rotations if we expect the shape keys to still behave when the STR bones are posed extremely)
 		# TODO: Elbow and Knee should be locked on 2 rotation axes.
+		# TODO: Drivers for rotation order?
 
 		hng_child = self.fk_chain[0]
 		for i, fk_bone in enumerate(self.fk_chain):
@@ -189,7 +192,7 @@ class Rig(CloudFKChainRig):
 		direction = 1 if limb_type=='ARM' else -1					# Character is expected to face +Y direction.
 		offset_scale = 3 if limb_type=='ARM' else 5					# Scalar on distance from the body.
 		offset = Vector((0, direction*offset_scale*self.scale, 0))
-		pole_ctrl = self.bone_infos.bone(
+		pole_ctrl = self.pole_ctrl = self.bone_infos.bone(
 			name = make_name(["IK", "POLE"], limb_type.capitalize(), [self.side_suffix]),
 			bbone_x = first_bone.bbone_x,
 			bbone_z = first_bone.bbone_x,
@@ -368,44 +371,9 @@ class Rig(CloudFKChainRig):
 
 		self.mid_str_transform_setup(self.main_str_bones[1])
 
-		ik_ctrl = self.ik_mstr.parent if self.params.double_ik_control else self.ik_mstr
+		self.ik_ctrl = self.ik_mstr.parent if self.params.double_ik_control else self.ik_mstr
 		
 		self.prepare_and_store_ikfk_info(self.fk_chain, self.ik_chain, pole_ctrl)
-		
-
-		
-		# Nevermind, this doesn't work because the code that sets these hasn't run yet... Only good way to avoid imo would be to refactor everything at this point to adhere more to rigify code style.
-		# mstr_torso = self.rigify_parent.mstr_torso
-		# mstr_chest = self.rigify_parent.mstr_chest
-		# mstr_hips = self.rigify_parent.mstr_hips
-		self.prepare_parent_switch(
-			child_bones = [pole_ctrl, ik_ctrl], 
-			parent_bones = [
-				self.root_bone, 
-				# mstr_pelvis, 
-				# mstr_chest if self.params.type == 'ARM' else mstr_hips,
-				self.limb_root_bone
-			],
-			parent_names = [
-				"Root",
-				# "Torso",
-				# "Chest" if self.params.type == 'ARM' else "Hips",
-				self.params.type.capitalize(),
-			]
-		)
-
-	def prepare_parent_switch(self, child_bones, parent_bones, parent_names):
-		child_names = [b.name for b in child_bones]
-
-		side = self.side_prefix.lower()
-		limb = self.params.type.lower()
-		ik_parents_prop_name = "ik_parents_%s_%s" %(limb, side)
-
-		for cb in child_bones:
-			shared.rig_child(self, cb, parent_bones, self.prop_bone, ik_parents_prop_name)
-
-		category = "arms ik" if self.params.type == 'ARM' else "legs ik"
-		self.store_parent_switch_info(self.limb_name_short, child_names, parent_names, self.prop_bone.name, ik_parents_prop_name, category)
 
 	def prepare_and_store_ikfk_info(self, fk_chain, ik_chain, ik_pole):
 		""" Prepare the data needed to be stored on the armature object for IK/FK snapping. """
@@ -683,6 +651,49 @@ class Rig(CloudFKChainRig):
 
 			data_path = 'constraints["%s"].influence' %(ik_ct_name)
 			org_bone.drivers[data_path] = drv
+
+	#@stage.rig_bones
+	@stage.prepare_bones
+	def parent_switcheroo(self):
+		# Nevermind, this doesn't work because the code that sets these hasn't run yet... TODO: Need to put this in a later stage, ie. rig_bones.
+		# Quick hardcoding of spine as parent for testing.
+		print("parent rig:")
+		print(self.rigify_parent.rigify_parent)
+		spine_rig = self.rigify_parent if self.params.type=='LEG' else self.rigify_parent.rigify_parent
+		mstr_torso = spine_rig.mstr_torso
+		mstr_chest = spine_rig.mstr_chest
+		mstr_hips = spine_rig.mstr_hips
+		self.store_parent_switch_info(
+			child_bones = [self.pole_ctrl, self.ik_ctrl], 
+			parent_bones = [
+				self.root_bone, 
+				mstr_torso, 
+				mstr_chest if self.params.type == 'ARM' else mstr_hips,
+				self.limb_root_bone
+			],
+			parent_display_names = [
+				"Root",
+				"Torso",
+				"Chest" if self.params.type == 'ARM' else "Hips",
+				self.params.type.capitalize(),
+			]
+		)
+	
+	def store_parent_switch_info(self, child_bones, parent_bones, parent_display_names):
+		child_names = [b.name for b in child_bones]
+		parent_names = [b.name for b in parent_bones]
+
+		side = self.side_prefix.lower()
+		limb = self.params.type.lower()
+		ik_parents_prop_name = "ik_parents_%s_%s" %(limb, side)
+
+		for cb in child_bones:
+			shared.rig_child(self, cb, parent_bones, self.prop_bone, ik_parents_prop_name)
+			#self.rig_parent_switch(child_names, parent_names, self.prop_bone. name, ik_parents_prop_name)
+
+		category = "arms ik" if self.params.type == 'ARM' else "legs ik"
+		super().store_parent_switch_info(self.limb_name_short, child_names, parent_display_names, self.prop_bone.name, ik_parents_prop_name, category)
+
 
 	##############################
 	# Parameters

@@ -33,7 +33,6 @@ class CloudUtilities:
 		return wgt_ob
 
 	def store_parent_switch_info(self, limb_name, child_names, parent_names, prop_bone, prop_name, category):
-		# TODO: I think for good code architecture, this function should be in shared.py, and not refer to self. (Instead, pass in the armature object, and everything else)
 		info = {
 			"child_names" : child_names,		# List of child bone names that will be affected by the parent swapping. Often just one.
 			"parent_names" : parent_names,		# List of (arbitrary) names, in order, that should be displayed for each parent option in the UI.

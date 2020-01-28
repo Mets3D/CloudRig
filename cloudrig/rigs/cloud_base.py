@@ -133,7 +133,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 				bd.name not in self.bones.flatten() and
 				bd.name != 'root'
 			):
-				bone_name = self.new_bone(bd.name)
+				bone_name = self.copy_bone("root", bd.name)
+				# bone_name = self.new_bone(bd.name) # new_bone() is currently bugged and doesn't register the new bone, so we use copy_bone instead.
 	
 	def parent_bones(self):
 		for bd in self.bone_infos.bones:
@@ -164,15 +165,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 				if c.type=='ARMATURE':
 					eb.parent = None
 					break
-
-	@stage.rig_bones
-	def rig_parent_switching(self):
-		""" Rigging of parent switching is best done in a later stage rather than prepare_bones, 
-		to ensure that parent rigs have been generated, 
-		so that we can trust the required parent bones to actually exist.
-		"""
-		pass
-
 
 	def finalize(self):
 		self.select_layers(shared.default_active_layers)
