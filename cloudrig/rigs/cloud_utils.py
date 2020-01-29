@@ -68,6 +68,31 @@ class CloudUtilities:
 		
 		return wgt_ob
 
+	def load_ui_script(self):
+		# Check if it already exists
+		text = bpy.data.texts.get("cloudrig.py")
+		# If not, create it.
+		if not text:
+			text = bpy.data.texts.new(name="cloudrig.py")
+		
+		text.clear()
+		text.use_module = True
+
+		filename = "cloudrig.py"
+		filedir = os.path.dirname(os.path.realpath(__file__))
+		filedir = os.path.split(filedir)[0]
+
+		readfile = open(os.path.join(filedir, filename), 'r')
+
+		for line in readfile:
+			text.write(line)
+		readfile.close()
+
+		# Run UI script
+		exec(text.as_string(), {})
+
+		return text
+
 	def store_parent_switch_info(self, limb_name, child_names, parent_names, prop_bone, prop_name, category):
 		info = {
 			"child_names" : child_names,		# List of child bone names that will be affected by the parent swapping. Often just one.

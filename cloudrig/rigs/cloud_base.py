@@ -184,6 +184,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		if root_shape:
 			bpy.data.objects.remove(root_shape)
 
+		self.obj['script'] = self.load_ui_script()
+
 	@stage.finalize
 	def organize_widgets(self):
 		# Hijack the widget collection automatically created by Rigify.
