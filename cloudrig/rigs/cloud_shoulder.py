@@ -48,6 +48,7 @@ class Rig(CloudFKChainRig):
 	def prepare_fk_shoulder(self):
 		self.fk_chain[0].custom_shape = self.load_widget("Clavicle")
 		self.fk_chain[0].bone_group = 'Body: Main IK Controls'
+		self.register_parent(self.fk_chain[0], self.side_prefix.capitalize() + " Shoulder")
 
 	##############################
 	# Parameters

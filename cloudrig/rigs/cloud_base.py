@@ -30,6 +30,7 @@ from ..definitions.bone import BoneInfoContainer, BoneInfo
 from .. import shared
 from .cloud_utils import *
 
+
 class CloudBaseRig(BaseRig, CloudUtilities):
 	"""Base for all CloudRig rigs."""
 
@@ -43,6 +44,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	def initialize(self):
 		super().initialize()
 		"""Gather and validate data about the rig."""
+		self.parent_candidates = {}
+		
 		self.prepare_bone_groups()
 
 		# Determine rig scale by armature height.
@@ -94,8 +97,11 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			tail = Vector((0, self.scale*5, 0)),
 			bbone_x = self.scale/3,
 			bbone_z = self.scale/3,
-			custom_shape = self.load_widget("Root")
+			custom_shape = self.load_widget("Root"),
+			custom_shape_scale = 1.5
 		)
+		self.root_parent = shared.create_parent_bone(self, self.root_bone)
+		self.root_parent.bone_group = 'Body: Main IK Controls Extra Parents'
 
 		self.obj.name = self.generator.metarig.name.replace("META", "RIG")
 		self.obj['cloudrig'] = 1.0
@@ -168,29 +174,41 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 	def finalize(self):
 		self.select_layers(shared.default_active_layers)
-		self.organize_widgets()
-		self.configure_display()
-		self.transform_locks()
 
 		# Set root bone layers
 		root_bone = self.get_bone("root")
 		shared.set_layers(root_bone.bone, [0, 1, 16, 17])
 
+		# Nuke Rigify's generated root bone shape so it cannot be applied.
+		root_shape = bpy.data.objects.get("WGT-"+self.obj.name+"_root")
+		if root_shape:
+			bpy.data.objects.remove(root_shape)
+
+	@stage.finalize
 	def organize_widgets(self):
 		# Hijack the widget collection automatically created by Rigify.
 		wgt_collection = self.generator.collection.children.get("Widgets")
-		if not wgt_collection: 
-			print("WARNING: Could not find Widgets collection.")
-			return
+		if not wgt_collection:
+			# Try finding a "Widgets" collection next to the metarig.
+			for c in self.generator.metarig.users_collection:
+				wgt_collection = c.children.get("Widgets")
+				if wgt_collection: break
+		
+		if not wgt_collection:
+			# Fall back to master collection.
+			wgt_collection = bpy.context.scene.collection
+		
 		for wgt in self.widgets:
 			if wgt.name not in wgt_collection.objects:
 				wgt_collection.objects.link(wgt)
 
+	@stage.finalize
 	def configure_display(self):
 		# Armature display settings
 		self.obj.display_type = 'SOLID'
 		self.obj.data.display_type = 'BBONE'
 
+	@stage.finalize
 	def transform_locks(self):
 		# Rigify automatically locks transforms of bones whose names match this regex: "[A-Z][A-Z][A-Z]-"
 		# We want to undo this... For now, we just don't want anything to be locked. In future, maybe lock based on bone groups. (TODO)

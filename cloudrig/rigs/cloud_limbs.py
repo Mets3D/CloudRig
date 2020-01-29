@@ -652,47 +652,44 @@ class Rig(CloudFKChainRig):
 			data_path = 'constraints["%s"].influence' %(ik_ct_name)
 			org_bone.drivers[data_path] = drv
 
-	#@stage.rig_bones
+	def add_parent(self, parent_key, parents):
+		""" Try adding a registered parent bone by their display name, and add them to the parents dictionary. """
+		parent_candidates = self.get_parent_candidates()
+
+		if parent_key in parent_candidates:
+			parents[parent_key] = parent_candidates[parent_key]
+
 	@stage.prepare_bones
 	def parent_switcheroo(self):
-		# Nevermind, this doesn't work because the code that sets these hasn't run yet... TODO: Need to put this in a later stage, ie. rig_bones.
-		# Quick hardcoding of spine as parent for testing.
-		print("parent rig:")
-		print(self.rigify_parent.rigify_parent)
-		spine_rig = self.rigify_parent if self.params.type=='LEG' else self.rigify_parent.rigify_parent
-		mstr_torso = spine_rig.mstr_torso
-		mstr_chest = spine_rig.mstr_chest
-		mstr_hips = spine_rig.mstr_hips
+		parents = {
+			"Root" : self.root_bone
+		}
+		# TODO: This way of finding and assigning parents feels pretty clunky, but it's better than the fully hard-coded mess before.
+		self.add_parent("Torso", parents)
+		if self.params.type=='LEG':
+			self.add_parent("Hips", parents)
+			parents["Leg"] = self.limb_root_bone
+		else:
+			self.add_parent("Chest", parents)
+			parents["Arm"] = self.limb_root_bone
+		
 		self.store_parent_switch_info(
 			child_bones = [self.pole_ctrl, self.ik_ctrl], 
-			parent_bones = [
-				self.root_bone, 
-				mstr_torso, 
-				mstr_chest if self.params.type == 'ARM' else mstr_hips,
-				self.limb_root_bone
-			],
-			parent_display_names = [
-				"Root",
-				"Torso",
-				"Chest" if self.params.type == 'ARM' else "Hips",
-				self.params.type.capitalize(),
-			]
+			parents = parents
 		)
 	
-	def store_parent_switch_info(self, child_bones, parent_bones, parent_display_names):
+	def store_parent_switch_info(self, child_bones, parents):
 		child_names = [b.name for b in child_bones]
-		parent_names = [b.name for b in parent_bones]
 
 		side = self.side_prefix.lower()
 		limb = self.params.type.lower()
 		ik_parents_prop_name = "ik_parents_%s_%s" %(limb, side)
 
 		for cb in child_bones:
-			shared.rig_child(self, cb, parent_bones, self.prop_bone, ik_parents_prop_name)
-			#self.rig_parent_switch(child_names, parent_names, self.prop_bone. name, ik_parents_prop_name)
+			shared.rig_child(self, cb, list(parents.values()), self.prop_bone, ik_parents_prop_name)
 
 		category = "arms ik" if self.params.type == 'ARM' else "legs ik"
-		super().store_parent_switch_info(self.limb_name_short, child_names, parent_display_names, self.prop_bone.name, ik_parents_prop_name, category)
+		super().store_parent_switch_info(self.limb_name_short, child_names, list(parents.keys()), self.prop_bone.name, ik_parents_prop_name, category)
 
 
 	##############################

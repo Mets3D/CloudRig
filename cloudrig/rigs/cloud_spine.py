@@ -68,13 +68,14 @@ class Rig(CloudChainRig):
 		# TODO/NOTE: The pelvis can be placed arbitrarily, but there's no good way currently to do this from the metarig.
 		# To be fair, the more customizability we add to the metarig, the less it becomes a metarig...
 		self.mstr_torso = self.bone_infos.bone(
-			name = "MSTR-Torso",
-			source = self.org_chain[0],
-			head = self.org_chain[0].center,
-			tail = self.org_chain[0].center + Vector((0, 0, self.scale)),
-			custom_shape = self.load_widget("Torso_Master"),
-			bone_group = 'Body: Main IK Controls',
+			name 					= "MSTR-Torso",
+			source 					= self.org_chain[0],
+			head 					= self.org_chain[0].center,
+			tail 					= self.org_chain[0].center + Vector((0, 0, self.scale)),
+			custom_shape 			= self.load_widget("Torso_Master"),
+			bone_group 				= 'Body: Main IK Controls',
 		)
+		self.register_parent(self.mstr_torso, "Torso")
 		#self.mstr_torso.flatten()
 		if self.params.double_controls:
 			double_mstr_pelvis = shared.create_parent_bone(self, self.mstr_torso)
@@ -90,7 +91,6 @@ class Rig(CloudChainRig):
 			fk_bone = self.bone_infos.bone(
 				name				= fk_name,
 				source				= org_bone,
-				only_transform 		= True,
 				**self.defaults,
 				custom_shape 		= self.load_widget("FK_Limb"),
 				custom_shape_scale 	= 0.9 * org_bone.custom_shape_scale,
@@ -112,7 +112,6 @@ class Rig(CloudChainRig):
 				fk_child_bone = self.bone_infos.bone(
 					name = fk_bone.name.replace("FK", "FK-C"),
 					source = fk_bone,
-					only_transform = True,
 					custom_shape = fk_bone.custom_shape,
 					custom_shape_scale = fk_bone.custom_shape_scale * 0.9,
 					bone_group = 'Body: FK Helper Bones',
@@ -145,6 +144,8 @@ class Rig(CloudChainRig):
 				parent				= self.mstr_torso,
 				bone_group = "Body: Main IK Controls"
 			)
+		self.register_parent(self.mstr_chest, "Chest")
+
 		if self.params.double_controls:
 			double_mstr_chest = shared.create_parent_bone(self, self.mstr_chest)
 			double_mstr_chest.bone_group = 'Body: Main IK Controls Extra Parents'
@@ -161,6 +162,7 @@ class Rig(CloudChainRig):
 				parent				= self.mstr_torso,
 				bone_group = "Body: Main IK Controls"
 		)
+		self.register_parent(self.mstr_hips, "Hips")
 
 		self.ik_ctr_chain = []
 		for i, fk_bone in enumerate(self.fk_chain[:-2]):
@@ -168,7 +170,6 @@ class Rig(CloudChainRig):
 			ik_ctr_bone = self.bone_infos.bone(
 				name				= ik_ctr_name, 
 				source				= fk_bone,
-				only_transform=True,
 				**self.defaults,
 				custom_shape 		= self.load_widget("Oval"),
 				# custom_shape_scale 	= 0.9 * fk_bone.custom_shape_scale,
