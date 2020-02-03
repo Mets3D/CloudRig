@@ -7,23 +7,45 @@ from ..definitions.custom_props import CustomProp
 class CloudUtilities:
 	# Utility functions that probably won't be overriden by a sub-class because they perform a very specific task.
 
-	def hinge_setup(self, bone, *, parent_bone=None, hng_name="", prop_bone, prop_name, default_value=0.0):
-		prop_bone.custom_props[prop_name] = CustomProp(prop_name, default=0.0)
-		
+	def hinge_setup(self, bone, *, prop_bone, prop_name, parent_bone=None, hng_name="", default_value=0, limb_name=""):
+		# Initialize some defaults
 		if hng_name=="":
 			sliced = slice_name(bone.name)
 			sliced[0].insert(0, "HNG")
 			hng_name = make_name(*sliced)
 		if not parent_bone:
 			parent_bone = bone.parent
+		if limb_name=="":
+			limb_name = "Hinge: " + self.side_suffix + " " + slice_name(bone.name)[1]
+		
+		# Store info for UI
+		info = {
+			"prop_bone"			: prop_bone.name,
+			"prop_name" 		: prop_name,
+			"bones_on" 			: [bone.name],
+			"bones_off" 		: [bone.name],
+		}
+		
+		if "fk_hinges" not in self.obj.data:
+			self.obj.data["fk_hinges"] = {}
 
-		# Create Hinge helper
+		limbs = "arms" if self.params.type == 'ARM' else "legs"
+		if limbs not in self.obj.data["fk_hinges"]:
+			self.obj.data["fk_hinges"][limbs] = {}
+
+		self.obj.data["fk_hinges"][limbs][limb_name] = info
+
+		# Create custom property
+		prop_bone.custom_props[prop_name] = CustomProp(prop_name, default=0, min=0, max=1)
+
+		# Create Hinge helper bone
 		hng_bone = self.bone_infos.bone(
 			name			= hng_name,
 			source			= bone, 
 			bone_group 		= 'Body: FK Helper Bones',
 		)
 
+		# Hinge Armature constraint
 		hng_bone.add_constraint(self.obj, 'ARMATURE', 
 			targets = [
 				{
@@ -35,6 +57,7 @@ class CloudUtilities:
 			],
 		)
 
+		# Hinge Armature constraint driver
 		drv1 = Driver()
 		drv1.expression = "var"
 		var1 = drv1.make_var("var")
@@ -52,11 +75,13 @@ class CloudUtilities:
 		hng_bone.drivers[data_path1] = drv1
 		hng_bone.drivers[data_path2] = drv2
 
+		# Hinge Copy Location constraint
 		hng_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True,
 			target = self.obj,
 			subtarget = str(parent_bone),
 		)
 
+		# Parenting
 		bone.parent = hng_bone
 
 	def register_parent(self, bone, name):
@@ -156,13 +181,13 @@ class CloudUtilities:
 			"prop_name" : prop_name, 			# Name of the property
 		}
 
-		if "parents" not in self.obj:
-			self.obj["parents"] = {}
+		if "parents" not in self.obj.data:
+			self.obj.data["parents"] = {}
 
-		if category not in self.obj["parents"]:
-			self.obj["parents"][category] = {}
+		if category not in self.obj.data["parents"]:
+			self.obj.data["parents"][category] = {}
 		
-		self.obj["parents"][category][limb_name] = info
+		self.obj.data["parents"][category][limb_name] = info
 
 	@staticmethod
 	def make_name(prefixes=[], base="", suffixed=[]):

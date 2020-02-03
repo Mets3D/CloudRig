@@ -105,7 +105,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		self.root_parent.bone_group = 'Body: Main IK Controls Extra Parents'
 
 		self.obj.name = self.generator.metarig.name.replace("META", "RIG")
-		self.obj['cloudrig'] = version
+		self.obj.data['cloudrig'] = version
 	
 	def prepare_bone_groups(self):
 		# Wipe any existing bone groups.
@@ -116,7 +116,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	def load_org_bones(self):
 		# Load ORG bones into BoneInfo instances.
 		self.org_chain = []
-		
+
 		for bn in self.bones.org.main:	# NOTE: Make sure we don't define the parent bone. This rig should never define a BoneInfo instance for its parent!
 			eb = self.get_bone(bn)
 			eb.use_connect = False

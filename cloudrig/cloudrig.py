@@ -248,12 +248,12 @@ class POSE_OT_rigify_switch_parent(bpy.types.Operator):
 
 def get_rigs():
 	""" Find all cloudrig armatures in the file."""
-	return [o for o in bpy.data.objects if o.type=='ARMATURE' and 'cloudrig' in o and o['cloudrig']==version]
+	return [o for o in bpy.data.objects if o.type=='ARMATURE' and 'cloudrig' in o.data and o.data['cloudrig']==version]
 
 def get_rig():
 	"""If the active object is a cloudrig, return it."""
 	rig = bpy.context.object
-	if rig and rig.type == 'ARMATURE' and 'cloudrig' in rig and rig['cloudrig']==version:
+	if rig and rig.type == 'ARMATURE' and 'cloudrig' in rig.data and rig.data['cloudrig']==version:
 		return rig
 
 def get_char_bone(rig):
@@ -324,6 +324,9 @@ class Snap_FK2IK(bpy.types.Operator):
 		armature = context.object
 		fk_bones = list(map(armature.pose.bones.get, self.fk_bones.split(", ")))
 		ik_bones = list(map(armature.pose.bones.get, self.ik_bones.split(", ")))
+
+		if fk_bones==[None] or ik_bones==[None]: 
+			return {'CANCELLED'}
 
 		for i, fkb in enumerate(fk_bones):
 			fk_bones[i].matrix = ik_bones[i].matrix
@@ -488,6 +491,10 @@ class Snap_IK2FK(bpy.types.Operator):
 		fk_bones = list(map(armature.pose.bones.get, self.fk_bones.split(", ")))
 		ik_bones = list(map(armature.pose.bones.get, self.ik_bones.split(", ")))
 
+		if fk_bones==[None] or ik_bones==[None]: 
+			print("WARNING: CANNOT SNAP IK TO FK, PARAMS MISSING")
+			return {'CANCELLED'}
+		
 		ik_pole = armature.pose.bones.get(self.ik_pole)
 
 		# Snap the last IK control to the last FK control.
@@ -857,30 +864,38 @@ class RigUI_Settings_FKIK(RigUI):
 		layout = self.layout
 		rig = get_rig()
 		if not rig: return
-		ikfk_props = rig.pose.bones.get('Properties_IKFK')
+		data = rig.data
 
-		ik_chains = rig["ik_chains"].to_dict()
+		if "ik_chains" in data:
+			ik_chains = data["ik_chains"].to_dict()
 
-		for cat_name in ik_chains.keys():
-			category = ik_chains[cat_name]
-			row = layout.row()
-			for limb_name in category.keys():
-				limb = category[limb_name]
+			for cat_name in ik_chains.keys():
+				category = ik_chains[cat_name]
+				row = layout.row()
+				for limb_name in category.keys():
+					limb = category[limb_name]
 
-				prop_bone = rig.pose.bones.get(limb['prop_bone'])
-				if not prop_bone:
-					print("WARNING: Limb definition has no prop_bone: %s, %s", cat_name, limb)
+					prop_bone = rig.pose.bones.get(limb['prop_bone'])
+					if not prop_bone:
+						print("WARNING: Limb definition has no prop_bone: %s, %s", cat_name, limb)
 
-				col = row.column()
-				sub_row = col.row(align=True)
-				sub_row.prop(ikfk_props, '["' + limb["prop_name"] + '"]', slider=True, text=limb_name)
-				switch = sub_row.operator(IKFK_Toggle.bl_idname, text="", icon='FILE_REFRESH')
-				switch.fk_bones = ", ".join(limb["fk_names"])
-				switch.ik_bones = ", ".join(limb["ik_names"])
-				switch.ik_pole = limb["ik_pole_name"]
-				switch.double_ik_control = limb["double_ik_control"]
-				switch.prop_bone = limb["prop_bone"]
-				switch.prop_name = limb["prop_name"]
+					col = row.column()
+					sub_row = col.row(align=True)
+					sub_row.prop(prop_bone, '["' + limb["prop_name"] + '"]', slider=True, text=limb_name)
+					switch = sub_row.operator(IKFK_Toggle.bl_idname, text="", icon='FILE_REFRESH')
+					for param in limb.keys():
+						if hasattr(switch, param):
+							value = limb[param]
+							if type(value)==list:
+								value = ", ".join(value)
+							setattr(switch, param, value)
+					
+					# switch.fk_bones = ", ".join(limb["fk_names"])
+					# switch.ik_bones = ", ".join(limb["ik_names"])
+					# switch.ik_pole = limb["ik_pole_name"]
+					# switch.double_ik_control = limb["double_ik_control"]
+					# switch.prop_bone = limb["prop_bone"]
+					# switch.prop_name = limb["prop_name"]
 
 class RigUI_Settings_IK(RigUI):
 	bl_idname = "OBJECT_PT_rig_ui_ik"
@@ -892,6 +907,7 @@ class RigUI_Settings_IK(RigUI):
 		rig = get_rig()
 		if not rig: return
 		ikfk_props = rig.pose.bones.get('Properties_IKFK')
+		data = rig.data
 
 		# IK Stretch
 		if 'ik_stretches' in rig:
@@ -903,6 +919,7 @@ class RigUI_Settings_IK(RigUI):
 		# IK Hinge
 		if 'ik_hinges' in rig:
 			layout.label(text="IK Hinge")
+
 			hand_row = layout.row()
 			hand_row.prop(ikfk_props, '["ik_hinge_hand_left"]',  slider=True, text='Left Hand' )
 			hand_row.prop(ikfk_props, '["ik_hinge_hand_right"]', slider=True, text='Right Hand')
@@ -911,9 +928,9 @@ class RigUI_Settings_IK(RigUI):
 			foot_row.prop(ikfk_props, '["ik_hinge_foot_right"]', slider=True, text='Right Foot')
 
 		# IK Parents
-		if 'parents' in rig:
+		if 'parents' in rig.data:
 			layout.label(text='Parents')
-			ik_parents = rig['parents'].to_dict()
+			ik_parents = rig.data['parents'].to_dict()
 			for cat_name in ik_parents.keys():
 				category = ik_parents[cat_name]
 				row = layout.row()
@@ -957,24 +974,31 @@ class RigUI_Settings_FK(RigUI):
 		layout = self.layout
 		rig = get_rig()
 		if not rig: return
-		rig_props = rig.rig_properties
-		ikfk_props = rig.pose.bones.get('Properties_IKFK')
-		face_props = rig.pose.bones.get('Properties_Face')
+		data = rig.data
 
 		# FK Hinge
-		if 'fk_hinges' in rig:
+		if 'fk_hinges' in data:
 			layout.label(text='FK Hinge')
-			hand_row = layout.row()
-			hand_row.prop(ikfk_props, '["fk_hinge_arm_left"]',  slider=True, text='Left Arm' )
-			hand_row.prop(ikfk_props, '["fk_hinge_arm_right"]', slider=True, text='Right Arm')
-			foot_row = layout.row()
-			foot_row.prop(ikfk_props, '["fk_hinge_leg_left"]',  slider=True, text='Left Leg' )
-			foot_row.prop(ikfk_props, '["fk_hinge_leg_right"]', slider=True, text='Right Leg')
+			fk_hinges = data["fk_hinges"].to_dict()
+
+			for cat_name in fk_hinges.keys():
+				category = fk_hinges[cat_name]
+				row = layout.row()
+				for limb_name in category.keys():
+					limb = category[limb_name]
+
+					prop_bone = rig.pose.bones.get(limb['prop_bone'])
+					if not prop_bone:
+						print("WARNING: Limb definition has no prop_bone: %s, %s", cat_name, limb)
+
+					col = row.column()
+					sub_row = col.row(align=True)
+					sub_row.prop(prop_bone, '["' + limb["prop_name"] + '"]', slider=True, text=limb_name)
 
 			# Head settings
-			layout.separator()
-			layout.prop(face_props, '["neck_hinge"]', slider=True, text='Neck Hinge')
-			layout.prop(face_props, '["head_hinge"]', slider=True, text='Head Hinge')
+			# layout.separator()
+			# layout.prop(face_props, '["neck_hinge"]', slider=True, text='Neck Hinge')
+			# layout.prop(face_props, '["head_hinge"]', slider=True, text='Head Hinge')
 
 class RigUI_Settings_Face(RigUI):
 	bl_idname = "OBJECT_PT_rig_ui_face"

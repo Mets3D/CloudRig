@@ -144,7 +144,8 @@ class Rig(CloudFKChainRig):
 			parent_bone = self.limb_root_bone,
 			hng_name = self.base_bone.replace("ORG", "FK-HNG"),
 			prop_bone = self.prop_bone,
-			prop_name = self.fk_hinge_name
+			prop_name = self.fk_hinge_name,
+			limb_name = self.side_suffix + " " + self.params.type.capitalize()
 		)
 
 	@stage.prepare_bones
@@ -360,27 +361,27 @@ class Rig(CloudFKChainRig):
 		
 		self.store_ikfk_info(self.limb_name, self.prop_bone.name, self.ikfk_prop.name, fk_names, ik_names, ik_pole.name)
 
-	def store_ikfk_info(self, limb_name, prop_bone, prop_name, fk_names, ik_names, ik_pole_name):
+	def store_ikfk_info(self, limb_name, prop_bone_name, prop_name, fk_names, ik_names, ik_pole_name):
 		""" Store all the data needed by the IK/FK switch mechanism in the ik_chains dictionary custom property on the rig object.
 		The UI drawing and IK/FK snapping is handled by the (non-generated) UI script, cloudrig.py.
 		"""
-		info = {
-			"prop_bone"			: prop_bone,
+		info = {	# These parameter names must be kept in sync with Snap_IK2FK in cloudrig.py
+			"prop_bone"			: prop_bone_name,
 			"prop_name" 		: prop_name,
-			"fk_names" 			: fk_names,
-			"ik_names" 			: ik_names,
-			"ik_pole_name" 		: ik_pole_name,
+			"fk_bones" 			: fk_names,
+			"ik_bones" 			: ik_names,
+			"ik_pole" 			: ik_pole_name,
 			"double_ik_control" : self.params.double_ik_control
 		}
 		
-		if "ik_chains" not in self.obj:
-			self.obj["ik_chains"] = {}
+		if "ik_chains" not in self.obj.data:
+			self.obj.data["ik_chains"] = {}
 
 		limbs = "arms" if self.params.type == 'ARM' else "legs"
-		if limbs not in self.obj["ik_chains"]:
-			self.obj["ik_chains"][limbs] = {}
+		if limbs not in self.obj.data["ik_chains"]:
+			self.obj.data["ik_chains"][limbs] = {}
 
-		self.obj["ik_chains"][limbs][limb_name] = info
+		self.obj.data["ik_chains"][limbs][limb_name] = info
 
 	def first_str_counterrotate_setup(self, str_bone, org_bone, factor):
 		str_bone.add_constraint(self.obj, 'TRANSFORM',
