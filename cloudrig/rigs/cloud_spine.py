@@ -200,6 +200,7 @@ class Rig(CloudChainRig):
 				subtarget = self.ik_ctr_chain[-i+1].name
 			)
 		
+		# IK chain
 		next_parent = self.mstr_hips
 		self.ik_chain = []
 		for i, fk_bone in enumerate(self.fk_chain[:-2]):
@@ -214,12 +215,6 @@ class Rig(CloudChainRig):
 			)
 			self.ik_chain.append(ik_bone)
 			next_parent = ik_bone
-			damped_track_target = self.ik_r_chain[-i+1].name
-			if i == len(self.fk_chain)-3:
-				damped_track_target = self.ik_ctr_chain[-1].name
-				self.mstr_chest.custom_shape_transform = ik_bone
-				if self.params.double_controls:
-					self.mstr_chest.parent.custom_shape_transform = ik_bone
 			
 			if i > 0:
 				influence_unit = 0.5   #1 / (len(self.fk_chain) - 3)	# Minus three because there are no IK bones for the head and neck, and no stretchy constraint on the first IK spine bone.
@@ -248,9 +243,19 @@ class Rig(CloudChainRig):
 				)
 				self.ik_ctr_chain[i-1].custom_shape_transform = ik_bone
 			
+			damped_track_target = self.ik_r_chain[-i+1].name
+			head_tail = 1
+			if i == len(self.fk_chain)-3:
+				# Special treatment for last IK bone...
+				damped_track_target = self.ik_ctr_chain[-1].name
+				head_tail = 0
+				self.mstr_chest.custom_shape_transform = ik_bone
+				if self.params.double_controls:
+					self.mstr_chest.parent.custom_shape_transform = ik_bone
+
 			ik_bone.add_constraint(self.obj, 'DAMPED_TRACK',
 				subtarget = damped_track_target,
-				head_tail = 1
+				head_tail = head_tail
 			)
 
 		# Attach FK to IK
@@ -291,7 +296,6 @@ class Rig(CloudChainRig):
 
 		# Parent ORG to FK
 		for i, org_bone in enumerate(self.org_chain):
-			parent = None
 			if i == 0:
 				org_bone.parent = self.mstr_hips
 			elif i > len(self.org_chain)-2:
@@ -300,7 +304,13 @@ class Rig(CloudChainRig):
 			elif hasattr(self.fk_chain[i-1], 'fk_child'):
 				org_bone.parent = self.fk_chain[i-1].fk_child
 			else:
+				print("This shouldn't happen?")
 				org_bone.parent = self.fk_chain[i-1]
+		
+		# Change any ORG- children of the final spine bone to be owned by the neck bone instead. This is needed because the responsibility of all ORG- bones is shifted down by one, because of the "FK-controls-in-the-center" setup.
+		for b in self.bone_infos.bones:
+			if b.parent==self.org_chain[-3] and b.name.startswith("ORG-"):
+				b.parent = self.org_chain[-2]
 
 	##############################
 	# Parameters

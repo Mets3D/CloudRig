@@ -30,6 +30,7 @@ from ..definitions.bone import BoneInfoContainer, BoneInfo
 from .. import shared
 from .cloud_utils import *
 
+version = 1.4
 
 class CloudBaseRig(BaseRig, CloudUtilities):
 	"""Base for all CloudRig rigs."""
@@ -104,7 +105,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		self.root_parent.bone_group = 'Body: Main IK Controls Extra Parents'
 
 		self.obj.name = self.generator.metarig.name.replace("META", "RIG")
-		self.obj['cloudrig'] = 1.0
+		self.obj['cloudrig'] = version
 	
 	def prepare_bone_groups(self):
 		# Wipe any existing bone groups.

@@ -70,15 +70,16 @@ class CloudUtilities:
 
 	def load_ui_script(self):
 		# Check if it already exists
-		text = bpy.data.texts.get("cloudrig.py")
+		script_name = "cloudrig.py"
+		text = bpy.data.texts.get(script_name)
 		# If not, create it.
 		if not text:
-			text = bpy.data.texts.new(name="cloudrig.py")
+			text = bpy.data.texts.new(name=script_name)
 		
 		text.clear()
 		text.use_module = True
 
-		filename = "cloudrig.py"
+		filename = script_name
 		filedir = os.path.dirname(os.path.realpath(__file__))
 		filedir = os.path.split(filedir)[0]
 

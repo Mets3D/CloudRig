@@ -29,6 +29,7 @@ from ..definitions.custom_props import CustomProp
 from ..definitions.bone import BoneInfoContainer, BoneInfo
 from .cloud_utils import make_name, slice_name
 from .cloud_fk_chain import CloudFKChainRig
+from .cloud_spine import Rig as CloudSpineRig
 
 class Rig(CloudFKChainRig):
 	"""Cloud shoulder rig. (Currently very simple)"""
@@ -49,6 +50,15 @@ class Rig(CloudFKChainRig):
 		self.fk_chain[0].custom_shape = self.load_widget("Clavicle")
 		self.fk_chain[0].bone_group = 'Body: Main IK Controls'
 		self.register_parent(self.fk_chain[0], self.side_prefix.capitalize() + " Shoulder")
+
+		# HACK: If parent rig is a spine rig, hard-code parenting to last FK child bone.
+		if self.rigify_parent and type(self.rigify_parent) == CloudSpineRig:
+			fk_bone = self.rigify_parent.fk_chain[-1]
+			if hasattr(fk_bone, "fk_child"):
+				fk_bone = fk_bone.fk_child
+			self.fk_chain[0].parent = fk_bone
+			pass
+
 
 	##############################
 	# Parameters

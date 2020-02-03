@@ -71,17 +71,18 @@ class BoneInfoContainer(ID):
 				return bd
 		return None
 	
-	def bone(self, name="Bone", source=None, armature=None, **kwargs):
-		"""Define a bone and add it to the list of bones. If a definition with the same name already existed, OVERWRITE IT."""
+	def bone(self, name="Bone", source=None, armature=None, overwrite=True, **kwargs):
+		"""Define a bone and add it to the list of bones. If it already exists, return or re-define it depending on overwrite param."""
 
 		bi = self.find(name)
-		if bi:
+		if bi and not overwrite: 
+			return bi
+		elif bi:
 			self.bones.remove(bi)
-		
+
 		bi = BoneInfo(self, name, source, armature, **kwargs)
 		self.bones.append(bi)
-			
-		return bi
+		return bi			
 
 	def create_multiple_bones(self, armature, bones):
 		"""This will only switch between modes twice, so it is the preferred way of creating bones."""
@@ -259,7 +260,7 @@ class BoneInfo(ID):
 			if i != max_index:
 				self.tail[i] = self.head[i]
 		self.roll = 0
-
+	
 	@property
 	def center(self):
 		return self.head + self.vec/2
@@ -292,7 +293,7 @@ class BoneInfo(ID):
 	def copy_bone(self, armature, edit_bone):
 		"""Called from __init__ to initialize using existing bone."""
 		my_dict = self.__dict__
-		skip = ['name', 'constraints', 'bl_rna', 'type', 'rna_type', 'error_location', 'error_rotation', 'is_proxy_local', 'is_valid']
+		skip = ['name', 'constraints', 'bl_rna', 'type', 'rna_type', 'error_location', 'error_rotation', 'is_proxy_local', 'is_valid', 'children']
 		
 		for key, value in my_dict.items():
 			if key in skip: continue
@@ -330,6 +331,12 @@ class BoneInfo(ID):
 				constraint_data[1][attr] = getattr(c, attr)
 
 			self.constraints.append(constraint_data)
+
+	def disown(self, new_parent):
+		""" Parent all children of this bone to a new parent. """
+		for b in self.container.bones:
+			if b.parent==self or b.parent==self.name:
+				b.parent = new_parent
 
 	def add_constraint(self, armature, contype, true_defaults=False, **kwargs):
 		"""Add a constraint to this bone.
@@ -385,7 +392,7 @@ class BoneInfo(ID):
 		for key, prop in self.custom_props_edit.items():
 			prop.make_real(edit_bone)
 		
-		# TODO: We just slapped this here to prevent ORG- bones from being affected by Copy Transforms constraints, since connected parenting overwrites it/prevents it from taking effect.
+		# Without this, ORG- bones' Copy Transforms constraints can't work properly.
 		edit_bone.use_connect = False
 
 	def write_pose_data(self, pose_bone):
@@ -399,7 +406,7 @@ class BoneInfo(ID):
 		my_dict = self.__dict__
 
 		# Pose bone data.
-		skip = ['constraints', 'head', 'tail', 'parent', 'length', 'use_connect', 'bone_group']
+		skip = ['constraints', 'head', 'tail', 'parent', 'children', 'length', 'use_connect', 'bone_group']
 		for attr in my_dict.keys():
 			value = my_dict[attr]
 			if(hasattr(pose_bone, attr)):
@@ -474,7 +481,6 @@ class BoneInfo(ID):
 			data_path = 'bones["%s"].%s' %(pose_bone.name, path)
 			driv = d.make_real(pose_bone.id_data.data, data_path)
 			
-
 	def make_real(self, armature):
 		# Create a single bone and its constraints. Needs to switch between object modes.
 		# It is preferred to create bones in bulk via BoneDataContainer.create_all_bones().
