@@ -126,8 +126,19 @@ class Rig(CloudChainRig):
 				# Could run into issues with armature constraint since it has multiple targets.
 				next_parent = fk_child_bone
 				fk_bone.fk_child = fk_child_bone
-
-				# TODO: Copy Transforms constraint and driver for IK.
+		
+		# Head Hinge
+		self.hinge_setup(
+			bone = self.fk_chain[-1], 
+			category = "Head",
+			parent_bone = self.fk_chain[-2],
+			hng_name = self.fk_chain[-1].name.replace("FK", "FK-HNG"),
+			prop_bone = self.prop_bone,
+			prop_name = "fk_hinge_head",
+			limb_name = "Head",
+			default_value = 0.0,
+			head_tail = 1
+		)
 
 	@stage.prepare_bones
 	def prepare_ik_spine(self):

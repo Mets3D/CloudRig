@@ -7,7 +7,7 @@ from ..definitions.custom_props import CustomProp
 class CloudUtilities:
 	# Utility functions that probably won't be overriden by a sub-class because they perform a very specific task.
 
-	def hinge_setup(self, bone, *, prop_bone, prop_name, parent_bone=None, hng_name="", default_value=0, limb_name=""):
+	def hinge_setup(self, bone, category, *, prop_bone, prop_name, parent_bone=None, hng_name="", default_value=0.0, limb_name="", head_tail=0):
 		# Initialize some defaults
 		if hng_name=="":
 			sliced = slice_name(bone.name)
@@ -29,14 +29,13 @@ class CloudUtilities:
 		if "fk_hinges" not in self.obj.data:
 			self.obj.data["fk_hinges"] = {}
 
-		limbs = "arms" if self.params.type == 'ARM' else "legs"
-		if limbs not in self.obj.data["fk_hinges"]:
-			self.obj.data["fk_hinges"][limbs] = {}
+		if category not in self.obj.data["fk_hinges"]:
+			self.obj.data["fk_hinges"][category] = {}
 
-		self.obj.data["fk_hinges"][limbs][limb_name] = info
+		self.obj.data["fk_hinges"][category][limb_name] = info
 
 		# Create custom property
-		prop_bone.custom_props[prop_name] = CustomProp(prop_name, default=0, min=0, max=1)
+		prop_bone.custom_props[prop_name] = CustomProp(prop_name, default=default_value, min=0.0, max=1.0)
 
 		# Create Hinge helper bone
 		hng_bone = self.bone_infos.bone(
@@ -79,6 +78,7 @@ class CloudUtilities:
 		hng_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True,
 			target = self.obj,
 			subtarget = str(parent_bone),
+			head_tail = head_tail
 		)
 
 		# Parenting

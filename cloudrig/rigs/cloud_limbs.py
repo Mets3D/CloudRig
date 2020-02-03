@@ -140,7 +140,8 @@ class Rig(CloudFKChainRig):
 		
 		# Create Hinge helper
 		self.hinge_setup(
-			hng_child, 
+			bone = hng_child, 
+			category = "arms" if self.params.type == 'ARM' else "legs",
 			parent_bone = self.limb_root_bone,
 			hng_name = self.base_bone.replace("ORG", "FK-HNG"),
 			prop_bone = self.prop_bone,
