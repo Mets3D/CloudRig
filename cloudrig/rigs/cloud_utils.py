@@ -1,9 +1,63 @@
 import bpy
 import os
 from .. import shared
+from ..definitions.driver import Driver
+from ..definitions.custom_props import CustomProp
 
 class CloudUtilities:
 	# Utility functions that probably won't be overriden by a sub-class because they perform a very specific task.
+
+	def hinge_setup(self, bone, *, parent_bone=None, hng_name="", prop_bone, prop_name, default_value=0.0):
+		prop_bone.custom_props[prop_name] = CustomProp(prop_name, default=0.0)
+		
+		if hng_name=="":
+			sliced = slice_name(bone.name)
+			sliced[0].insert(0, "HNG")
+			hng_name = make_name(*sliced)
+		if not parent_bone:
+			parent_bone = bone.parent
+
+		# Create Hinge helper
+		hng_bone = self.bone_infos.bone(
+			name			= hng_name,
+			source			= bone, 
+			bone_group 		= 'Body: FK Helper Bones',
+		)
+
+		hng_bone.add_constraint(self.obj, 'ARMATURE', 
+			targets = [
+				{
+					"subtarget" : 'root'
+				},
+				{
+					"subtarget" : str(parent_bone)
+				}
+			],
+		)
+
+		drv1 = Driver()
+		drv1.expression = "var"
+		var1 = drv1.make_var("var")
+		var1.type = 'SINGLE_PROP'
+		var1.targets[0].id_type='OBJECT'
+		var1.targets[0].id = self.obj
+		var1.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (str(prop_bone), prop_name)
+
+		drv2 = drv1.clone()
+		drv2.expression = "1-var"
+
+		data_path1 = 'constraints["Armature"].targets[0].weight'
+		data_path2 = 'constraints["Armature"].targets[1].weight'
+		
+		hng_bone.drivers[data_path1] = drv1
+		hng_bone.drivers[data_path2] = drv2
+
+		hng_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True,
+			target = self.obj,
+			subtarget = str(parent_bone),
+		)
+
+		bone.parent = hng_bone
 
 	def register_parent(self, bone, name):
 		if name in self.parent_candidates:

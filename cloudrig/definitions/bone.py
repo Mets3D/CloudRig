@@ -70,7 +70,7 @@ class BoneInfoContainer(ID):
 			if(bd.name == name):
 				return bd
 		return None
-	
+
 	def bone(self, name="Bone", source=None, armature=None, overwrite=True, **kwargs):
 		"""Define a bone and add it to the list of bones. If it already exists, return or re-define it depending on overwrite param."""
 

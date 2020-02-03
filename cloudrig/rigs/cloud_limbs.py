@@ -62,8 +62,7 @@ class Rig(CloudFKChainRig):
 		ik_stretch_name = "ik_stretch_%s_%s" %(limb, side)
 		self.ik_stretch_prop = self.prop_bone.custom_props[ik_stretch_name] = CustomProp(ik_stretch_name, default=1.0)
 
-		fk_hinge_name = "fk_hinge_%s_%s" %(limb, side)
-		self.fk_hinge_prop = self.prop_bone.custom_props[fk_hinge_name] = CustomProp(fk_hinge_name, default=0.0)
+		self.fk_hinge_name = "fk_hinge_%s_%s" %(limb, side)
 
 	def get_segments(self, org_i, chain):
 		segments = self.params.deform_segments
@@ -140,44 +139,12 @@ class Rig(CloudFKChainRig):
 				self.fk_toe = fk_bone
 		
 		# Create Hinge helper
-		hng_bone = self.bone_infos.bone(
-			name			= self.base_bone.replace("ORG", "FK-HNG"), # Name it after the first bone in the chain.
-			source			= hng_child, 
-			bone_group 		= 'Body: FK Helper Bones',
-		)
-		hng_child.parent = hng_bone
-
-		hng_bone.add_constraint(self.obj, 'ARMATURE', 
-			targets = [
-				{
-					"subtarget" : 'root'
-				},
-				{
-					"subtarget" : self.limb_root_bone.name
-				}
-			],
-		)
-
-		drv1 = Driver()
-		drv1.expression = "var"
-		var1 = drv1.make_var("var")
-		var1.type = 'SINGLE_PROP'
-		var1.targets[0].id_type='OBJECT'
-		var1.targets[0].id = self.obj
-		var1.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.fk_hinge_prop.name)
-
-		drv2 = drv1.clone()
-		drv2.expression = "1-var"
-
-		data_path1 = 'constraints["Armature"].targets[0].weight'
-		data_path2 = 'constraints["Armature"].targets[1].weight'
-		
-		hng_bone.drivers[data_path1] = drv1
-		hng_bone.drivers[data_path2] = drv2
-
-		hng_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True,
-			target = self.obj,
-			subtarget = self.limb_root_bone.name,
+		self.hinge_setup(
+			hng_child, 
+			parent_bone = self.limb_root_bone,
+			hng_name = self.base_bone.replace("ORG", "FK-HNG"),
+			prop_bone = self.prop_bone,
+			prop_name = self.fk_hinge_name
 		)
 
 	@stage.prepare_bones
