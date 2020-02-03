@@ -1,5 +1,5 @@
-"Version: 1.4"
-"2020-01-24"
+"2020-01-29"
+version = 1.4
 
 import bpy
 from bpy.props import *
@@ -248,12 +248,12 @@ class POSE_OT_rigify_switch_parent(bpy.types.Operator):
 
 def get_rigs():
 	""" Find all cloudrig armatures in the file."""
-	return [o for o in bpy.data.objects if o.type=='ARMATURE' and 'cloudrig' in o]
+	return [o for o in bpy.data.objects if o.type=='ARMATURE' and 'cloudrig' in o and o['cloudrig']==version]
 
 def get_rig():
 	"""If the active object is a cloudrig, return it."""
 	rig = bpy.context.object
-	if rig and rig.type == 'ARMATURE' and 'cloudrig' in rig:
+	if rig and rig.type == 'ARMATURE' and 'cloudrig' in rig and rig['cloudrig']==version:
 		return rig
 
 def get_char_bone(rig):
@@ -595,6 +595,7 @@ class Rig_BoolProperties(bpy.types.PropertyGroup):
 	def update_id_prop(self, context):
 		""" Callback function to update the corresponding ID property when this BoolProperty's value is changed. """
 		rig = get_rig()
+		if not rig: return
 		rig_props = rig.rig_properties
 		outfit_bone = rig.pose.bones.get("Properties_Outfit_"+rig_props.outfit)
 		char_bone = get_char_bone(rig)
@@ -608,7 +609,7 @@ class Rig_BoolProperties(bpy.types.PropertyGroup):
 		name='Boolean Value',
 		description='',
 		update=update_id_prop,
-		options={'LIBRARY_EDITABLE'}
+		options={'LIBRARY_EDITABLE', 'ANIMATABLE'}
 	)
 
 class Rig_Properties(bpy.types.PropertyGroup):
@@ -629,6 +630,7 @@ class Rig_Properties(bpy.types.PropertyGroup):
 		"""
 		
 		rig = self.get_rig()
+		if not rig: return
 		bool_props = rig.rig_boolproperties
 		bool_props.clear()	# Nuke all the bool properties
 		
@@ -651,6 +653,7 @@ class Rig_Properties(bpy.types.PropertyGroup):
 			Based on naming convention. Bones storing an outfit's properties must be named "Properties_Outfit_OutfitName".
 		"""
 		rig = self.get_rig()
+		if not rig: return [(('identifier', 'name', 'description'))]
 
 		outfits = []
 		for b in rig.pose.bones:
@@ -672,6 +675,7 @@ class Rig_Properties(bpy.types.PropertyGroup):
 		""" Update callback of outfit enum. """
 		
 		rig = self.get_rig()
+		if not rig: return
 		
 		if( (self.outfit == '') ):
 			self.outfit = self.outfits(context)[0][0]
@@ -707,7 +711,7 @@ class RigUI(bpy.types.Panel):
 	
 	@classmethod
 	def poll(cls, context):
-		return 'cloudrig' in context.object
+		return get_rig() is not None
 
 	def draw(self, context):
 		layout = self.layout
@@ -722,8 +726,8 @@ class RigUI_Outfits(RigUI):
 			return False
 
 		# Only display this panel if there is either an outfit with options, multiple outfits, or character options.
-		rig = context.object
-		if(not rig): return False
+		rig = get_rig()
+		if not rig: return
 		rig_props = rig.rig_properties
 		bool_props = rig.rig_boolproperties
 		multiple_outfits = len(rig_props.outfits(context)) > 1
@@ -783,7 +787,8 @@ class RigUI_Layers(RigUI):
 	
 	def draw(self, context):
 		layout = self.layout
-		rig = context.object
+		rig = get_rig()
+		if not rig: return
 		data = rig.data
 		
 		row_ik = layout.row()
@@ -837,7 +842,8 @@ class RigUI_Settings(RigUI):
 	
 	def draw(self, context):
 		layout = self.layout
-		rig = context.object
+		rig = get_rig()
+		if not rig: return
 
 		rig_props = rig.rig_properties
 		layout.row().prop(rig_props, 'render_modifiers', text='Enable Modifiers', toggle=True)
@@ -849,7 +855,8 @@ class RigUI_Settings_FKIK(RigUI):
 
 	def draw(self, context):
 		layout = self.layout
-		rig = context.object
+		rig = get_rig()
+		if not rig: return
 		ikfk_props = rig.pose.bones.get('Properties_IKFK')
 
 		ik_chains = rig["ik_chains"].to_dict()
@@ -882,7 +889,8 @@ class RigUI_Settings_IK(RigUI):
 
 	def draw(self, context):
 		layout = self.layout
-		rig = context.object
+		rig = get_rig()
+		if not rig: return
 		ikfk_props = rig.pose.bones.get('Properties_IKFK')
 
 		# IK Stretch
@@ -947,7 +955,8 @@ class RigUI_Settings_FK(RigUI):
 
 	def draw(self, context):
 		layout = self.layout
-		rig = context.object
+		rig = get_rig()
+		if not rig: return
 		rig_props = rig.rig_properties
 		ikfk_props = rig.pose.bones.get('Properties_IKFK')
 		face_props = rig.pose.bones.get('Properties_Face')
@@ -974,7 +983,8 @@ class RigUI_Settings_Face(RigUI):
 
 	def draw(self, context):
 		layout = self.layout
-		rig = context.object
+		rig = get_rig()
+		if not rig: return
 		face_props = rig.pose.bones.get('Properties_Face')
 
 		if 'face_settings' in rig:
@@ -998,7 +1008,8 @@ class RigUI_Settings_Misc(RigUI):
 
 	def draw(self, context):
 		layout = self.layout
-		rig = context.object
+		rig = get_rig()
+		if not rig: return
 		rig_props = rig.rig_properties
 		ikfk_props = rig.pose.bones.get('Properties_IKFK')
 		face_props = rig.pose.bones.get('Properties_Face')
@@ -1016,7 +1027,8 @@ class RigUI_Viewport_Display(RigUI):
 
 	def draw(self, context):
 		layout = self.layout
-		rig = context.object
+		rig = get_rig()
+		if not rig: return
 		layout.operator(Reset_Rig_Colors.bl_idname, text="Reset Colors")
 		layout.separator()
 		for cp in rig.rig_colorproperties:
@@ -1029,18 +1041,18 @@ classes = (
 	Rig_BoolProperties,
 	Rig_Properties,
 	RigUI_Outfits,
-	# RigUI_Layers,
+	RigUI_Layers,
 	Snap_IK2FK,
 	Snap_FK2IK,
 	IKFK_Toggle,
-	# Reset_Rig_Colors,
+	Reset_Rig_Colors,
 	RigUI_Settings,
 	RigUI_Settings_FKIK,
 	RigUI_Settings_IK,
-	# RigUI_Settings_FK,
-	# RigUI_Settings_Face,
-	# RigUI_Settings_Misc,
-	# RigUI_Viewport_Display,
+	RigUI_Settings_FK,
+	RigUI_Settings_Face,
+	RigUI_Settings_Misc,
+	RigUI_Viewport_Display,
 )
 
 from bpy.utils import register_class
