@@ -53,7 +53,7 @@ class Rig(CloudFKChainRig):
 
 		# HACK: If parent rig is a spine rig, hard-code parenting to last FK child bone.
 		if self.rigify_parent and type(self.rigify_parent) == CloudSpineRig:
-			fk_bone = self.rigify_parent.fk_chain[-1]
+			fk_bone = self.rigify_parent.fk_chain[-3]
 			if hasattr(fk_bone, "fk_child"):
 				fk_bone = fk_bone.fk_child
 			self.fk_chain[0].parent = fk_bone
