@@ -104,6 +104,10 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		self.root_parent = shared.create_parent_bone(self, self.root_bone)
 		self.root_parent.bone_group = 'Body: Main IK Controls Extra Parents'
 
+		for k in self.obj.data.keys():
+			if k in ['_RNA_UI', 'rig_id']: continue
+			del self.obj.data[k]self.limb_name
+
 		self.obj.name = self.generator.metarig.name.replace("META", "RIG")
 		self.obj.data['cloudrig'] = version
 	

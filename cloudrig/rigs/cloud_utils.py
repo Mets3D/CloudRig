@@ -7,6 +7,21 @@ from ..definitions.custom_props import CustomProp
 class CloudUtilities:
 	# Utility functions that probably won't be overriden by a sub-class because they perform a very specific task.
 
+	def store_ui_data(self, switch_type, category, bodypart, info):
+		""" Store some data in the rig, to be used by the UI script.
+		switch_type: One of a list of pre-defined strings that the UI script recognizes, that describes a panel or area in the UI. Eg, "fk_hinges", "ik_switches".
+		category: A row in the UI area.
+		bodypart: A column within the row.
+		info: The info to store, usually a dictionary. At minimum, this is {prop_bone : "Name of Properties Bone", prop_name : "Name of Property that controls this setting"}
+		"""
+		if switch_type not in self.obj.data:
+			self.obj.data[switch_type] = {}
+
+		if category not in self.obj.data[switch_type]:
+			self.obj.data[switch_type][category] = {}
+
+		self.obj.data[switch_type][category][bodypart] = info
+
 	def hinge_setup(self, bone, category, *, prop_bone, prop_name, parent_bone=None, hng_name="", default_value=0.0, limb_name="", head_tail=0):
 		# Initialize some defaults
 		if hng_name=="":
@@ -18,21 +33,15 @@ class CloudUtilities:
 		if limb_name=="":
 			limb_name = "Hinge: " + self.side_suffix + " " + slice_name(bone.name)[1]
 		
-		# Store info for UI
 		info = {
 			"prop_bone"			: prop_bone.name,
 			"prop_name" 		: prop_name,
 			"bones_on" 			: [bone.name],
 			"bones_off" 		: [bone.name],
 		}
-		
-		if "fk_hinges" not in self.obj.data:
-			self.obj.data["fk_hinges"] = {}
 
-		if category not in self.obj.data["fk_hinges"]:
-			self.obj.data["fk_hinges"][category] = {}
-
-		self.obj.data["fk_hinges"][category][limb_name] = info
+		# Store UI info
+		self.store_ui_data("fk_hinges", category, limb_name, info)
 
 		# Create custom property
 		prop_bone.custom_props[prop_name] = CustomProp(prop_name, default=default_value, min=0.0, max=1.0)

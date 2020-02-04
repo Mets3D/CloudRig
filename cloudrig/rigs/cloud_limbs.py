@@ -59,9 +59,7 @@ class Rig(CloudFKChainRig):
 		ikfk_name = "ik_%s_%s" %(limb, side)
 		self.ikfk_prop = self.prop_bone.custom_props[ikfk_name] = CustomProp(ikfk_name, default=1.0)
 
-		ik_stretch_name = "ik_stretch_%s_%s" %(limb, side)
-		self.ik_stretch_prop = self.prop_bone.custom_props[ik_stretch_name] = CustomProp(ik_stretch_name, default=1.0)
-
+		self.ik_stretch_name = "ik_stretch_%s_%s" %(limb, side)
 		self.fk_hinge_name = "fk_hinge_%s_%s" %(limb, side)
 
 	def get_segments(self, org_i, chain):
@@ -318,11 +316,23 @@ class Rig(CloudFKChainRig):
 		var.type = 'SINGLE_PROP'
 		var.targets[0].id_type = 'OBJECT'
 		var.targets[0].id = self.obj
-		var.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ik_stretch_prop.name)
+		var.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ik_stretch_name)
 
 		data_path = 'constraints["Limit Scale"].influence'
 		
 		str_bone.drivers[data_path] = str_drv
+
+		# Store info for UI
+		info = {
+			"prop_bone"			: self.prop_bone.name,
+			"prop_name" 		: self.ik_stretch_name,
+			# "bones_on" 		: [bone.name],
+			# "bones_off" 		: [bone.name],
+		}
+		self.store_ui_data("ik_stretches", self.params.type, self.limb_name, info)
+
+		# Create custom property
+		self.prop_bone.custom_props[self.ik_stretch_name] = CustomProp(self.ik_stretch_name, default=1.0)
 
 		#######################
 		##### MORE STUFF ######
@@ -412,7 +422,7 @@ class Rig(CloudFKChainRig):
 		var_stretch.type = 'SINGLE_PROP'
 		var_stretch.targets[0].id_type = 'OBJECT'
 		var_stretch.targets[0].id = self.obj
-		var_stretch.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ik_stretch_prop.name)
+		var_stretch.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ik_stretch_name)
 
 		var_ik = trans_drv.make_var("ik")
 		var_ik.type = 'SINGLE_PROP'

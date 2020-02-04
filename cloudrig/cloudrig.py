@@ -951,11 +951,23 @@ class RigUI_Settings_IK(RigUI):
 		data = rig.data
 
 		# IK Stretch
-		if 'ik_stretches' in rig:
-			layout.label(text="IK Stretch")
-			layout.prop(ikfk_props, '["ik_stretch_spine"]', slider=True, text='Stretchy Spine')
-			layout.prop(ikfk_props, '["ik_stretch_arms"]',  slider=True, text='Stretchy Arms' )
-			layout.prop(ikfk_props, '["ik_stretch_legs"]',  slider=True, text='Stretchy Legs' )
+		if 'ik_stretches' in data:
+			layout.label(text='Stretch')
+			ik_stretches = data["ik_stretches"].to_dict()
+
+			for cat_name in ik_stretches.keys():
+				category = ik_stretches[cat_name]
+				row = layout.row()
+				for limb_name in category.keys():
+					limb = category[limb_name]
+
+					prop_bone = rig.pose.bones.get(limb['prop_bone'])
+					if not prop_bone:
+						print("WARNING: Limb definition has no prop_bone: %s, %s", cat_name, limb)
+
+					col = row.column()
+					sub_row = col.row(align=True)
+					sub_row.prop(prop_bone, '["' + limb["prop_name"] + '"]', slider=True, text=limb_name)
 
 		# IK Hinge
 		if 'ik_hinges' in rig:
@@ -1019,7 +1031,7 @@ class RigUI_Settings_FK(RigUI):
 
 		# FK Hinge
 		if 'fk_hinges' in data:
-			layout.label(text='FK Hinge')
+			layout.label(text='Hinge')
 			fk_hinges = data["fk_hinges"].to_dict()
 
 			for cat_name in fk_hinges.keys():
@@ -1035,11 +1047,6 @@ class RigUI_Settings_FK(RigUI):
 					col = row.column()
 					sub_row = col.row(align=True)
 					sub_row.prop(prop_bone, '["' + limb["prop_name"] + '"]', slider=True, text=limb_name)
-
-			# Head settings
-			# layout.separator()
-			# layout.prop(face_props, '["neck_hinge"]', slider=True, text='Neck Hinge')
-			# layout.prop(face_props, '["head_hinge"]', slider=True, text='Head Hinge')
 
 class RigUI_Settings_Face(RigUI):
 	bl_idname = "OBJECT_PT_rig_ui_face"

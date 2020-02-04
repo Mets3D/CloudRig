@@ -49,8 +49,7 @@ class Rig(CloudChainRig):
 		ik_name = "ik_spine"
 		self.ik_prop = self.prop_bone.custom_props[ik_name] = CustomProp(ik_name, default=1.0)
 
-		ik_stretch_name = "ik_stretch_spine"
-		self.ik_stretch_prop = self.prop_bone.custom_props[ik_stretch_name] = CustomProp(ik_stretch_name, default=1.0)
+		self.ik_stretch_name = "ik_stretch_spine"
 
 	def get_segments(self, org_i, chain):
 		"""Calculate how many segments should be in a section of the chain."""
@@ -243,7 +242,7 @@ class Rig(CloudChainRig):
 				var.type = 'SINGLE_PROP'
 				var.targets[0].id_type='OBJECT'
 				var.targets[0].id = self.obj
-				var.targets[0].data_path = 'pose.bones["%s"]["%s"]' %(self.prop_bone.name, self.ik_stretch_prop.name)
+				var.targets[0].data_path = 'pose.bones["%s"]["%s"]' %(self.prop_bone.name, self.ik_stretch_name)
 
 				data_path = 'constraints["Copy Location (Stretchy Spine)"].influence'
 				ik_bone.drivers[data_path] = drv
@@ -287,6 +286,18 @@ class Rig(CloudChainRig):
 
 			data_path = 'constraints["Copy Transforms IK"].influence'
 			fk_bone.drivers[data_path] = drv
+		
+		# Store info for UI
+		info = {
+			"prop_bone"			: self.prop_bone.name,
+			"prop_name" 		: self.ik_stretch_name,
+			# "bones_on" 		: [bone.name],
+			# "bones_off" 		: [bone.name],
+		}
+		self.store_ui_data("ik_stretches", "spine", "Spine", info)
+
+		# Create custom property
+		self.prop_bone.custom_props[self.ik_stretch_name] = CustomProp(self.ik_stretch_name, default=1.0)
 
 	@stage.prepare_bones
 	def prepare_def_str_spine(self):
