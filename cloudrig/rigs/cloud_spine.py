@@ -286,7 +286,7 @@ class Rig(CloudChainRig):
 		
 		# Store info for UI
 		info = {
-			"prop_bone"			: self.prop_bone.name,
+			"prop_bone"		: self.prop_bone.name,
 			"prop_id" 		: self.ik_stretch_name,
 		}
 		self.store_ui_data("ik_stretches", "spine", "Spine", info)

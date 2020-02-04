@@ -86,6 +86,7 @@ class Rig(CloudFKChainRig):
 			custom_shape_scale 	= 0.5,
 			bone_group			= 'Body: IK-MCH - IK Mechanism Bones'
 		)
+		self.register_parent(self.limb_root_bone, self.side_suffix + " " + self.params.type.capitalize())
 
 	@stage.prepare_bones
 	def prepare_fk_limb(self):
@@ -617,33 +618,15 @@ class Rig(CloudFKChainRig):
 			data_path = 'constraints["%s"].influence' %(ik_ct_name)
 			org_bone.drivers[data_path] = drv
 
-	def add_parent(self, parent_key, parents):
-		""" Try adding a registered parent bone by their display name, and add them to the parents dictionary. """
-		parent_candidates = self.get_parent_candidates()
-
-		if parent_key in parent_candidates:
-			parents[parent_key] = parent_candidates[parent_key]
-
 	@stage.prepare_bones
-	def parent_switcheroo(self):
-		parents = {
-			"Root" : self.root_bone
-		}
-		# TODO: This way of finding and assigning parents feels pretty clunky, but it's better than the fully hard-coded mess before.
-		self.add_parent("Torso", parents)
+	def prepare_parent_switch(self):
+		parents = []
 		if self.params.type=='LEG':
-			self.add_parent("Hips", parents)
-			parents["Leg"] = self.limb_root_bone
+			parents = ['Root', 'Torso', 'Hips', self.side_suffix + ' Leg']
 		else:
-			self.add_parent("Chest", parents)
-			parents["Arm"] = self.limb_root_bone
+			parents = ['Root', 'Torso', 'Chest', self.side_suffix + ' Arm']
 		
-		self.store_parent_switch_info(
-			child_bones = [self.pole_ctrl, self.ik_ctrl], 
-			parents = parents
-		)
-	
-	def store_parent_switch_info(self, child_bones, parents):
+		child_bones = [self.pole_ctrl, self.ik_ctrl]
 		child_names = [b.name for b in child_bones]
 
 		side = self.side_prefix.lower()
@@ -651,21 +634,20 @@ class Rig(CloudFKChainRig):
 		ik_parents_prop_name = "ik_parents_%s_%s" %(limb, side)
 
 		for cb in child_bones:
-			shared.rig_child(self, cb, list(parents.values()), self.prop_bone, ik_parents_prop_name)
+			shared.rig_child(self, cb, parents, self.prop_bone, ik_parents_prop_name)
 
 		category = "arms ik" if self.params.type == 'ARM' else "legs ik"
-		parent_names = list(parents.keys())
 		info = {
 			"prop_bone" : self.prop_bone.name,			# Name of the properties bone that contains the property that should be changed by the parent switch operator.
 			"prop_id" : ik_parents_prop_name, 			# Name of the property
-			"texts" : parent_names,
+			"texts" : parents,
 			
 			"operator" : "pose.rigify_switch_parent",
 			"icon" : "COLLAPSEMENU",
 			
 			"bones" : child_names,		# List of child bone names that will be affected by the parent swapping. Often just one.
-			"parent_names" : parent_names,		# List of (arbitrary) names, in order, that should be displayed for each parent option in the UI.
-			}
+			"parent_names" : parents,		# List of (arbitrary) names, in order, that should be displayed for each parent option in the UI.
+		}
 		self.store_ui_data("parents", category, self.limb_name, info)
 
 	##############################

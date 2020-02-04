@@ -101,6 +101,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			custom_shape = self.load_widget("Root"),
 			custom_shape_scale = 1.5
 		)
+		self.register_parent(self.root_bone, "Root")
 		self.root_parent = shared.create_parent_bone(self, self.root_bone)
 		self.root_parent.bone_group = 'Body: Main IK Controls Extra Parents'
 

@@ -137,12 +137,12 @@ def set_layers(obj, layerlist, additive=False):
 	
 	obj.layers = layers[:]
 
-def rig_child(self, child_bone, parent_bones, prop_bone, prop_name, default_value=0):
+def rig_child(self, child_bone, parent_names, prop_bone, prop_name, default_value=0):
 	""" Rig a child with multiple switchable parents, using Armature constraint and drivers. Also creates a custom property to drive those drivers.
 	"""
 
 	# Create custom property
-	parents_prop = prop_bone.custom_props[prop_name] = CustomProp(prop_name, default=default_value, min=0, max=len(parent_bones)-1)
+	parents_prop = prop_bone.custom_props[prop_name] = CustomProp(prop_name, default=default_value, min=0, max=len(parent_names)-1)
 
 	# Create parent bone for the bone that stores the Armature constraint - Without this, we cannot figure out the corrected pose-space matrix for the child bone after the property is switched.
 	arm_con_bone = create_parent_bone(self, child_bone)
@@ -151,7 +151,9 @@ def rig_child(self, child_bone, parent_bones, prop_bone, prop_name, default_valu
 	arm_con_bone.bone_group = "Body: IK-MCH - IK Mechanism Bones"
 
 	targets = []
-	for i, pb in enumerate(parent_bones):
+	for i, pn in enumerate(parent_names):
+		parent_candidates = self.get_parent_candidates()
+		pb = parent_candidates[pn]
 		targets.append({
 			"subtarget" : pb.name
 		})

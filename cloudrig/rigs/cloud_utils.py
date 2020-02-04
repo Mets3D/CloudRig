@@ -95,7 +95,7 @@ class CloudUtilities:
 
 	def register_parent(self, bone, name):
 		if name in self.parent_candidates:
-			print("WARNING: OVERWRITING REGISTERED PARENT: %s, %s" %(bone.name, name))
+			print("WARNING: OVERWRITING REGISTERED PARENT: %s, %s" %(bone.name, name))	# We're gonna have to deal with this when we have characters with more than 4 limbs. (Will probably need to supply a limb name as a rig parameter)
 		self.parent_candidates[name] = bone
 
 	def get_parent_candidates(self, candidates={}):
