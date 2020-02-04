@@ -35,7 +35,7 @@ class CloudUtilities:
 		
 		info = {
 			"prop_bone"			: prop_bone.name,
-			"prop_name" 		: prop_name,
+			"prop_id" 			: prop_name,
 			"bones_on" 			: [bone.name],
 			"bones_off" 		: [bone.name],
 		}
@@ -181,22 +181,6 @@ class CloudUtilities:
 		exec(text.as_string(), {})
 
 		return text
-
-	def store_parent_switch_info(self, limb_name, child_names, parent_names, prop_bone, prop_name, category):
-		info = {
-			"child_names" : child_names,		# List of child bone names that will be affected by the parent swapping. Often just one.
-			"parent_names" : parent_names,		# List of (arbitrary) names, in order, that should be displayed for each parent option in the UI.
-			"prop_bone" : prop_bone,			# Name of the properties bone that contains the property that should be changed by the parent switch operator.
-			"prop_name" : prop_name, 			# Name of the property
-		}
-
-		if "parents" not in self.obj.data:
-			self.obj.data["parents"] = {}
-
-		if category not in self.obj.data["parents"]:
-			self.obj.data["parents"][category] = {}
-		
-		self.obj.data["parents"][category][limb_name] = info
 
 	@staticmethod
 	def make_name(prefixes=[], base="", suffixed=[]):

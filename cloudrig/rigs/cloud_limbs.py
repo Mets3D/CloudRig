@@ -56,9 +56,7 @@ class Rig(CloudFKChainRig):
 		self.limb_name_short = self.side_suffix + " " + limb.capitalize()
 		self.limb_name = self.side_prefix + " " + limb.capitalize()	 # TODO: This really only allows for 2 arms and 2 legs per character. Might need more!
 
-		ikfk_name = "ik_%s_%s" %(limb, side)
-		self.ikfk_prop = self.prop_bone.custom_props[ikfk_name] = CustomProp(ikfk_name, default=1.0)
-
+		self.ikfk_name = "ik_%s_%s" %(limb, side)
 		self.ik_stretch_name = "ik_stretch_%s_%s" %(limb, side)
 		self.fk_hinge_name = "fk_hinge_%s_%s" %(limb, side)
 
@@ -325,7 +323,7 @@ class Rig(CloudFKChainRig):
 		# Store info for UI
 		info = {
 			"prop_bone"			: self.prop_bone.name,
-			"prop_name" 		: self.ik_stretch_name,
+			"prop_id" 		: self.ik_stretch_name,
 			# "bones_on" 		: [bone.name],
 			# "bones_off" 		: [bone.name],
 		}
@@ -370,29 +368,17 @@ class Rig(CloudFKChainRig):
 			fk_names.insert(0, fk_chain[0].parent.name)
 			ik_names.insert(0, ik_names[0])
 		
-		self.store_ikfk_info(self.limb_name, self.prop_bone.name, self.ikfk_prop.name, fk_names, ik_names, ik_pole.name)
-
-	def store_ikfk_info(self, limb_name, prop_bone_name, prop_name, fk_names, ik_names, ik_pole_name):
-		""" Store all the data needed by the IK/FK switch mechanism in the ik_chains dictionary custom property on the rig object.
-		The UI drawing and IK/FK snapping is handled by the (non-generated) UI script, cloudrig.py.
-		"""
 		info = {	# These parameter names must be kept in sync with Snap_IK2FK in cloudrig.py
-			"prop_bone"			: prop_bone_name,
-			"prop_name" 		: prop_name,
+			"operator" 			: "armature.ikfk_toggle",
+			"prop_bone"			: self.prop_bone.name,
+			"prop_id" 			: self.ikfk_name,
 			"fk_bones" 			: fk_names,
 			"ik_bones" 			: ik_names,
-			"ik_pole" 			: ik_pole_name,
+			"ik_pole" 			: ik_pole.name,
 			"double_ik_control" : self.params.double_ik_control
 		}
-		
-		if "ik_chains" not in self.obj.data:
-			self.obj.data["ik_chains"] = {}
-
-		limbs = "arms" if self.params.type == 'ARM' else "legs"
-		if limbs not in self.obj.data["ik_chains"]:
-			self.obj.data["ik_chains"][limbs] = {}
-
-		self.obj.data["ik_chains"][limbs][limb_name] = info
+		self.store_ui_data("ik_switches", self.params.type.lower(), self.limb_name, info)
+		self.prop_bone.custom_props[self.ikfk_name] = CustomProp(self.ikfk_name, default=1.0)
 
 	def first_str_counterrotate_setup(self, str_bone, org_bone, factor):
 		str_bone.add_constraint(self.obj, 'TRANSFORM',
@@ -428,7 +414,7 @@ class Rig(CloudFKChainRig):
 		var_ik.type = 'SINGLE_PROP'
 		var_ik.targets[0].id_type = 'OBJECT'
 		var_ik.targets[0].id = self.obj
-		var_ik.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ikfk_prop.name)
+		var_ik.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ikfk_name)
 
 		data_path = 'constraints["%s"].influence' %(trans_con_name)
 
@@ -597,7 +583,7 @@ class Rig(CloudFKChainRig):
 		var1.type = 'SINGLE_PROP'
 		var1.targets[0].id_type='OBJECT'
 		var1.targets[0].id = self.obj
-		var1.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ikfk_prop.name)
+		var1.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ikfk_name)
 
 		drv2 = drv1.clone()
 		drv2.expression = "ik"
@@ -626,7 +612,7 @@ class Rig(CloudFKChainRig):
 			drv = Driver()
 			var = drv.make_var()
 			var.targets[0].id = self.obj
-			var.targets[0].data_path = 'pose.bones["%s"]["%s"]' %(self.prop_bone.name, self.ikfk_prop.name)
+			var.targets[0].data_path = 'pose.bones["%s"]["%s"]' %(self.prop_bone.name, self.ikfk_name)
 
 			data_path = 'constraints["%s"].influence' %(ik_ct_name)
 			org_bone.drivers[data_path] = drv
@@ -668,7 +654,19 @@ class Rig(CloudFKChainRig):
 			shared.rig_child(self, cb, list(parents.values()), self.prop_bone, ik_parents_prop_name)
 
 		category = "arms ik" if self.params.type == 'ARM' else "legs ik"
-		super().store_parent_switch_info(self.limb_name_short, child_names, list(parents.keys()), self.prop_bone.name, ik_parents_prop_name, category)
+		parent_names = list(parents.keys())
+		info = {
+			"prop_bone" : self.prop_bone.name,			# Name of the properties bone that contains the property that should be changed by the parent switch operator.
+			"prop_id" : ik_parents_prop_name, 			# Name of the property
+			"texts" : parent_names,
+			
+			"operator" : "pose.rigify_switch_parent",
+			"icon" : "COLLAPSEMENU",
+			
+			"bones" : child_names,		# List of child bone names that will be affected by the parent swapping. Often just one.
+			"parent_names" : parent_names,		# List of (arbitrary) names, in order, that should be displayed for each parent option in the UI.
+			}
+		self.store_ui_data("parents", category, self.limb_name, info)
 
 	##############################
 	# Parameters

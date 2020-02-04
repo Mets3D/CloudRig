@@ -1,4 +1,4 @@
-"2020-01-29"
+"2020-02-04"
 version = 1.4
 
 import bpy
@@ -579,7 +579,7 @@ class IKFK_Toggle(bpy.types.Operator):
 	bl_options = {'REGISTER', 'UNDO'}
 	
 	prop_bone: StringProperty()
-	prop_name: StringProperty()
+	prop_id: StringProperty()
 
 	fk_bones: StringProperty()
 	ik_bones: StringProperty()
@@ -596,12 +596,12 @@ class IKFK_Toggle(bpy.types.Operator):
 			armature = context.object
 
 			prop_bone = armature.pose.bones.get(self.prop_bone)
-			if prop_bone[self.prop_name] < 1:
+			if prop_bone[self.prop_id] < 1:
 				bpy.ops.armature.snap_ik_to_fk(fk_bones=self.fk_bones, ik_bones=self.ik_bones, ik_pole=self.ik_pole, double_ik_control=self.double_ik_control)
-				prop_bone[self.prop_name] = 1.0
+				prop_bone[self.prop_id] = 1.0
 			else:
 				bpy.ops.armature.snap_fk_to_ik(fk_bones=self.fk_bones, ik_bones=self.ik_bones)
-				prop_bone[self.prop_name] = 0.0
+				prop_bone[self.prop_id] = 0.0
 
 		return {'FINISHED'}
 
@@ -801,22 +801,22 @@ class RigUI_Outfits(RigUI):
 		def add_props(prop_owner):
 			props_done = []
 
-			def get_text(prop_name, value):
-				""" If there is a property on prop_owner named $prop_name, expect it to be a list of strings and return the valueth element."""
-				text = prop_name.replace("_", " ")
-				if "$"+prop_name in prop_owner and type(value)==int:
-					return text + ": " + prop_owner["$"+prop_name][value]
+			def get_text(prop_id, value):
+				""" If there is a property on prop_owner named $prop_id, expect it to be a list of strings and return the valueth element."""
+				text = prop_id.replace("_", " ")
+				if "$"+prop_id in prop_owner and type(value)==int:
+					return text + ": " + prop_owner["$"+prop_id][value]
 				else:
 					return text
 
-			for prop_name in prop_owner.keys():
-				if( prop_name in props_done or prop_name.startswith("_") ): continue
+			for prop_id in prop_owner.keys():
+				if( prop_id in props_done or prop_id.startswith("_") ): continue
 				# Int Props
-				if(prop_name not in bool_props and type(prop_owner[prop_name]) in [int, float] ):
-					layout.prop(prop_owner, '["'+prop_name+'"]', slider=True, 
-						text = get_text(prop_name, prop_owner[prop_name])
+				if(prop_id not in bool_props and type(prop_owner[prop_id]) in [int, float] ):
+					layout.prop(prop_owner, '["'+prop_id+'"]', slider=True, 
+						text = get_text(prop_id, prop_owner[prop_id])
 					)
-					props_done.append(prop_name)
+					props_done.append(prop_id)
 			# Bool Props
 			for bp in bool_props:
 				if(bp.name in prop_owner.keys() and bp.name not in props_done):
@@ -903,10 +903,71 @@ class RigUI_Settings(RigUI):
 		rig_props = rig.rig_properties
 		layout.row().prop(rig_props, 'render_modifiers', text='Enable Modifiers', toggle=True)
 
+def draw_rig_settings(layout, rig, settings_name, label=""):
+	""" Draw UI settings in the layout, if info for those settings can be found in the rig's data. 
+	Parameters read from the rig data:
+	
+	prop_bone: Name of the pose bone that holds the custom property.
+	prop_id: Name of the custom property on aforementioned bone. This is the property that gets drawn in the UI as a slider.
+	
+	texts: Optional list of strings to display alongside the property name on the slider, chosen based on the current value of the property.
+	operator: Optional parameter to specify an operator to draw next to the slider.
+	icon: Optional prameter to override the icon. Defaults to 'FILE_REFRESH'.
+	
+	Arbitrary arguments will be passed on to the operator.
+	"""
+	
+	if settings_name not in rig.data: return
+	
+	if label!="":
+		layout.label(text=label)
+
+	settings = rig.data[settings_name].to_dict()
+	for cat_name in settings.keys():
+		category = settings[cat_name]
+		row = layout.row()
+		for limb_name in category.keys():
+			limb = category[limb_name]
+			assert 'prop_bone' in limb and 'prop_id' in limb, "ERROR: Limb definition lacks properties bone or ID: %s, %s" %(cat_name, limb)
+			prop_bone = rig.pose.bones.get(limb['prop_bone'])
+			prop_id = limb['prop_id']
+			assert prop_bone and prop_id in prop_bone, "ERROR: Properties bone or property does not exist: %s" %limb
+
+			col = row.column()
+			sub_row = col.row(align=True)
+			
+			text = limb_name
+			if 'texts' in limb:
+				prop_value = prop_bone[prop_id]
+				cur_text = limb['texts'][int(prop_value)]
+				text = limb_name + ": " + cur_text
+
+			sub_row.prop(prop_bone, '["' + prop_id + '"]', slider=True, text=text)
+			
+			# Draw an operator if desired.
+			if 'operator' in limb:
+				icon = 'FILE_REFRESH'
+				if 'icon' in limb:
+					icon = limb['icon']
+				
+				switch = sub_row.operator(limb['operator'], text="", icon=icon)
+				# Fill the operator's parameters where provided.
+				for param in limb.keys():
+					if hasattr(switch, param):
+						value = limb[param]
+						if type(value)==list:
+							value = ", ".join(value)
+						setattr(switch, param, value)
+
 class RigUI_Settings_FKIK(RigUI):
 	bl_idname = "OBJECT_PT_rig_ui_ikfk"
 	bl_label = "FK/IK Switch"
 	bl_parent_id = "OBJECT_PT_rig_ui_settings"
+
+	@classmethod
+	def poll(cls, context):
+		rig = get_rig()
+		return rig and "ik_switches" in rig.data
 
 	def draw(self, context):
 		layout = self.layout
@@ -914,34 +975,22 @@ class RigUI_Settings_FKIK(RigUI):
 		if not rig: return
 		data = rig.data
 
-		if "ik_chains" in data:
-			ik_chains = data["ik_chains"].to_dict()
-
-			for cat_name in ik_chains.keys():
-				category = ik_chains[cat_name]
-				row = layout.row()
-				for limb_name in category.keys():
-					limb = category[limb_name]
-
-					prop_bone = rig.pose.bones.get(limb['prop_bone'])
-					if not prop_bone:
-						print("WARNING: Limb definition has no prop_bone: %s, %s", cat_name, limb)
-
-					col = row.column()
-					sub_row = col.row(align=True)
-					sub_row.prop(prop_bone, '["' + limb["prop_name"] + '"]', slider=True, text=limb_name)
-					switch = sub_row.operator(IKFK_Toggle.bl_idname, text="", icon='FILE_REFRESH')
-					for param in limb.keys():
-						if hasattr(switch, param):
-							value = limb[param]
-							if type(value)==list:
-								value = ", ".join(value)
-							setattr(switch, param, value)
+		draw_rig_settings(layout, rig, "ik_switches")
 
 class RigUI_Settings_IK(RigUI):
 	bl_idname = "OBJECT_PT_rig_ui_ik"
 	bl_label = "IK Settings"
 	bl_parent_id = "OBJECT_PT_rig_ui_settings"
+
+	@classmethod
+	def poll(cls, context):
+		rig = get_rig()
+		if not rig: return False
+		ik_settings = ['ik_stretches', 'ik_hinges', 'parents', 'ik_pole_follows']
+		for ik_setting in ik_settings:
+			if ik_setting in rig.data:
+				return True
+		return False
 
 	def draw(self, context):
 		layout = self.layout
@@ -950,26 +999,12 @@ class RigUI_Settings_IK(RigUI):
 		ikfk_props = rig.pose.bones.get('Properties_IKFK')
 		data = rig.data
 
-		# IK Stretch
-		if 'ik_stretches' in data:
-			layout.label(text='Stretch')
-			ik_stretches = data["ik_stretches"].to_dict()
+		draw_rig_settings(layout, rig, "ik_stretches", label="IK Stretch")
+		draw_rig_settings(layout, rig, "parents", label="IK Parents")
+		draw_rig_settings(layout, rig, "ik_hinges", label="IK Hinge")
+		draw_rig_settings(layout, rig, "ik_pole_follows", label="IK Pole Follow")
 
-			for cat_name in ik_stretches.keys():
-				category = ik_stretches[cat_name]
-				row = layout.row()
-				for limb_name in category.keys():
-					limb = category[limb_name]
-
-					prop_bone = rig.pose.bones.get(limb['prop_bone'])
-					if not prop_bone:
-						print("WARNING: Limb definition has no prop_bone: %s, %s", cat_name, limb)
-
-					col = row.column()
-					sub_row = col.row(align=True)
-					sub_row.prop(prop_bone, '["' + limb["prop_name"] + '"]', slider=True, text=limb_name)
-
-		# IK Hinge
+		# Old IK Hinge
 		if 'ik_hinges' in rig:
 			layout.label(text="IK Hinge")
 
@@ -980,38 +1015,7 @@ class RigUI_Settings_IK(RigUI):
 			foot_row.prop(ikfk_props, '["ik_hinge_foot_left"]',  slider=True, text='Left Foot' )
 			foot_row.prop(ikfk_props, '["ik_hinge_foot_right"]', slider=True, text='Right Foot')
 
-		# IK Parents
-		if 'parents' in rig.data:
-			layout.label(text='Parents')
-			ik_parents = rig.data['parents'].to_dict()
-			for cat_name in ik_parents.keys():
-				category = ik_parents[cat_name]
-				row = layout.row()
-				for limb_name in category.keys():
-					limb = category[limb_name]
-					prop_bone_name = limb['prop_bone']
-					prop_bone = rig.pose.bones.get(prop_bone_name)
-					if not prop_bone:
-						print("WARNING: Limb definition has no prop_bone: %s, %s", cat_name, limb)
-					
-					col = row.column()
-					sub_row = col.row(align=True)
-					
-					parent_names = limb['parent_names']
-					prop_name = limb['prop_name']
-					prop_value = prop_bone[prop_name]
-
-					current_parent = parent_names[int(prop_value)]
-					sub_row.prop(prop_bone, '["%s"]'%prop_name, slider=True, text=limb_name + ": " + current_parent)
-
-					op = sub_row.operator('pose.rigify_switch_parent', text="", icon='COLLAPSEMENU')
-					op.bones = ", ".join(limb['child_names'])
-					op.prop_bone = prop_bone.name
-					op.prop_id = prop_name
-					op.parent_names = ", ".join(parent_names)
-					op.locks = (False, False, False)
-
-		# IK Pole Follow
+		# Old IK Pole Follow
 		if 'ik_pole_follows' in rig:
 			layout.label(text='IK Pole Follow')
 			pole_row = layout.row()
@@ -1023,6 +1027,16 @@ class RigUI_Settings_FK(RigUI):
 	bl_label = "FK Settings"
 	bl_parent_id = "OBJECT_PT_rig_ui_settings"
 
+	@classmethod
+	def poll(cls, context):
+		rig = get_rig()
+		if not rig: return False
+		fk_settings = ['fk_hinges']
+		for fk_setting in fk_settings:
+			if fk_setting in rig.data:
+				return True
+		return False
+
 	def draw(self, context):
 		layout = self.layout
 		rig = get_rig()
@@ -1030,6 +1044,7 @@ class RigUI_Settings_FK(RigUI):
 		data = rig.data
 
 		# FK Hinge
+		return #TODO
 		if 'fk_hinges' in data:
 			layout.label(text='Hinge')
 			fk_hinges = data["fk_hinges"].to_dict()
@@ -1046,13 +1061,18 @@ class RigUI_Settings_FK(RigUI):
 
 					col = row.column()
 					sub_row = col.row(align=True)
-					sub_row.prop(prop_bone, '["' + limb["prop_name"] + '"]', slider=True, text=limb_name)
+					sub_row.prop(prop_bone, '["' + limb["prop_id"] + '"]', slider=True, text=limb_name)
 
 class RigUI_Settings_Face(RigUI):
 	bl_idname = "OBJECT_PT_rig_ui_face"
 	bl_label = "Face Settings"
 	bl_parent_id = "OBJECT_PT_rig_ui_settings"
 
+	@classmethod
+	def poll(cls, context):
+		rig = get_rig()
+		return rig and "face_settings" in rig
+	
 	def draw(self, context):
 		layout = self.layout
 		rig = get_rig()
@@ -1078,6 +1098,11 @@ class RigUI_Settings_Misc(RigUI):
 	bl_label = "Misc"
 	bl_parent_id = "OBJECT_PT_rig_ui_settings"
 
+	@classmethod
+	def poll(cls, context):
+		rig = get_rig()
+		return rig and "misc_settings" in rig.data
+
 	def draw(self, context):
 		layout = self.layout
 		rig = get_rig()
@@ -1096,6 +1121,11 @@ class RigUI_Settings_Misc(RigUI):
 class RigUI_Viewport_Display(RigUI):
 	bl_idname = "OBJECT_PT_rig_ui_viewport_display"
 	bl_label = "Viewport Display"
+
+	@classmethod
+	def poll(cls, context):
+		rig = get_rig()
+		return rig and hasattr(rig, "rig_colorproperties") and len(rig.rig_colorproperties)>0
 
 	def draw(self, context):
 		layout = self.layout

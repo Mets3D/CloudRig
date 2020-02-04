@@ -106,7 +106,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 		for k in self.obj.data.keys():
 			if k in ['_RNA_UI', 'rig_id']: continue
-			del self.obj.data[k]self.limb_name
+			del self.obj.data[k]
 
 		self.obj.name = self.generator.metarig.name.replace("META", "RIG")
 		self.obj.data['cloudrig'] = version
