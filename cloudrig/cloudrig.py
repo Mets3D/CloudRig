@@ -912,7 +912,7 @@ def draw_rig_settings(layout, rig, settings_name, label=""):
 	
 	texts: Optional list of strings to display alongside the property name on the slider, chosen based on the current value of the property.
 	operator: Optional parameter to specify an operator to draw next to the slider.
-	icon: Optional prameter to override the icon. Defaults to 'FILE_REFRESH'.
+	icon: Optional prameter to override the icon of the operator. Defaults to 'FILE_REFRESH'.
 	
 	Arbitrary arguments will be passed on to the operator.
 	"""

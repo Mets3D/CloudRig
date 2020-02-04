@@ -110,6 +110,10 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 		self.obj.name = self.generator.metarig.name.replace("META", "RIG")
 		self.obj.data['cloudrig'] = version
+
+		# If no layers are protected, protect all layers. Otherwise, we assume protected layers were set up manually in a previously generated rig, so we don't touch them.
+		if list(self.obj.data.layers_protected) == [False]*32:
+			self.obj.data.layers_protected = [True]*32
 	
 	def prepare_bone_groups(self):
 		# Wipe any existing bone groups.
