@@ -1043,25 +1043,7 @@ class RigUI_Settings_FK(RigUI):
 		if not rig: return
 		data = rig.data
 
-		# FK Hinge
-		return #TODO
-		if 'fk_hinges' in data:
-			layout.label(text='Hinge')
-			fk_hinges = data["fk_hinges"].to_dict()
-
-			for cat_name in fk_hinges.keys():
-				category = fk_hinges[cat_name]
-				row = layout.row()
-				for limb_name in category.keys():
-					limb = category[limb_name]
-
-					prop_bone = rig.pose.bones.get(limb['prop_bone'])
-					if not prop_bone:
-						print("WARNING: Limb definition has no prop_bone: %s, %s", cat_name, limb)
-
-					col = row.column()
-					sub_row = col.row(align=True)
-					sub_row.prop(prop_bone, '["' + limb["prop_id"] + '"]', slider=True, text=limb_name)
+		draw_rig_settings(layout, rig, "fk_hinges", label='FK Hinge')
 
 class RigUI_Settings_Face(RigUI):
 	bl_idname = "OBJECT_PT_rig_ui_face"
