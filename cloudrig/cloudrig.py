@@ -310,6 +310,54 @@ def update_viewport_colors(rig, skin):
 			col_prop.color = skin_colors[mat_name]
 			col_prop.default = skin_colors[mat_name]
 
+def get_bones(rig, names):
+	""" Return a list of pose bones from a string of bone names separated by ", ". """
+	return list(filter(None, map(rig.pose.bones.get, names.split(", "))))
+
+class Snap_Generic(bpy.types.Operator):
+	"""Snap some bones to some other bones."""
+	bl_idname = "armature.snap_generic"
+	bl_label = "Snap Bones"
+	bl_options = {'REGISTER', 'UNDO'}
+
+	# Lists of bone names separated by ", ". Not great but not sure how to best pass lists to operators. (There are other ways but just as bad)
+	bones_from: StringProperty()	# The bones that are being snapped.
+	bones_to: StringProperty()		# List of equal length of bone names whose transforms to snap to.
+	affect_selection: BoolProperty(default=True)
+	affect_hide: BoolProperty(default=False)
+
+	def execute(self, context):
+		armature = context.object
+		bones_from = get_bones(armature, self.bones_from)
+		bones_to =   get_bones(armature, self.bones_to)
+
+		if bones_from==[None] or bones_to==[None] or len(bones_from)!=len(bones_to): 
+			return {'CANCELLED'}
+
+		for i, fkb in enumerate(bones_from):
+			bones_from[i].matrix = bones_to[i].matrix
+			context.evaluated_depsgraph_get().update()
+
+		if self.affect_hide:
+			# Hide bones
+			for b in bones_to:
+				b.bone.hide = True
+			
+			# Unhide bones
+			for b in bones_from:
+				b.bone.hide = False
+
+		if self.affect_selection:
+			# Deselect all bones
+			for b in context.selected_pose_bones:
+				b.bone.select=False
+
+			# Select affected bones
+			for b in bones_from:
+				b.bone.select=True
+
+		return {'FINISHED'}
+
 class Snap_FK2IK(bpy.types.Operator):
 	"""Snap FK to IK chain"""
 	bl_idname = "armature.snap_fk_to_ik"
@@ -322,10 +370,10 @@ class Snap_FK2IK(bpy.types.Operator):
 
 	def execute(self, context):
 		armature = context.object
-		fk_bones = list(map(armature.pose.bones.get, self.fk_bones.split(", ")))
-		ik_bones = list(map(armature.pose.bones.get, self.ik_bones.split(", ")))
+		fk_bones = get_bones(armature, self.fk_bones)
+		ik_bones = get_bones(armature, self.ik_bones)
 
-		if fk_bones==[None] or ik_bones==[None]: 
+		if fk_bones==[None] or ik_bones==[None] or len(fk_bones)!=len(ik_bones): 
 			return {'CANCELLED'}
 
 		for i, fkb in enumerate(fk_bones):
@@ -488,10 +536,10 @@ class Snap_IK2FK(bpy.types.Operator):
 	def execute(self, context):
 		armature = context.object
 
-		fk_bones = list(map(armature.pose.bones.get, self.fk_bones.split(", ")))
-		ik_bones = list(map(armature.pose.bones.get, self.ik_bones.split(", ")))
+		fk_bones = get_bones(armature, self.fk_bones)
+		ik_bones = get_bones(armature, self.ik_bones)
 
-		if fk_bones==[None] or ik_bones==[None]: 
+		if fk_bones==[None] or ik_bones==[None] or len(fk_bones)!=len(ik_bones): 
 			print("WARNING: CANNOT SNAP IK TO FK, PARAMS MISSING")
 			return {'CANCELLED'}
 		
@@ -889,13 +937,6 @@ class RigUI_Settings_FKIK(RigUI):
 							if type(value)==list:
 								value = ", ".join(value)
 							setattr(switch, param, value)
-					
-					# switch.fk_bones = ", ".join(limb["fk_names"])
-					# switch.ik_bones = ", ".join(limb["ik_names"])
-					# switch.ik_pole = limb["ik_pole_name"]
-					# switch.double_ik_control = limb["double_ik_control"]
-					# switch.prop_bone = limb["prop_bone"]
-					# switch.prop_name = limb["prop_name"]
 
 class RigUI_Settings_IK(RigUI):
 	bl_idname = "OBJECT_PT_rig_ui_ik"

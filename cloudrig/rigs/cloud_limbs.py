@@ -660,7 +660,6 @@ class Rig(CloudFKChainRig):
 		category = "arms ik" if self.params.type == 'ARM' else "legs ik"
 		super().store_parent_switch_info(self.limb_name_short, child_names, list(parents.keys()), self.prop_bone.name, ik_parents_prop_name, category)
 
-
 	##############################
 	# Parameters
 
