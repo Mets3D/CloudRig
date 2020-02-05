@@ -312,6 +312,12 @@ class Rig(CloudChainRig):
 			if i == len(self.def_bones)-2:
 				# Neck DEF bone
 				def_bone.bbone_easeout = 0	# TODO: this doesn't work?
+		
+		# The last DEF bone should copy the scale of the FK bone. (Or maybe each of them should? And maybe all FK chains, not just the spine? TODO)
+		last_def = self.def_bones[-1]
+		# last_def.add_constraint(self.obj, 'COPY_SCALE', prepend=True, true_defaults=True, target=self.obj, subtarget=self.fk_chain[-1].name)
+		# Nevermind, just inherit scale for now, it works nice when the neck STR scales the head in this case.
+		last_def.inherit_scale = 'FULL'
 
 	@stage.prepare_bones
 	def prepare_org_spine(self):

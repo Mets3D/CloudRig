@@ -338,7 +338,7 @@ class BoneInfo(ID):
 			if b.parent==self or b.parent==self.name:
 				b.parent = new_parent
 
-	def add_constraint(self, armature, contype, true_defaults=False, **kwargs):
+	def add_constraint(self, armature, contype, true_defaults=False, prepend=False, **kwargs):
 		"""Add a constraint to this bone.
 		contype: Type of constraint, eg. 'STRETCH_TO'.
 		props: Dictionary of properties and values.
@@ -352,7 +352,10 @@ class BoneInfo(ID):
 				new_props[key] = value
 			props = new_props
 		
-		self.constraints.append((contype, props))
+		if prepend:
+			self.constraints.insert(0, (contype, props))
+		else:
+			self.constraints.append((contype, props))
 		return props
 
 	def clear_constraints(self):
