@@ -12,6 +12,212 @@ import traceback
 from mathutils import Euler, Quaternion
 from rna_prop_ui import rna_idprop_quote_path
 
+class Snap_Simple(bpy.types.Operator):
+	""" Change a custom property while ensuring that some bones stay in place. """
+	bl_idname = "pose.snap_simple"
+	bl_label = "Snap Simple"
+	bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
+	bl_description = "Change a property, preserving the bone position and orientation"
+
+	bones:		 StringProperty(name="Control Bone")
+	prop_bone:	StringProperty(name="Property Bone")
+	prop_id:	  StringProperty(name="Property")
+	
+	locks:		bpy.props.BoolVectorProperty(name="Locked", size=3, default=[False,False,False])
+
+	def execute(self, context):
+		obj = context.active_object
+		self.keyflags = self.get_autokey_flags(context, ignore_keyset=True)
+		self.keyflags_switch = self.add_flags_if_set(self.keyflags, {'INSERTKEY_AVAILABLE'})
+
+		try:
+			matrices = []
+			bones = self.bones.split(", ")
+			for bone in bones:
+				matrices.append( self.save_frame_state(context, obj, bone) )
+			
+			self.apply_frame_state(context, obj, matrices, bones)
+
+		except Exception as e:
+			traceback.print_exc()
+			self.report({'ERROR'}, 'Exception: ' + str(e))
+
+		return {'FINISHED'}
+
+	def save_frame_state(self, context, obj, bone):
+		return self.get_transform_matrix(obj, bone, with_constraints=False)
+
+	def apply_frame_state(self, context, obj, old_matrices, bones):
+		# Change the parent
+		# TODO: Instead of relying on scene settings(auto-keying, keyingset, etc) maybe it would be better to have a custom boolean to decide whether to insert keyframes or not. Ask animators.
+		prop_bone = obj.pose.bones.get(self.prop_bone)
+		assert prop_bone, "Bone snapping failed: Properties bone %s not found.)" %self.bone_name
+		assert self.prop_id in prop_bone, "Bone snapping failed: Bone %s has no property %s" %(self.bone_name, self.bone_id)
+		value = prop_bone[self.prop_id]
+		
+		self.set_custom_property_value(
+			obj, self.prop_bone, self.prop_id, int(value),
+			keyflags=self.keyflags_switch
+		)
+
+		context.view_layer.update()
+
+		# Set the transforms to restore position
+		for i, bone in enumerate(bones):
+			old_matrix = old_matrices[i]
+			self.set_transform_from_matrix(
+				obj, bone, old_matrix, keyflags=self.keyflags,
+				no_loc=self.locks[0], no_rot=self.locks[1], no_scale=self.locks[2]
+			)
+
+	######################
+	## Keyframing tools ##
+	######################
+
+	def get_keying_flags(self, context):
+		"Retrieve the general keyframing flags from user preferences."
+		prefs = context.preferences
+		ts = context.scene.tool_settings
+		flags = set()
+		# Not adding INSERTKEY_VISUAL
+		if prefs.edit.use_keyframe_insert_needed:
+			flags.add('INSERTKEY_NEEDED')
+		if prefs.edit.use_insertkey_xyz_to_rgb:
+			flags.add('INSERTKEY_XYZ_TO_RGB')
+		if ts.use_keyframe_cycle_aware:
+			flags.add('INSERTKEY_CYCLE_AWARE')
+		return flags
+
+	def get_autokey_flags(self, context, ignore_keyset=False):
+		"Retrieve the Auto Keyframe flags, or None if disabled."
+		ts = context.scene.tool_settings
+		if ts.use_keyframe_insert_auto and (ignore_keyset or not ts.use_keyframe_insert_keyingset):
+			flags = self.get_keying_flags(context)
+			if context.preferences.edit.use_keyframe_insert_available:
+				flags.add('INSERTKEY_AVAILABLE')
+			if ts.auto_keying_mode == 'REPLACE_KEYS':
+				flags.add('INSERTKEY_REPLACE')
+			return flags
+		else:
+			return None
+
+	def add_flags_if_set(self, base, new_flags):
+		"Add more flags if base is not None."
+		if base is None:
+			return None
+		else:
+			return base | new_flags
+
+	def get_4d_rotlock(self, bone):
+		"Retrieve the lock status for 4D rotation."
+		if bone.lock_rotations_4d:
+			return [bone.lock_rotation_w, *bone.lock_rotation]
+		else:
+			return [all(bone.lock_rotation)] * 4
+
+	def keyframe_transform_properties(self, obj, bone_name, keyflags, *, ignore_locks=False, no_loc=False, no_rot=False, no_scale=False):
+		"Keyframe transformation properties, taking flags and mode into account, and avoiding keying locked channels."
+		bone = obj.pose.bones[bone_name]
+
+		def keyframe_channels(prop, locks):
+			if ignore_locks or not all(locks):
+				if ignore_locks or not any(locks):
+					bone.keyframe_insert(prop, group=bone_name, options=keyflags)
+				else:
+					for i, lock in enumerate(locks):
+						if not lock:
+							bone.keyframe_insert(prop, index=i, group=bone_name, options=keyflags)
+
+		if not (no_loc or bone.bone.use_connect):
+			keyframe_channels('location', bone.lock_location)
+
+		if not no_rot:
+			if bone.rotation_mode == 'QUATERNION':
+				keyframe_channels('rotation_quaternion', self.get_4d_rotlock(bone))
+			elif bone.rotation_mode == 'AXIS_ANGLE':
+				keyframe_channels('rotation_axis_angle', self.get_4d_rotlock(bone))
+			else:
+				keyframe_channels('rotation_euler', bone.lock_rotation)
+
+		if not no_scale:
+			keyframe_channels('scale', bone.lock_scale)
+
+	###############################
+	## Assign and keyframe tools ##
+	###############################
+
+	def set_custom_property_value(self, obj, bone_name, prop, value, *, keyflags=None):
+		"Assign the value of a custom property, and optionally keyframe it."
+		from rna_prop_ui import rna_idprop_ui_prop_update
+		bone = obj.pose.bones[bone_name]
+		bone[prop] = value
+		rna_idprop_ui_prop_update(bone, prop)
+		if keyflags is not None:
+			bone.keyframe_insert(rna_idprop_quote_path(prop), group=bone.name, options=keyflags)
+
+	def get_transform_matrix(self, obj, bone_name, *, space='POSE', with_constraints=True):
+		"Retrieve the matrix of the bone before or after constraints in the given space."
+		bone = obj.pose.bones[bone_name]
+		if with_constraints:
+			return obj.convert_space(pose_bone=bone, matrix=bone.matrix, from_space='POSE', to_space=space)
+		else:
+			return obj.convert_space(pose_bone=bone, matrix=bone.matrix_basis, from_space='LOCAL', to_space=space)
+
+	def set_transform_from_matrix(self, obj, bone_name, matrix, *, space='POSE', ignore_locks=False, no_loc=False, no_rot=False, no_scale=False, keyflags=None):
+		"Apply the matrix to the transformation of the bone, taking locked channels, mode and certain constraints into account, and optionally keyframe it."
+		bone = obj.pose.bones[bone_name]
+
+		def restore_channels(prop, old_vec, locks, extra_lock):
+			if extra_lock or (not ignore_locks and all(locks)):
+				setattr(bone, prop, old_vec)
+			else:
+				if not ignore_locks and any(locks):
+					new_vec = Vector(getattr(bone, prop))
+
+					for i, lock in enumerate(locks):
+						if lock:
+							new_vec[i] = old_vec[i]
+
+					setattr(bone, prop, new_vec)
+
+		# Save the old values of the properties
+		old_loc = Vector(bone.location)
+		old_rot_euler = Vector(bone.rotation_euler)
+		old_rot_quat = Vector(bone.rotation_quaternion)
+		old_rot_axis = Vector(bone.rotation_axis_angle)
+		old_scale = Vector(bone.scale)
+
+		# Compute and assign the local matrix
+		if space != 'LOCAL':
+			matrix = obj.convert_space(pose_bone=bone, matrix=matrix, from_space=space, to_space='LOCAL')
+
+		bone.matrix_basis = matrix
+
+		# Restore locked properties
+		restore_channels('location', old_loc, bone.lock_location, no_loc or bone.bone.use_connect)
+
+		if bone.rotation_mode == 'QUATERNION':
+			restore_channels('rotation_quaternion', old_rot_quat, self.get_4d_rotlock(bone), no_rot)
+			bone.rotation_axis_angle = old_rot_axis
+			bone.rotation_euler = old_rot_euler
+		elif bone.rotation_mode == 'AXIS_ANGLE':
+			bone.rotation_quaternion = old_rot_quat
+			restore_channels('rotation_axis_angle', old_rot_axis, self.get_4d_rotlock(bone), no_rot)
+			bone.rotation_euler = old_rot_euler
+		else:
+			bone.rotation_quaternion = old_rot_quat
+			bone.rotation_axis_angle = old_rot_axis
+			restore_channels('rotation_euler', old_rot_euler, bone.lock_rotation, no_rot)
+
+		restore_channels('scale', old_scale, bone.lock_scale, no_scale)
+
+		# Keyframe properties
+		if keyflags is not None:
+			self.keyframe_transform_properties(
+				obj, bone_name, keyflags, ignore_locks=ignore_locks,
+				no_loc=no_loc, no_rot=no_rot, no_scale=no_scale
+			)
+
 class POSE_OT_rigify_switch_parent(bpy.types.Operator):
 	# Credit for all code in this class to Rigify.
 	bl_idname = "pose.rigify_switch_parent"
@@ -97,7 +303,7 @@ class POSE_OT_rigify_switch_parent(bpy.types.Operator):
 			return context.window_manager.invoke_props_popup(self, event)
 		else:
 			return self.execute(context)
-	
+
 	######################
 	## Keyframing tools ##
 	######################
@@ -314,13 +520,17 @@ def get_bones(rig, names):
 	""" Return a list of pose bones from a string of bone names separated by ", ". """
 	return list(filter(None, map(rig.pose.bones.get, names.split(", "))))
 
+
+# Currently working on: We should make a Snap_Simple, which just takes some bones and a property and changes the property without screwing up the bone. Worry about keyframing and whatnot later.
+
+
 class Snap_Generic(bpy.types.Operator):
 	"""Snap some bones to some other bones."""
 	bl_idname = "armature.snap_generic"
 	bl_label = "Snap Bones"
 	bl_options = {'REGISTER', 'UNDO'}
 
-	# Lists of bone names separated by ", ". Not great but not sure how to best pass lists to operators. (There are other ways but just as bad)
+	# Lists of bone names separated (converted to string so they could be passed to an operator)
 	bones_from: StringProperty()	# The bones that are being snapped.
 	bones_to: StringProperty()		# List of equal length of bone names whose transforms to snap to.
 	affect_selection: BoolProperty(default=True)
@@ -737,14 +947,26 @@ class Rig_Properties(bpy.types.PropertyGroup):
 		
 		outfit_bone = rig.pose.bones.get("Properties_Outfit_"+self.outfit)
 		
+		self.update_bool_properties(context)
+
 		if outfit_bone:
+			# Reset all settings to default.
+			for key in outfit_bone.keys():
+				value = outfit_bone[key]
+				if type(value) in [float, int]:
+					pass # TODO: Can't seem to reset custom properties to their default, or even so much as read their default!?!?
+			
 			# For outfit properties starting with "_", update the corresponding character property.
 			char_bone = get_char_bone(rig)
 			for key in outfit_bone.keys():
 				if key.startswith("_") and key[1:] in char_bone:
-					char_bone[key[1:]] = outfit_bone[key]
-
-		self.update_bool_properties(context)
+					if key[1:] in rig.rig_boolproperties:
+						#If it's a boolean, find it and update that instead.
+						rig.rig_boolproperties[key[1:]].value = outfit_bone[key]
+					else:
+						char_bone[key[1:]] = outfit_bone[key]
+		
+		context.evaluated_depsgraph_get().update()
 
 	outfit: EnumProperty(
 		name="Outfit",
@@ -805,7 +1027,11 @@ class RigUI_Outfits(RigUI):
 				""" If there is a property on prop_owner named $prop_id, expect it to be a list of strings and return the valueth element."""
 				text = prop_id.replace("_", " ")
 				if "$"+prop_id in prop_owner and type(value)==int:
-					return text + ": " + prop_owner["$"+prop_id][value]
+					names = prop_owner["$"+prop_id]
+					if value > len(names)-1:
+						print("WARNING: Name list for this property is not long enough for current value: %s" %prop_id)
+						return text
+					return text + ": " + names[value]
 				else:
 					return text
 
@@ -944,7 +1170,7 @@ def draw_rig_settings(layout, rig, settings_name, label=""):
 
 			sub_row.prop(prop_bone, '["' + prop_id + '"]', slider=True, text=text)
 			
-			# Draw an operator if desired.
+			# Draw an operator if provided.
 			if 'operator' in limb:
 				icon = 'FILE_REFRESH'
 				if 'icon' in limb:
@@ -1003,24 +1229,6 @@ class RigUI_Settings_IK(RigUI):
 		draw_rig_settings(layout, rig, "parents", label="IK Parents")
 		draw_rig_settings(layout, rig, "ik_hinges", label="IK Hinge")
 		draw_rig_settings(layout, rig, "ik_pole_follows", label="IK Pole Follow")
-
-		# Old IK Hinge
-		if 'ik_hinges' in rig:
-			layout.label(text="IK Hinge")
-
-			hand_row = layout.row()
-			hand_row.prop(ikfk_props, '["ik_hinge_hand_left"]',  slider=True, text='Left Hand' )
-			hand_row.prop(ikfk_props, '["ik_hinge_hand_right"]', slider=True, text='Right Hand')
-			foot_row = layout.row()
-			foot_row.prop(ikfk_props, '["ik_hinge_foot_left"]',  slider=True, text='Left Foot' )
-			foot_row.prop(ikfk_props, '["ik_hinge_foot_right"]', slider=True, text='Right Foot')
-
-		# Old IK Pole Follow
-		if 'ik_pole_follows' in rig:
-			layout.label(text='IK Pole Follow')
-			pole_row = layout.row()
-			pole_row.prop(ikfk_props, '["ik_pole_follow_hands"]', slider=True, text='Arms')
-			pole_row.prop(ikfk_props, '["ik_pole_follow_feet"]',  slider=True, text='Legs')
 
 class RigUI_Settings_FK(RigUI):
 	bl_idname = "OBJECT_PT_rig_ui_fk"
@@ -1148,7 +1356,7 @@ bpy.types.Object.rig_boolproperties = bpy.props.CollectionProperty(type=Rig_Bool
 bpy.types.Object.rig_colorproperties = bpy.props.CollectionProperty(type=Rig_ColorProperties)
 
 # bpy.app.handlers.depsgraph_update_post.append(post_depsgraph_update)
-bpy.app.handlers.depsgraph_update_pre.append(pre_depsgraph_update)
+# bpy.app.handlers.depsgraph_update_pre.append(pre_depsgraph_update)
 
 # Certain render settings must be enabled for Rain!
 bpy.context.scene.eevee.use_ssr = True

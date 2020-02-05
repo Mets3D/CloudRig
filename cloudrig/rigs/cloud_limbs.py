@@ -59,6 +59,7 @@ class Rig(CloudFKChainRig):
 		self.ikfk_name = "ik_%s_%s" %(limb, side)
 		self.ik_stretch_name = "ik_stretch_%s_%s" %(limb, side)
 		self.fk_hinge_name = "fk_hinge_%s_%s" %(limb, side)
+		self.ik_pole_follow_name = "ik_pole_follow_%s_%s" %(limb, side)
 
 	def get_segments(self, org_i, chain):
 		segments = self.params.deform_segments
@@ -635,6 +636,49 @@ class Rig(CloudFKChainRig):
 
 		for cb in child_bones:
 			shared.rig_child(self, cb, parents, self.prop_bone, ik_parents_prop_name)
+		
+
+
+
+
+		### IK Pole Follow option
+		# Create custom property
+		default = 1.0 if self.params.type=='LEG' else 0.0
+		pole_follow_prop = self.prop_bone.custom_props[self.ik_pole_follow_name] = CustomProp(self.ik_pole_follow_name, default=default)
+
+		# Get the armature constraint from the IK pole's parent, and add the IK master as a new target.
+		arm_con_bone = self.pole_ctrl.parent
+		arm_con = arm_con_bone.constraints[0][1]
+		arm_con['targets'].append({
+			"subtarget" : self.ik_ctrl.name
+		})
+
+		# Tweak each driver on the IK pole's parent, as well as add a driver to the new target.
+		drv = Driver()
+		data_path = 'constraints["Armature"].targets[%d].weight' %(len(arm_con['targets'])-1)
+		arm_con_bone.drivers[data_path] = drv
+		for i, dp in enumerate(arm_con_bone.drivers):
+			d = arm_con_bone.drivers[dp]
+			d.expression = "(%s) - follow" %d.expression
+			if i == len(arm_con_bone.drivers)-1:
+				d.expression = "follow"
+			follow_var = d.make_var("follow")
+			follow_var
+			follow_var.type = 'SINGLE_PROP'
+			follow_var.targets[0].id_type = 'OBJECT'
+			follow_var.targets[0].id = self.obj
+			follow_var.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ik_pole_follow_name)
+
+		# Add option to the UI.
+		category = "arms_ik_pole_follow" if self.params.type=='ARM' else "legs_ik_pole_follow"
+		info = {
+			"prop_bone" : self.prop_bone.name,
+			"prop_id"	: self.ik_pole_follow_name,
+		}
+		self.store_ui_data("ik_pole_follows", category, self.limb_name, info)
+
+
+
 
 		category = "arms ik" if self.params.type == 'ARM' else "legs ik"
 		info = {

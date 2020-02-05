@@ -159,8 +159,8 @@ def rig_child(self, child_bone, parent_names, prop_bone, prop_name, default_valu
 		})
 
 		drv = Driver()
-		drv.expression = "var==%d" %i
-		var = drv.make_var("var")
+		drv.expression = "parent==%d" %i
+		var = drv.make_var("parent")
 		var.type = 'SINGLE_PROP'
 		var.targets[0].id_type = 'OBJECT'
 		var.targets[0].id = self.obj
