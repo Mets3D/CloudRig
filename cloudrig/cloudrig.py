@@ -11,9 +11,11 @@ import math
 import traceback
 from mathutils import Euler, Quaternion
 from rna_prop_ui import rna_idprop_quote_path
+# TODO Refactor: Use json.loads() for passing lists or dictionaries to operators!
+# TODO Refactor: rename most cases of "obj" to "rig".
 
 class Snap_Simple(bpy.types.Operator):
-	""" Change a custom property while ensuring that some bones stay in place. """
+	""" Toggle a custom property while ensuring that some bones stay in place. """
 	bl_idname = "pose.snap_simple"
 	bl_label = "Snap Simple"
 	bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
@@ -22,25 +24,39 @@ class Snap_Simple(bpy.types.Operator):
 	bones:		 StringProperty(name="Control Bone")
 	prop_bone:	StringProperty(name="Property Bone")
 	prop_id:	  StringProperty(name="Property")
-	
+
+	select_bones: BoolProperty(name="Select Affected Bones", default=False)
+
 	locks:		bpy.props.BoolVectorProperty(name="Locked", size=3, default=[False,False,False])
+
+	@classmethod
+	def poll(cls, context):
+		return context.object and context.object.type=='ARMATURE' and context.object.mode=='POSE'
 
 	def execute(self, context):
 		obj = context.active_object
 		self.keyflags = self.get_autokey_flags(context, ignore_keyset=True)
 		self.keyflags_switch = self.add_flags_if_set(self.keyflags, {'INSERTKEY_AVAILABLE'})
 
+		bone_names = self.bones.split(", ")
+		bones = get_bones(obj, self.bones)
+
 		try:
 			matrices = []
-			bones = self.bones.split(", ")
-			for bone in bones:
-				matrices.append( self.save_frame_state(context, obj, bone) )
+			for bone_name in bone_names:
+				matrices.append( self.save_frame_state(context, obj, bone_name) )
 			
-			self.apply_frame_state(context, obj, matrices, bones)
+			self.apply_frame_state(context, obj, matrices, bone_names)
 
 		except Exception as e:
 			traceback.print_exc()
 			self.report({'ERROR'}, 'Exception: ' + str(e))
+
+		if self.select_bones:
+			for b in context.selected_pose_bones:
+				b.bone.select = False
+			for b in bones:
+				b.bone.select=True
 
 		return {'FINISHED'}
 
@@ -56,7 +72,7 @@ class Snap_Simple(bpy.types.Operator):
 		value = prop_bone[self.prop_id]
 		
 		self.set_custom_property_value(
-			obj, self.prop_bone, self.prop_id, int(value),
+			obj, self.prop_bone, self.prop_id, 1-value,
 			keyflags=self.keyflags_switch
 		)
 
@@ -1328,7 +1344,7 @@ class RigUI_Viewport_Display(RigUI):
 
 classes = (
 	POSE_OT_rigify_switch_parent,
-
+	Snap_Simple,
 	Rig_ColorProperties,
 	Rig_BoolProperties,
 	Rig_Properties,

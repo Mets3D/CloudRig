@@ -22,15 +22,19 @@ class CloudUtilities:
 
 		self.obj.data[switch_type][category][bodypart] = info
 
-	def hinge_setup(self, bone, category, *, prop_bone, prop_name, parent_bone=None, hng_name="", default_value=0.0, limb_name="", head_tail=0):
+	def hinge_setup(self, bone, category, *, 
+		prop_bone, prop_name, default_value=0.0, 
+		parent_bone=None, head_tail=0, 
+		hng_name=None, limb_name=None
+	):
 		# Initialize some defaults
-		if hng_name=="":
+		if not hng_name:
 			sliced = slice_name(bone.name)
 			sliced[0].insert(0, "HNG")
 			hng_name = make_name(*sliced)
 		if not parent_bone:
 			parent_bone = bone.parent
-		if limb_name=="":
+		if not limb_name:
 			limb_name = "Hinge: " + self.side_suffix + " " + slice_name(bone.name)[1]
 		
 		info = {
@@ -38,6 +42,9 @@ class CloudUtilities:
 			"prop_id" 			: prop_name,
 			"bones_on" 			: [bone.name],
 			"bones_off" 		: [bone.name],
+
+			"operator" : "pose.snap_simple",
+			"bones" : [bone.name]
 		}
 
 		# Store UI info

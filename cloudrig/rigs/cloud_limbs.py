@@ -674,6 +674,10 @@ class Rig(CloudFKChainRig):
 		info = {
 			"prop_bone" : self.prop_bone.name,
 			"prop_id"	: self.ik_pole_follow_name,
+
+			"operator" : "pose.snap_simple",
+			"bones" : [self.pole_ctrl.name],
+			"select_bones" : True
 		}
 		self.store_ui_data("ik_pole_follows", category, self.limb_name, info)
 
