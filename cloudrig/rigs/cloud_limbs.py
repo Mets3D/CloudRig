@@ -20,6 +20,7 @@ import bpy
 from bpy.props import *
 from mathutils import *
 from math import pi
+import json
 
 from rigify.utils.errors import MetarigError
 from rigify.base_rig import stage
@@ -325,9 +326,7 @@ class Rig(CloudFKChainRig):
 		# Store info for UI
 		info = {
 			"prop_bone"			: self.prop_bone.name,
-			"prop_id" 		: self.ik_stretch_name,
-			# "bones_on" 		: [bone.name],
-			# "bones_off" 		: [bone.name],
+			"prop_id" 			: self.ik_stretch_name,
 		}
 		self.store_ui_data("ik_stretches", self.params.type, self.limb_name, info)
 
@@ -370,14 +369,26 @@ class Rig(CloudFKChainRig):
 			fk_names.insert(0, fk_chain[0].parent.name)
 			ik_names.insert(0, ik_names[0])
 		
+		hide_off = [self.ik_mstr.name, self.pole_ctrl.name]
+
+		map_off = dict(zip(fk_names, ik_names))
+		map_on = {}
+		if self.params.double_ik_control:
+			map_on[self.ik_mstr.parent.name] = fk_names[-1]
+			hide_off.append(self.ik_mstr.parent.name)
+		for i, ik_name in enumerate(ik_names):
+			if i == 2: continue # We don't want to snap IK elbow.
+			map_on[ik_name] = fk_names[i]
+
 		info = {	# These parameter names must be kept in sync with Snap_IK2FK in cloudrig.py
 			"operator" 			: "armature.ikfk_toggle",
 			"prop_bone"			: self.prop_bone.name,
 			"prop_id" 			: self.ikfk_name,
-			"fk_bones" 			: fk_names,
-			"ik_bones" 			: ik_names,
+			"map_on" 			: json.dumps(map_on),
+			"map_off" 			: json.dumps(map_off),
+			"hide_on"			: json.dumps(fk_names),
+			"hide_off"			: json.dumps(hide_off),
 			"ik_pole" 			: ik_pole.name,
-			"double_ik_control" : self.params.double_ik_control
 		}
 		self.store_ui_data("ik_switches", self.params.type.lower(), self.limb_name, info)
 		self.prop_bone.custom_props[self.ikfk_name] = CustomProp(self.ikfk_name, default=1.0)

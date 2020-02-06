@@ -7,11 +7,12 @@ from bpy.props import *
 from mathutils import Vector, Matrix
 from math import *
 
+import json
+
 import math
 import traceback
 from mathutils import Euler, Quaternion
 from rna_prop_ui import rna_idprop_quote_path
-# TODO Refactor: Use json.loads() for passing lists or dictionaries to operators!
 # TODO Refactor: rename most cases of "obj" to "rig".
 
 class Snap_Simple(bpy.types.Operator):
@@ -34,10 +35,11 @@ class Snap_Simple(bpy.types.Operator):
 
 	def execute(self, context):
 		obj = context.active_object
+		# TODO: Instead of relying on scene settings(auto-keying, keyingset, etc) maybe it would be better to have a custom boolean to decide whether to insert keyframes or not. Ask animators.
 		self.keyflags = self.get_autokey_flags(context, ignore_keyset=True)
 		self.keyflags_switch = self.add_flags_if_set(self.keyflags, {'INSERTKEY_AVAILABLE'})
 
-		bone_names = self.bones.split(", ")
+		bone_names = json.loads(self.bones)
 		bones = get_bones(obj, self.bones)
 
 		try:
@@ -51,13 +53,16 @@ class Snap_Simple(bpy.types.Operator):
 			traceback.print_exc()
 			self.report({'ERROR'}, 'Exception: ' + str(e))
 
+		self.set_selection(context, bones)
+
+		return {'FINISHED'}
+
+	def set_selection(self, context, bones):
 		if self.select_bones:
 			for b in context.selected_pose_bones:
 				b.bone.select = False
 			for b in bones:
 				b.bone.select=True
-
-		return {'FINISHED'}
 
 	def save_frame_state(self, context, obj, bone):
 		return self.get_transform_matrix(obj, bone, with_constraints=False)
@@ -65,10 +70,7 @@ class Snap_Simple(bpy.types.Operator):
 	def apply_frame_state(self, context, obj, old_matrices, bones):
 		# Change the parent
 		# TODO: Instead of relying on scene settings(auto-keying, keyingset, etc) maybe it would be better to have a custom boolean to decide whether to insert keyframes or not. Ask animators.
-		prop_bone = obj.pose.bones.get(self.prop_bone)
-		assert prop_bone, "Bone snapping failed: Properties bone %s not found.)" %self.bone_name
-		assert self.prop_id in prop_bone, "Bone snapping failed: Bone %s has no property %s" %(self.bone_name, self.bone_id)
-		value = prop_bone[self.prop_id]
+		value = self.get_custom_property_value(obj, self.prop_bone, self.prop_id)
 		
 		self.set_custom_property_value(
 			obj, self.prop_bone, self.prop_id, 1-value,
@@ -161,6 +163,12 @@ class Snap_Simple(bpy.types.Operator):
 	## Assign and keyframe tools ##
 	###############################
 
+	def get_custom_property_value(self, obj, bone_name, prop_id):
+		prop_bone = obj.pose.bones.get(self.prop_bone)
+		assert prop_bone, "Bone snapping failed: Properties bone %s not found.)" %self.bone_name
+		assert self.prop_id in prop_bone, "Bone snapping failed: Bone %s has no property %s" %(self.bone_name, self.bone_id)
+		return prop_bone[self.prop_id]
+
 	def set_custom_property_value(self, obj, bone_name, prop, value, *, keyflags=None):
 		"Assign the value of a custom property, and optionally keyframe it."
 		from rna_prop_ui import rna_idprop_ui_prop_update
@@ -251,7 +259,6 @@ class POSE_OT_rigify_switch_parent(Snap_Simple):
 
 	def apply_frame_state(self, context, obj, old_matrices, bones):
 		# Change the parent
-		# TODO: Instead of relying on scene settings(auto-keying, keyingset, etc) maybe it would be better to have a custom boolean to decide whether to insert keyframes or not. Ask animators.
 		self.set_custom_property_value(
 			obj, self.prop_bone, self.prop_id, int(self.selected),
 			keyflags=self.keyflags_switch
@@ -281,7 +288,7 @@ class POSE_OT_rigify_switch_parent(Snap_Simple):
 			self.report({'ERROR'}, "Invalid parameters")
 			return {'CANCELLED'}
 
-		parents = self.parent_names.split(", ")
+		parents = json.loads(self.parent_names)
 		pitems = [(str(i), name, name) for i, name in enumerate(parents)]
 
 		POSE_OT_rigify_switch_parent.parent_items = pitems
@@ -359,100 +366,155 @@ def update_viewport_colors(rig, skin):
 
 def get_bones(rig, names):
 	""" Return a list of pose bones from a string of bone names separated by ", ". """
-	return list(filter(None, map(rig.pose.bones.get, names.split(", "))))
+	return list(filter(None, map(rig.pose.bones.get, json.loads(names))))
 
-
-# Currently working on: We should make a Snap_Simple, which just takes some bones and a property and changes the property without screwing up the bone. Worry about keyframing and whatnot later.
-
-
-class Snap_Generic(bpy.types.Operator):
-	"""Snap some bones to some other bones."""
-	bl_idname = "armature.snap_generic"
+class Snap_Mapped(Snap_Simple):
+	# TODO: Unused. I thought I needed this, but I don't.
+	"""Toggle a custom property and snap some bones to some other bones."""
+	bl_idname = "pose.snap_mapped"
 	bl_label = "Snap Bones"
 	bl_options = {'REGISTER', 'UNDO'}
 
+	prop_bone:	StringProperty(name="Property Bone")
+	prop_id:	  StringProperty(name="Property")
+
+	select_bones: BoolProperty(name="Select Affected Bones", default=False)
+	locks:		bpy.props.BoolVectorProperty(name="Locked", size=3, default=[False,False,False])
+
 	# Lists of bone names separated (converted to string so they could be passed to an operator)
-	bones_from: StringProperty()	# The bones that are being snapped.
-	bones_to: StringProperty()		# List of equal length of bone names whose transforms to snap to.
-	affect_selection: BoolProperty(default=True)
-	affect_hide: BoolProperty(default=False)
-
-	def execute(self, context):
-		armature = context.object
-		bones_from = get_bones(armature, self.bones_from)
-		bones_to =   get_bones(armature, self.bones_to)
-
-		if bones_from==[None] or bones_to==[None] or len(bones_from)!=len(bones_to): 
-			return {'CANCELLED'}
-
-		for i, fkb in enumerate(bones_from):
-			bones_from[i].matrix = bones_to[i].matrix
-			context.evaluated_depsgraph_get().update()
-
-		if self.affect_hide:
-			# Hide bones
-			for b in bones_to:
-				b.bone.hide = True
-			
-			# Unhide bones
-			for b in bones_from:
-				b.bone.hide = False
-
-		if self.affect_selection:
-			# Deselect all bones
-			for b in context.selected_pose_bones:
-				b.bone.select=False
-
-			# Select affected bones
-			for b in bones_from:
-				b.bone.select=True
-
-		return {'FINISHED'}
-
-class Snap_FK2IK(bpy.types.Operator):
-	"""Snap FK to IK chain"""
-	bl_idname = "armature.snap_fk_to_ik"
-	bl_label = "Snap FK to IK"
-	bl_options = {'REGISTER', 'UNDO'}
-	# TODO: prop_bone should be passed instead of being hardcoded to a "Properties_IKFK" bone.
-
-	fk_bones: StringProperty()
-	ik_bones: StringProperty()
-
-	def execute(self, context):
-		armature = context.object
-		fk_bones = get_bones(armature, self.fk_bones)
-		ik_bones = get_bones(armature, self.ik_bones)
-
-		if fk_bones==[None] or ik_bones==[None] or len(fk_bones)!=len(ik_bones): 
-			return {'CANCELLED'}
-
-		for i, fkb in enumerate(fk_bones):
-			fk_bones[i].matrix = ik_bones[i].matrix
-			context.evaluated_depsgraph_get().update()
-
-		# Deselect all bones
-		for b in context.selected_pose_bones:
-			b.bone.select=False
-			
-		# Select affected bones
-		for b in fk_bones:
-			b.bone.select=True
-
-		return {'FINISHED'}
-
-class Snap_IK2FK(bpy.types.Operator):
-	"""Snap IK to FK chain"""
-	"""Credit for most code (for figuring out the pole target matrix) to Rigify."""	# TODO: The resulting pole target location appears to be a tiny bit imprecise.
-	bl_idname = "armature.snap_ik_to_fk"
-	bl_label = "Snap IK to FK"
-	bl_options = {'REGISTER', 'UNDO'}
-
-	fk_bones: StringProperty()
-	ik_bones: StringProperty()
-	ik_pole: StringProperty()
-	double_ik_control: BoolProperty(default=True, description="Set to True if there is a double IK control.")
+	map_on: StringProperty()		# Bone name dictionary to use when the property is toggled ON.
+	map_off: StringProperty()		# Bone name dictionary to use when the property is toggled OFF.
 	
+	hide_on: StringProperty()		# List of bone names to hide when property is toggled ON.
+	hide_off: StringProperty()		# List of bone names to hide when property is toggled OFF.
+
+	@classmethod
+	def poll(cls, context):
+		return context.object and context.object.type=='ARMATURE' and context.object.mode=='POSE'
+
+	def execute(self, context):
+		obj = context.active_object
+		self.keyflags = self.get_autokey_flags(context, ignore_keyset=True)
+		self.keyflags_switch = self.add_flags_if_set(self.keyflags, {'INSERTKEY_AVAILABLE'})
+
+		my_map = None
+		names_hide = None
+		names_unhide = None
+		value = self.get_custom_property_value(obj, self.prop_bone, self.prop_id)
+		if value==0.0:
+			my_map = self.map_on
+			names_hide = self.hide_on
+			names_unhide = self.hide_off
+			value = 1.0
+		else:
+			my_map = self.map_off
+			names_hide = self.hide_off
+			names_unhide = self.hide_on
+			value = 0.0
+		self.set_custom_property_value(
+			obj, self.prop_bone, self.prop_id, value, 
+			keyflags=self.keyflags
+		)
+		my_map = json.loads(my_map)
+		
+		names_affected = list(my_map.keys())
+		names_affector = list(my_map.values())
+
+		for i, bone_name in enumerate(names_affected):
+			affected_bone = obj.pose.bones.get(bone_name)
+			affector_bone = obj.pose.bones.get(names_affector[i])
+			assert affected_bone and affector_bone, "Error: Snapping failed, bones not found: %s, %s" %(bone_name, names_affector[i])
+			affected_bone.matrix = affector_bone.matrix
+			context.evaluated_depsgraph_get().update()
+
+			# Keyframe properties
+			if self.keyflags is not None:
+				self.keyframe_transform_properties(
+					obj, bone_name, self.keyflags,
+					no_loc=self.locks[0], no_rot=self.locks[1], no_scale=self.locks[2]
+				)
+
+		self.hide_unhide_bones(get_bones(obj, names_hide), get_bones(obj, names_unhide))
+		self.set_selection(context, get_bones(obj, json.dumps(names_affected)))
+		
+		return {'FINISHED'}
+
+	def hide_unhide_bones(self, hide_bones, unhide_bones):
+		# Hide bones
+		for b in hide_bones:
+			b.bone.hide = True
+		
+		# Unhide bones
+		for b in unhide_bones:
+			b.bone.hide = False
+
+		return {'FINISHED'}
+
+class IKFK_Toggle(bpy.types.Operator):
+	"Toggle between IK and FK, and snap the controls accordingly. This will NOT place any keyframes, but it will select the affected bones"
+	bl_idname = "armature.ikfk_toggle"
+	bl_label = "Toggle IK/FK"
+	bl_options = {'REGISTER', 'UNDO'}
+	
+	prop_bone: StringProperty()
+	prop_id: StringProperty()
+
+	map_on: StringProperty()
+	map_off: StringProperty()
+
+	hide_on: StringProperty()
+	hide_off: StringProperty()
+
+	ik_pole: StringProperty()
+
+	@classmethod
+	def poll(cls, context):
+		if context.object and context.object.type=='ARMATURE': 
+			return True
+
+	def execute(self, context):
+		armature = context.object
+
+		bpy.ops.pose.snap_mapped(
+			prop_bone = self.prop_bone,
+			prop_id = self.prop_id,
+
+			map_on		= self.map_on, 
+			map_off		= self.map_off, 
+			hide_on		= self.hide_on, 
+			hide_off	= self.hide_off,
+
+			select_bones = True,
+		)
+
+		prop_bone = armature.pose.bones.get(self.prop_bone)
+		value = prop_bone[self.prop_id]
+		if value==1:
+			self.ik_elbow_to_fk(context)
+
+		return {'FINISHED'}
+	
+	def ik_elbow_to_fk(self, context):
+		armature = context.object
+
+		map_off = json.loads(self.map_off)
+
+		fk_bones = get_bones(armature, json.dumps(list(map_off.keys())))
+		ik_bones = get_bones(armature, json.dumps(list(map_off.values())))
+
+		# Snap the last IK control to the last FK control.
+		first_ik_bone = ik_bones[0]
+		last_ik_bone = ik_bones[-1]
+		ik_pole = armature.pose.bones.get(self.ik_pole)
+		first_fk_bone = fk_bones[0]
+		self.match_pole_target(first_ik_bone, last_ik_bone, ik_pole, first_fk_bone, 0.5)
+		context.evaluated_depsgraph_get().update()
+
+		# Select pole
+		ik_pole.bone.select=True
+
+		return {'FINISHED'}
+
 	def perpendicular_vector(self, v):
 		""" Returns a vector that is perpendicular to the one given.
 			The returned vector is _not_ guaranteed to be normalized.
@@ -578,83 +640,6 @@ class Snap_IK2FK(bpy.types.Operator):
 		# Do the one with the smaller angle
 		if ang1 < ang2:
 			set_pole(pv1)
-			
-	@classmethod
-	def poll(cls, context):
-		if context.object and context.object.type=='ARMATURE': 
-			return True
-
-	def execute(self, context):
-		armature = context.object
-
-		fk_bones = get_bones(armature, self.fk_bones)
-		ik_bones = get_bones(armature, self.ik_bones)
-
-		if fk_bones==[None] or ik_bones==[None] or len(fk_bones)!=len(ik_bones): 
-			print("WARNING: CANNOT SNAP IK TO FK, PARAMS MISSING")
-			return {'CANCELLED'}
-		
-		ik_pole = armature.pose.bones.get(self.ik_pole)
-
-		# Snap the last IK control to the last FK control.
-		last_fk_bone = fk_bones[-1]
-		last_ik_bone = ik_bones[-1]
-		select_bones = [last_ik_bone, ik_pole]
-		if self.double_ik_control:
-			ik_parent_bone = last_ik_bone.parent
-			ik_parent_bone.matrix = last_fk_bone.matrix
-			select_bones.append(ik_parent_bone)
-			context.evaluated_depsgraph_get().update()
-		last_ik_bone.matrix = last_fk_bone.matrix
-		context.evaluated_depsgraph_get().update()
-		
-		first_ik_bone = fk_bones[0]
-		first_fk_bone = ik_bones[0]
-		self.match_pole_target(first_ik_bone, last_ik_bone, ik_pole, first_fk_bone, 0.5)
-		context.evaluated_depsgraph_get().update()
-
-		# Deselect all bones
-		for b in context.selected_pose_bones:
-			b.bone.select=False
-
-		# Select affected bones
-		for b in select_bones:
-			b.bone.select=True
-
-		return {'FINISHED'}
-
-class IKFK_Toggle(bpy.types.Operator):
-	"Toggle between IK and FK, and snap the controls accordingly. This will NOT place any keyframes, but it will select the affected bones"
-	bl_idname = "armature.ikfk_toggle"
-	bl_label = "Toggle IK/FK"
-	bl_options = {'REGISTER', 'UNDO'}
-	
-	prop_bone: StringProperty()
-	prop_id: StringProperty()
-
-	fk_bones: StringProperty()
-	ik_bones: StringProperty()
-	ik_pole: StringProperty()
-	double_ik_control: BoolProperty(default=True)
-
-	@classmethod
-	def poll(cls, context):
-		if context.object and context.object.type=='ARMATURE' and context.mode=='POSE': 
-			return True
-
-	def execute(self, context):
-		if self.prop_bone != "":
-			armature = context.object
-
-			prop_bone = armature.pose.bones.get(self.prop_bone)
-			if prop_bone[self.prop_id] < 1:
-				bpy.ops.armature.snap_ik_to_fk(fk_bones=self.fk_bones, ik_bones=self.ik_bones, ik_pole=self.ik_pole, double_ik_control=self.double_ik_control)
-				prop_bone[self.prop_id] = 1.0
-			else:
-				bpy.ops.armature.snap_fk_to_ik(fk_bones=self.fk_bones, ik_bones=self.ik_bones)
-				prop_bone[self.prop_id] = 0.0
-
-		return {'FINISHED'}
 
 class Reset_Rig_Colors(bpy.types.Operator):
 	"""Reset rig color properties to their stored default."""
@@ -1022,8 +1007,8 @@ def draw_rig_settings(layout, rig, settings_name, label=""):
 				for param in limb.keys():
 					if hasattr(switch, param):
 						value = limb[param]
-						if type(value)==list:
-							value = ", ".join(value)
+						if type(value) in [list, dict]:
+							value = json.dumps(value)
 						setattr(switch, param, value)
 
 class RigUI_Settings_FKIK(RigUI):
@@ -1169,14 +1154,13 @@ class RigUI_Viewport_Display(RigUI):
 
 classes = (
 	POSE_OT_rigify_switch_parent,
+	Snap_Mapped,
 	Snap_Simple,
 	Rig_ColorProperties,
 	Rig_BoolProperties,
 	Rig_Properties,
 	RigUI_Outfits,
 	RigUI_Layers,
-	Snap_IK2FK,
-	Snap_FK2IK,
 	IKFK_Toggle,
 	Reset_Rig_Colors,
 	RigUI_Settings,
