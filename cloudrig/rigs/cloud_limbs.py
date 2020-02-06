@@ -20,7 +20,6 @@ import bpy
 from bpy.props import *
 from mathutils import *
 from math import pi
-import json
 
 from rigify.utils.errors import MetarigError
 from rigify.base_rig import stage
@@ -384,10 +383,10 @@ class Rig(CloudFKChainRig):
 			"operator" 			: "armature.ikfk_toggle",
 			"prop_bone"			: self.prop_bone.name,
 			"prop_id" 			: self.ikfk_name,
-			"map_on" 			: json.dumps(map_on),
-			"map_off" 			: json.dumps(map_off),
-			"hide_on"			: json.dumps(fk_names),
-			"hide_off"			: json.dumps(hide_off),
+			"map_on" 			: map_on,
+			"map_off" 			: map_off,
+			"hide_on"			: fk_names,
+			"hide_off"			: hide_off,
 			"ik_pole" 			: ik_pole.name,
 		}
 		self.store_ui_data("ik_switches", self.params.type.lower(), self.limb_name, info)
