@@ -359,35 +359,16 @@ class Rig(CloudFKChainRig):
 			fk_chain = fk_chain[:-1]
 			ik_chain = ik_chain[:-1]
 
-		# Replace last IK bone with IK Master control
-		ik_chain[-1] = self.ik_mstr
-		
-		fk_names = [b.name for b in fk_chain]
-		ik_names = [b.name for b in ik_chain]
-		if self.params.double_first_control:
-			fk_names.insert(0, fk_chain[0].parent.name)
-			ik_names.insert(0, ik_names[0])
-		
-		hide_off = [self.ik_mstr.name, self.pole_ctrl.name]
-
-		map_off = dict(zip(fk_names, ik_names))
-		map_on = {}
-		if self.params.double_ik_control:
-			map_on[self.ik_mstr.parent.name] = fk_names[-1]
-			hide_off.append(self.ik_mstr.parent.name)
-		for i, ik_name in enumerate(ik_names):
-			if i == 2: continue # We don't want to snap IK elbow.
-			map_on[ik_name] = fk_names[i]
-
 		info = {	# These parameter names must be kept in sync with Snap_IK2FK in cloudrig.py
-			"operator" 			: "armature.ikfk_toggle",
-			"prop_bone"			: self.prop_bone.name,
-			"prop_id" 			: self.ikfk_name,
-			"map_on" 			: map_on,
-			"map_off" 			: map_off,
-			"hide_on"			: fk_names,
-			"hide_off"			: hide_off,
-			"ik_pole" 			: ik_pole.name,
+			"operator" 				: "armature.ikfk_toggle",
+			"prop_bone"				: self.prop_bone.name,
+			"prop_id" 				: self.ikfk_name,
+			"fk_chain" 				: [b.name for b in fk_chain],
+			"ik_chain" 				: [b.name for b in ik_chain],
+			"double_first_control"	: self.params.double_first_control,
+			"double_ik_control"		: self.params.double_ik_control,
+			"ik_pole" 				: self.pole_ctrl.name,
+			"ik_control"			: self.ik_mstr.name
 		}
 		self.store_ui_data("ik_switches", self.params.type.lower(), self.limb_name, info)
 		self.prop_bone.custom_props[self.ikfk_name] = CustomProp(self.ikfk_name, default=1.0)

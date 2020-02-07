@@ -348,22 +348,13 @@ class Snap_Mapped(Snap_Simple):
 		self.keyflags = self.get_autokey_flags(context, ignore_keyset=True)
 		self.keyflags_switch = self.add_flags_if_set(self.keyflags, {'INSERTKEY_AVAILABLE'})
 
-		my_map = None
-		names_hide = None
-		names_unhide = None
 		value = self.get_custom_property_value(obj, self.prop_bone, self.prop_id)
-		if value==0.0:
-			my_map = self.map_on
-			names_hide = self.hide_on
-			names_unhide = self.hide_off
-			value = 1.0
-		else:
-			my_map = self.map_off
-			names_hide = self.hide_off
-			names_unhide = self.hide_on
-			value = 0.0
+		my_map = self.map_off if value==1 else self.map_on
+		names_hide = self.hide_off if value==1 else self.hide_on
+		names_unhide = self.hide_on if value==1 else self.hide_off
+
 		self.set_custom_property_value(
-			obj, self.prop_bone, self.prop_id, value, 
+			obj, self.prop_bone, self.prop_id, 1-value, 
 			keyflags=self.keyflags
 		)
 		my_map = json.loads(my_map)
@@ -410,13 +401,14 @@ class IKFK_Toggle(bpy.types.Operator):
 	prop_bone: StringProperty()
 	prop_id: StringProperty()
 
-	map_on: StringProperty()
-	map_off: StringProperty()
+	fk_chain: StringProperty()
+	ik_chain: StringProperty()
 
-	hide_on: StringProperty()
-	hide_off: StringProperty()
+	double_first_control: BoolProperty(default=False)
+	double_ik_control: BoolProperty(default=False)
 
 	ik_pole: StringProperty()
+	ik_control: StringProperty()
 
 	@classmethod
 	def poll(cls, context):
@@ -425,44 +417,54 @@ class IKFK_Toggle(bpy.types.Operator):
 
 	def execute(self, context):
 		armature = context.object
+		
+		fk_chain = get_bones(armature, self.fk_chain)
+		ik_chain = get_bones(armature, self.ik_chain)
+
+		ik_pole = armature.pose.bones.get(self.ik_pole)
+		ik_control = armature.pose.bones.get(self.ik_control)
+
+		map_on = {}
+		hide_on = [b.name for b in fk_chain]
+		hide_off = [self.ik_control, self.ik_pole]
+		if self.double_ik_control:
+			hide_off.append(ik_control.parent.name)
+			map_on[ik_control.parent.name] = fk_chain[-1].name
+			map_on[self.ik_control] = fk_chain[-1].name
+			map_on[ik_chain[0].name] = fk_chain[0].name
+		map_off = {}
+		if self.double_first_control:
+			hide_on.append(fk_chain[0].parent.name)
+			map_off[fk_chain[0].parent.name] = ik_chain[0].name
+			map_off[fk_chain[0].name] = ik_chain[0].name
+			map_off[fk_chain[1].name] = ik_chain[1].name
+			map_off[fk_chain[2].name] = ik_control.name
+
+		prop_bone = armature.pose.bones.get(self.prop_bone)
+		value = prop_bone[self.prop_id]
+		if value==0:
+			# Snap the last IK control to the last FK control.
+			first_ik_bone = ik_chain[0]
+			last_ik_bone = ik_chain[-1]
+			first_fk_bone = fk_chain[-2].parent
+			self.match_pole_target(first_ik_bone, last_ik_bone, ik_pole, first_fk_bone, 0.5)
+			context.evaluated_depsgraph_get().update()
 
 		bpy.ops.pose.snap_mapped(
 			prop_bone = self.prop_bone,
 			prop_id = self.prop_id,
 
-			map_on		= self.map_on, 
-			map_off		= self.map_off, 
-			hide_on		= self.hide_on, 
-			hide_off	= self.hide_off,
+			map_on		= json.dumps(map_on), 
+			map_off		= json.dumps(map_off), 
+			hide_on		= json.dumps(hide_on), 
+			hide_off	= json.dumps(hide_off),
 
 			select_bones = True,
 		)
 
-		prop_bone = armature.pose.bones.get(self.prop_bone)
-		value = prop_bone[self.prop_id]
-		if value==1:
-			self.ik_elbow_to_fk(context)
-
-		return {'FINISHED'}
-	
-	def ik_elbow_to_fk(self, context):
-		armature = context.object
-
-		map_off = json.loads(self.map_off)
-
-		fk_bones = get_bones(armature, json.dumps(list(map_off.keys())))
-		ik_bones = get_bones(armature, json.dumps(list(map_off.values())))
-
-		# Snap the last IK control to the last FK control.
-		first_ik_bone = ik_bones[0]
-		last_ik_bone = ik_bones[-1]
-		ik_pole = armature.pose.bones.get(self.ik_pole)
-		first_fk_bone = fk_bones[0]
-		self.match_pole_target(first_ik_bone, last_ik_bone, ik_pole, first_fk_bone, 0.5)
-		context.evaluated_depsgraph_get().update()
-
-		# Select pole
-		ik_pole.bone.select=True
+		if value==0:
+			# Select pole
+			ik_pole.bone.select=True
 
 		return {'FINISHED'}
 
