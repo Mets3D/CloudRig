@@ -320,7 +320,6 @@ def get_bones(rig, names):
 	return list(filter(None, map(rig.pose.bones.get, json.loads(names))))
 
 class Snap_Mapped(Snap_Simple):
-	# TODO: Unused. I thought I needed this, but I don't.
 	"""Toggle a custom property and snap some bones to some other bones."""
 	bl_idname = "pose.snap_mapped"
 	bl_label = "Snap Bones"
@@ -358,15 +357,20 @@ class Snap_Mapped(Snap_Simple):
 			keyflags=self.keyflags
 		)
 		my_map = json.loads(my_map)
-		
-		names_affected = list(my_map.keys())
-		names_affector = list(my_map.values())
 
-		for i, bone_name in enumerate(names_affected):
-			affected_bone = obj.pose.bones.get(bone_name)
-			affector_bone = obj.pose.bones.get(names_affector[i])
-			assert affected_bone and affector_bone, "Error: Snapping failed, bones not found: %s, %s" %(bone_name, names_affector[i])
-			affected_bone.matrix = affector_bone.matrix
+		names_affected = [t[0] for t in my_map]
+		names_affector = [t[1] for t in my_map]
+
+		matrices = []
+		for affector_name in names_affector:
+			affector_bone = obj.pose.bones.get(affector_name)
+			assert affector_bone, "Error: Snapping failed, bone not found: %s" %affector_name
+			matrices.append(affector_bone.matrix.copy())
+
+		for i, affected_name in enumerate(names_affected):
+			affected_bone = obj.pose.bones.get(affected_name)
+			assert affected_bone, "Error: Snapping failed, bones not found: %s" %affected_name
+			affected_bone.matrix = matrices[i]
 			context.evaluated_depsgraph_get().update()
 
 			# Keyframe properties
@@ -424,21 +428,21 @@ class IKFK_Toggle(bpy.types.Operator):
 		ik_pole = armature.pose.bones.get(self.ik_pole)
 		ik_control = armature.pose.bones.get(self.ik_control)
 
-		map_on = {}
+		map_on = []
+		map_off = []
 		hide_on = [b.name for b in fk_chain]
 		hide_off = [self.ik_control, self.ik_pole]
 		if self.double_ik_control:
 			hide_off.append(ik_control.parent.name)
-			map_on[ik_control.parent.name] = fk_chain[-1].name
-			map_on[self.ik_control] = fk_chain[-1].name
-			map_on[ik_chain[0].name] = fk_chain[0].name
-		map_off = {}
+			map_on.append( (ik_control.parent.name, fk_chain[-1].name) )
+		map_on.append( (self.ik_control, fk_chain[-1].name) )
+		map_on.append( (ik_chain[0].name, fk_chain[0].name) )
 		if self.double_first_control:
-			hide_on.append(fk_chain[0].parent.name)
-			map_off[fk_chain[0].parent.name] = ik_chain[0].name
-			map_off[fk_chain[0].name] = ik_chain[0].name
-			map_off[fk_chain[1].name] = ik_chain[1].name
-			map_off[fk_chain[2].name] = ik_control.name
+			hide_on.append( (fk_chain[0].parent.name) )
+			map_off.append( (fk_chain[0].parent.name, ik_chain[0].name) )
+		map_off.append( (fk_chain[0].name, ik_chain[0].name) )
+		map_off.append( (fk_chain[1].name, ik_chain[1].name) )
+		map_off.append( (fk_chain[2].name, ik_control.name) )
 
 		prop_bone = armature.pose.bones.get(self.prop_bone)
 		value = prop_bone[self.prop_id]
