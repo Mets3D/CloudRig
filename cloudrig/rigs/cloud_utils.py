@@ -40,8 +40,6 @@ class CloudUtilities:
 		info = {
 			"prop_bone"			: prop_bone.name,
 			"prop_id" 			: prop_name,
-			"bones_on" 			: [bone.name],
-			"bones_off" 		: [bone.name],
 
 			"operator" : "pose.snap_simple",
 			"bones" : [bone.name]

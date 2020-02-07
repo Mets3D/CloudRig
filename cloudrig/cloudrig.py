@@ -25,7 +25,7 @@ class Snap_Simple(bpy.types.Operator):
 	prop_bone:	StringProperty(name="Property Bone")
 	prop_id:	  StringProperty(name="Property")
 
-	select_bones: BoolProperty(name="Select Affected Bones", default=False)
+	select_bones: BoolProperty(name="Select Affected Bones", default=True)
 
 	locks:		bpy.props.BoolVectorProperty(name="Locked", size=3, default=[False,False,False])
 
@@ -315,55 +315,6 @@ def get_char_bone(rig):
 		if b.name.startswith("Properties_Character"):
 			return b
 
-def pre_depsgraph_update(scene, depsgraph=None):
-	""" Runs before every depsgraph update. Is used to handle user input by detecting changes in the rig properties. """
-	for rig in get_rigs():
-		# Grabbing relevant data (Hardcoded for Rain - general solutions eat too much performance)
-		outfit_props = rig.pose.bones.get("Properties_Outfit_Default")
-		if not outfit_props: return
-		if "Skin" not in outfit_props: return
-
-		skin = outfit_props["Skin"]		
-		
-		# Init flags
-		if('update_skin' not in rig):
-			rig['update_skin'] = 0
-		if('prev_skin' not in rig):
-			rig['prev_skin'] = skin
-		
-		if skin != rig['prev_skin']:
-			# Changing the scene should be done in post_depsgraph_update, otherwise we can easily cause an infinite loop of depsgraph updates.
-			# So we just set a flag and read it from there.
-			#rig['update_skin'] = 1
-			rig['prev_skin'] = skin
-			# An exception to this is material changes. If those are done in post_depsgraph_update, they don't show up in the viewport.
-			update_viewport_colors(rig, skin)
-
-viewport_color_definitions = {
-	"Rain" : {
-		"MAT-rain.hair" : [0.048172, 0.031896, 0.020289],
-		"MAT-rain.hairband" : [0.092253, 0.322308, 0.428690],
-		"MAT-rain.eyebrows" : [0.048172, 0.031896, 0.020289],
-		"MAT-rain.top" : [0.800000, 0.800000, 0.800000],
-	},
-	"Hail" : {
-		"MAT-rain.hair" : [0.018500, 0.293081, 0.313989],
-		"MAT-rain.hairband" : [0.013702, 0.036004, 0.054995],
-		"MAT-rain.eyebrows" : [0.005661, 0.035762, 0.038372],
-		"MAT-rain.top" : [0.012983, 0.035601, 0.054480],
-	}
-}
-
-def update_viewport_colors(rig, skin):
-	skin_name = "Rain" if skin == 1 else "Hail"
-	skin_colors = viewport_color_definitions[skin_name]
-
-	for mat_name in skin_colors.keys():
-		col_prop = rig.rig_colorproperties.get(mat_name)
-		if col_prop:
-			col_prop.color = skin_colors[mat_name]
-			col_prop.default = skin_colors[mat_name]
-
 def get_bones(rig, names):
 	""" Return a list of pose bones from a string of bone names separated by ", ". """
 	return list(filter(None, map(rig.pose.bones.get, json.loads(names))))
@@ -642,14 +593,14 @@ class IKFK_Toggle(bpy.types.Operator):
 			set_pole(pv1)
 
 class Reset_Rig_Colors(bpy.types.Operator):
-	"""Reset rig color properties to their stored default."""
+	"""Reset rig color properties to their stonred default."""
 	bl_idname = "object.reset_rig_colors"
 	bl_label = "Reset Rig Colors"
 	bl_options = {'REGISTER', 'UNDO'}
 
 	@classmethod
 	def poll(cls, context):
-		return 'cloudrig' in context.object
+		return 'cloudrig' in context.object.data
 
 	def execute(self, context):
 		rig = context.object
@@ -1179,10 +1130,3 @@ for c in classes:
 bpy.types.Object.rig_properties = bpy.props.PointerProperty(type=Rig_Properties)
 bpy.types.Object.rig_boolproperties = bpy.props.CollectionProperty(type=Rig_BoolProperties)
 bpy.types.Object.rig_colorproperties = bpy.props.CollectionProperty(type=Rig_ColorProperties)
-
-# bpy.app.handlers.depsgraph_update_post.append(post_depsgraph_update)
-# bpy.app.handlers.depsgraph_update_pre.append(pre_depsgraph_update)
-
-# Certain render settings must be enabled for Rain!
-bpy.context.scene.eevee.use_ssr = True
-bpy.context.scene.eevee.use_ssr_refraction = True
