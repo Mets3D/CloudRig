@@ -30,7 +30,7 @@ from ..definitions.bone import BoneInfoContainer, BoneInfo
 from .. import shared
 from .cloud_utils import *
 
-version = 1.4
+version = 1.5
 
 class CloudBaseRig(BaseRig, CloudUtilities):
 	"""Base for all CloudRig rigs."""
@@ -195,7 +195,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		if root_shape:
 			bpy.data.objects.remove(root_shape)
 
-		self.obj['script'] = self.load_ui_script()
+		self.obj.data['script'] = self.load_ui_script()
 
 	@stage.finalize
 	def organize_widgets(self):

@@ -1,6 +1,6 @@
 # Credit for keyframing and IK pole snapping code to Rigify.
-"2020-02-04"
-version = 1.4
+"2020-02-07"
+version = 1.5
 
 import bpy
 from bpy.props import *
@@ -302,12 +302,12 @@ class POSE_OT_rigify_switch_parent(Snap_Simple):
 
 def get_rigs():
 	""" Find all cloudrig armatures in the file."""
-	return [o for o in bpy.data.objects if o.type=='ARMATURE' and 'cloudrig' in o.data and o.data['cloudrig']==version]
+	return [o for o in bpy.data.objects if o.type=='ARMATURE' and 'cloudrig' in o.data]
 
 def get_rig():
 	"""If the active object is a cloudrig, return it."""
 	rig = bpy.context.object
-	if rig and rig.type == 'ARMATURE' and 'cloudrig' in rig.data and rig.data['cloudrig']==version:
+	if rig and rig.type == 'ARMATURE' and 'cloudrig' in rig.data:
 		return rig
 
 def get_char_bone(rig):
@@ -416,8 +416,7 @@ class IKFK_Toggle(bpy.types.Operator):
 
 	@classmethod
 	def poll(cls, context):
-		if context.object and context.object.type=='ARMATURE': 
-			return True
+		return context.object and context.object.type=='ARMATURE' and context.object.mode=='POSE'
 
 	def execute(self, context):
 		armature = context.object
