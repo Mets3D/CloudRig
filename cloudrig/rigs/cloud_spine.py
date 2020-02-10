@@ -67,12 +67,12 @@ class Rig(CloudChainRig):
 			name 					= "MSTR-Torso",
 			source 					= self.org_chain[0],
 			head 					= self.org_chain[0].center,
-			tail 					= self.org_chain[0].center + Vector((0, 0, self.scale)),
+			# tail 					= self.org_chain[0].center + Vector((0, 0, self.scale)),
 			custom_shape 			= self.load_widget("Torso_Master"),
 			bone_group 				= 'Body: Main IK Controls',
 		)
 		self.register_parent(self.mstr_torso, "Torso")
-		#self.mstr_torso.flatten()
+		self.mstr_torso.flatten()
 		if self.params.double_controls:
 			double_mstr_pelvis = shared.create_parent_bone(self, self.mstr_torso)
 			double_mstr_pelvis.bone_group = 'Body: Main IK Controls Extra Parents'
@@ -162,13 +162,14 @@ class Rig(CloudChainRig):
 				name				= "MSTR-Hips",
 				source				= self.org_chain[0],
 				head				= self.org_chain[0].center,
-				tail 				= self.org_chain[0].center + Vector((0, 0, -self.scale)),
+				# tail 				= self.org_chain[0].center + Vector((0, 0, -self.scale)),
 				**self.defaults,
 				custom_shape 		= self.load_widget("Hips"),
 				custom_shape_scale 	= 0.7,
 				parent				= self.mstr_torso,
 				bone_group = "Body: Main IK Controls"
 		)
+		self.mstr_hips.flatten()
 		self.register_parent(self.mstr_hips, "Hips")
 
 		self.ik_ctr_chain = []

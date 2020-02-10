@@ -47,19 +47,27 @@ class Rig(CloudFKChainRig):
 	def initialize(self):
 		super().initialize()
 		"""Gather and validate data about the rig."""
-		#assert len(self.bones.org.main)>=3, "Limb bone chain must be at least 3 connected bones."
-		self.type = self.params.type
+		if self.params.type=='ARM':
+			assert len(self.bones.org.main) == 3, "Arm chain must be exactly 3 connected bones."
+		if self.params.type=='LEG':
+			assert len(self.bones.org.main) == 4, "Leg chain must be exactly 4 connected bones."
 
 		# Properties bone and Custom Properties
 		side = self.side_prefix.lower()
 		limb = self.params.type.lower()
-		self.limb_name_short = self.side_suffix + " " + limb.capitalize()
-		self.limb_name = self.side_prefix + " " + limb.capitalize()	 # TODO: This really only allows for 2 arms and 2 legs per character. Might need more!
 
-		self.ikfk_name = "ik_%s_%s" %(limb, side)
-		self.ik_stretch_name = "ik_stretch_%s_%s" %(limb, side)
-		self.fk_hinge_name = "fk_hinge_%s_%s" %(limb, side)
-		self.ik_pole_follow_name = "ik_pole_follow_%s_%s" %(limb, side)
+		self.category = "arms" if self.params.type == 'ARM' else "legs"
+		if self.params.use_category_name:
+			self.category = self.params.category_name
+		self.limb_name = self.side_prefix + " " + limb.capitalize()
+		if self.params.use_limb_name:
+			self.limb_name = self.params.limb_name
+
+		self.limb_name_props = self.limb_name.replace(" ", "_").lower()
+		self.ikfk_name = "ik_" + self.limb_name_props
+		self.ik_stretch_name = "ik_stretch_" + self.limb_name_props
+		self.fk_hinge_name = "fk_hinge_" + self.limb_name_props
+		self.ik_pole_follow_name = "ik_pole_follow_" + self.limb_name_props
 
 	def get_segments(self, org_i, chain):
 		segments = self.params.deform_segments
@@ -139,12 +147,12 @@ class Rig(CloudFKChainRig):
 		# Create Hinge helper
 		self.hinge_setup(
 			bone = hng_child, 
-			category = "arms" if self.params.type == 'ARM' else "legs",
+			category = self.category,
 			parent_bone = self.limb_root_bone,
 			hng_name = self.base_bone.replace("ORG", "FK-HNG"),
 			prop_bone = self.prop_bone,
 			prop_name = self.fk_hinge_name,
-			limb_name = self.side_suffix + " " + self.params.type.capitalize()
+			limb_name = self.limb_name
 		)
 
 	@stage.prepare_bones
@@ -158,9 +166,9 @@ class Rig(CloudFKChainRig):
 		elbow = copy.copy(first_bone.tail)
 		direction = 1 if limb_type=='ARM' else -1					# Character is expected to face +Y direction.
 		offset_scale = 3 if limb_type=='ARM' else 5					# Scalar on distance from the body.
-		offset = Vector((0, direction*offset_scale*self.scale, 0))
+		offset = Vector((0, direction*offset_scale*self.scale, 0)) * self.params.pole_offset
 		pole_ctrl = self.pole_ctrl = self.bone_infos.bone(
-			name = make_name(["IK", "POLE"], limb_type.capitalize(), [self.side_suffix]),
+			name = make_name(["IK", "POLE"], self.limb_name.capitalize(), [self.side_suffix]),
 			bbone_x = first_bone.bbone_x,
 			bbone_z = first_bone.bbone_x,
 			head = elbow + offset,
@@ -327,7 +335,7 @@ class Rig(CloudFKChainRig):
 			"prop_bone"			: self.prop_bone.name,
 			"prop_id" 			: self.ik_stretch_name,
 		}
-		self.store_ui_data("ik_stretches", self.params.type, self.limb_name, info)
+		self.store_ui_data("ik_stretches", self.category, self.limb_name, info)
 
 		# Create custom property
 		self.prop_bone.custom_props[self.ik_stretch_name] = CustomProp(self.ik_stretch_name, default=1.0)
@@ -336,7 +344,7 @@ class Rig(CloudFKChainRig):
 		##### MORE STUFF ######
 		#######################
 
-		if self.params.type == 'LEG':
+		if self.params.type == 'LEG' and self.params.use_foot_roll:
 			self.prepare_ik_foot(self.ik_tgt_bone, ik_chain[-2:], org_chain[-2:])
 		
 		self.ik_chain = ik_chain
@@ -370,7 +378,7 @@ class Rig(CloudFKChainRig):
 			"ik_pole" 				: self.pole_ctrl.name,
 			"ik_control"			: self.ik_mstr.name
 		}
-		self.store_ui_data("ik_switches", self.params.type.lower(), self.limb_name, info)
+		self.store_ui_data("ik_switches", self.category, self.limb_name, info)
 		self.prop_bone.custom_props[self.ikfk_name] = CustomProp(self.ikfk_name, default=1.0)
 
 	def first_str_counterrotate_setup(self, str_bone, org_bone, factor):
@@ -623,7 +631,7 @@ class Rig(CloudFKChainRig):
 
 		side = self.side_prefix.lower()
 		limb = self.params.type.lower()
-		ik_parents_prop_name = "ik_parents_%s_%s" %(limb, side)
+		ik_parents_prop_name = "ik_parents_" + self.limb_name_props
 
 		for cb in child_bones:
 			shared.rig_child(self, cb, parents, self.prop_bone, ik_parents_prop_name)
@@ -661,7 +669,6 @@ class Rig(CloudFKChainRig):
 			follow_var.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ik_pole_follow_name)
 
 		# Add option to the UI.
-		category = "arms_ik_pole_follow" if self.params.type=='ARM' else "legs_ik_pole_follow"
 		info = {
 			"prop_bone" : self.prop_bone.name,
 			"prop_id"	: self.ik_pole_follow_name,
@@ -670,12 +677,11 @@ class Rig(CloudFKChainRig):
 			"bones" : [self.pole_ctrl.name],
 			"select_bones" : True
 		}
-		self.store_ui_data("ik_pole_follows", category, self.limb_name, info)
+		self.store_ui_data("ik_pole_follows", self.category, self.limb_name, info)
 
 
 
 
-		category = "arms ik" if self.params.type == 'ARM' else "legs ik"
 		info = {
 			"prop_bone" : self.prop_bone.name,			# Name of the properties bone that contains the property that should be changed by the parent switch operator.
 			"prop_id" : ik_parents_prop_name, 			# Name of the property
@@ -687,7 +693,7 @@ class Rig(CloudFKChainRig):
 			"bones" : child_names,		# List of child bone names that will be affected by the parent swapping. Often just one.
 			"parent_names" : parents,		# List of (arbitrary) names, in order, that should be displayed for each parent option in the UI.
 		}
-		self.store_ui_data("parents", category, self.limb_name, info)
+		self.store_ui_data("parents", self.category, self.limb_name, info)
 
 	##############################
 	# Parameters
@@ -699,14 +705,22 @@ class Rig(CloudFKChainRig):
 		"""
 		super().add_parameters(params)
 		# TODO: Add "Custom Limb Name"(boolean checkbox) and "Limb Name" parameters, to allow for more than 4 limbs in a character.
+		params.use_limb_name = BoolProperty(name="Custom Limb Name", default=False, description="Specify a unique name for this limb - Without this, there can only be a left and a right arm and a leg in a rig")
+		params.limb_name = StringProperty(default="Left Arm")
 		params.type = EnumProperty(name="Type",
 		items = (
-			("ARM", "Arm", "Arm"),
-			("LEG", "Leg", "Leg"),
-			),
+			("ARM", "Arm", "Arm (Chain of 3)"),
+			("LEG", "Leg", "Leg (Chain of 5, includes foot rig)"),
+			)
 		)
+		params.use_category_name = BoolProperty(name="Custom Category Name", default=False, description="Specify a category for this limb. Limbs in the same category will have their settings displayed in the same column")
+		params.category_name = StringProperty(default="arms")
+
+		params.pole_offset = FloatProperty(name="Pole Vector Offset", default=1.0)
+		params.use_foot_roll = BoolProperty(name="Foot Roll", default=True)
+
 		params.double_first_control = BoolProperty(
-			name="Double First FK Control", 
+			name="Double FK Control", 
 			description="The first FK control has a parent control. Having two controls for the same thing can help avoid interpolation issues when the common pose in animation is far from the rest pose",
 			default=True,
 		)
@@ -731,8 +745,25 @@ class Rig(CloudFKChainRig):
 		"""Create the ui for the rig parameters."""
 		super().parameters_ui(layout, params)
 
+		layout.label(text="__________________________________________________________________________")
+
 		layout.prop(params, "type")
-		layout.prop(params, "double_first_control")
-		layout.prop(params, "double_ik_control")
-		layout.prop(params, "display_middle")
+		if params.type=='LEG':
+			layout.prop(params, "use_foot_roll")
+
+		name_row = layout.row()
+		limb_column = name_row.column()
+		limb_column.prop(params, "use_limb_name")
+		if params.use_limb_name:
+			limb_column.prop(params, "limb_name", text="")
+		category_column = name_row.column()
+		category_column.prop(params, "use_category_name")
+		if params.use_category_name:
+			category_column.prop(params, "category_name", text="")
+		
+		double_row = layout.row()
+		double_row.prop(params, "double_first_control")
+		double_row.prop(params, "double_ik_control")
 		layout.prop(params, "world_aligned")
+		layout.prop(params, "pole_offset")
+		layout.prop(params, "display_middle")

@@ -247,6 +247,12 @@ class POSE_OT_rigify_switch_parent(Snap_Simple):
 	bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
 	bl_description = "Switch parent, preserving the bone position and orientation"
 
+	bones:		 StringProperty(name="Control Bone")
+	prop_bone:	StringProperty(name="Property Bone")
+	prop_id:	  StringProperty(name="Property")
+	
+	select_bones: BoolProperty(name="Select Affected Bones", default=True)
+
 	parent_names: StringProperty(name="Parent Names")
 	locks:		bpy.props.BoolVectorProperty(name="Locked", size=3, default=[False,False,False])
 

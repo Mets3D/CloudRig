@@ -133,7 +133,6 @@ class CloudUtilities:
 		if wgt_ob:
 			wgt_ob.name = wgt_ob.name + "_temp"
 			wgt_ob.data.name = wgt_ob.data.name + "_temp"
-		
 
 		# Loading bone shape object from file
 		filename = "Widgets.blend"
@@ -155,6 +154,8 @@ class CloudUtilities:
 			wgt_ob.name = wgt_name
 			bpy.data.meshes.remove(bpy.data.meshes.get(old_data_name))
 			bpy.data.objects.remove(new_wgt_ob)
+		else:
+			wgt_ob = new_wgt_ob
 
 		if wgt_ob not in self.widgets:
 			self.widgets.append(wgt_ob)
