@@ -344,7 +344,8 @@ class Rig(CloudFKChainRig):
 		##### MORE STUFF ######
 		#######################
 
-		if self.params.type == 'LEG' and self.params.use_foot_roll:
+		if self.params.type == 'LEG':
+			ik_chain[-2].parent = self.ik_mstr
 			self.prepare_ik_foot(self.ik_tgt_bone, ik_chain[-2:], org_chain[-2:])
 		
 		self.ik_chain = ik_chain
@@ -356,6 +357,7 @@ class Rig(CloudFKChainRig):
 
 		self.mid_str_transform_setup(self.main_str_bones[1])
 
+		# TODO: Why do we do this? This is bad if we ever want to parent something to the IK control after this, since it will only be parented to the parent IK control.
 		self.ik_ctrl = self.ik_mstr.parent if self.params.double_ik_control else self.ik_mstr
 		
 		self.prepare_and_store_ikfk_info(self.fk_chain, self.ik_chain, pole_ctrl)
@@ -446,124 +448,127 @@ class Rig(CloudFKChainRig):
 
 	def prepare_ik_foot(self, ik_tgt, ik_chain, org_chain):
 		ik_foot = ik_chain[0]
+
 		# Create ROLL control behind the foot (Limit Rotation, lock other transforms)
-		sliced_name = shared.slice_name(ik_foot.name)
-		roll_name = shared.make_name(["ROLL"], sliced_name[1], sliced_name[2])
-		roll_ctrl = self.bone_infos.bone(
-			name = roll_name,
-			bbone_x = self.scale/18,
-			bbone_z = self.scale/18,
-			head = ik_foot.head + Vector((0, self.scale, self.scale/4)),
-			tail = ik_foot.head + Vector((0, self.scale/2, self.scale/4)),
-			roll = pi,
-			custom_shape = self.load_widget('FootRoll'),
-			bone_group = 'Body: Main IK Controls',
-			parent = ik_tgt
-		)
-
-		roll_ctrl.add_constraint(self.obj, 'LIMIT_ROTATION', 
-			use_limit_x=True,
-			min_x = -90 * pi/180,
-			max_x = 130 * pi/180,
-			use_limit_y=True,
-			use_limit_z=True,
-			min_z = -pi/2,
-			max_z = pi/2,
-		)
-
-		# Create bone to use as pivot point when rolling back. This is read from the metarig and should be placed at the heel of the shoe, pointing forward.
-		# We hardcode name for ankle pivot for now. (TODO? I don't know if this could/should be avoided.)
-		ankle_pivot = self.generator.metarig.data.bones.get("AnklePivot." + self.side_suffix)
-		assert ankle_pivot, "ERROR: Could not find AnklePivot bone in the metarig."
-		
-		# I want to be able to customize the shape size of the foot controls from the metarig, via ankle pivot bone bbone scale. It's quite arbitrary, but it feels right.
-		self.ik_mstr.bbone_x = ankle_pivot.bbone_x
-		self.ik_mstr.bbone_z = ankle_pivot.bbone_z
-		if self.params.double_ik_control:
-			self.ik_mstr.parent.bbone_x = ankle_pivot.bbone_x
-			self.ik_mstr.parent.bbone_z = ankle_pivot.bbone_z
-
-		ankle_pivot_ctrl = self.bone_infos.bone(
-			name = "IK-RollBack." + self.side_suffix,
-			bbone_x = self.org_chain[-1].bbone_x,
-			bbone_z = self.org_chain[-1].bbone_z,
-			head = ankle_pivot.head_local,
-			tail = ankle_pivot.tail_local,
-			roll = pi,
-			bone_group = 'Body: IK-MCH - IK Mechanism Bones',
-			parent = ik_tgt
-		)
-
-		ankle_pivot_ctrl.add_constraint(self.obj, 'TRANSFORM',
-			subtarget = roll_ctrl.name,
-			map_from = 'ROTATION',
-			map_to = 'ROTATION',
-			from_min_x_rot = -90 * pi/180,
-			to_min_x_rot = -60 * pi/180,
-		)
-		
-		# Create reverse bones
-		rik_chain = []
-		for i, b in reversed(list(enumerate(org_chain))):
-			rik_bone = self.bone_infos.bone(
-				name = b.name.replace("ORG", "RIK"),
-				source = b,
-				head = b.tail.copy(),
-				tail = b.head.copy(),
-				parent = ankle_pivot_ctrl,
-				bone_group = 'Body: IK-MCH - IK Mechanism Bones'
+		if self.params.use_foot_roll:	# TODO: Don't like this big if block. Maybe toe part should be moved out of this function, and the if check put before calling of this function, and then this function can be renamed to prepare_footroll.
+			sliced_name = shared.slice_name(ik_foot.name)
+			roll_name = shared.make_name(["ROLL"], sliced_name[1], sliced_name[2])
+			roll_ctrl = self.bone_infos.bone(
+				name = roll_name,
+				bbone_x = self.scale/18,
+				bbone_z = self.scale/18,
+				head = ik_foot.head + Vector((0, self.scale, self.scale/4)),
+				tail = ik_foot.head + Vector((0, self.scale/2, self.scale/4)),
+				roll = pi,
+				custom_shape = self.load_widget('FootRoll'),
+				bone_group = 'Body: Main IK Controls',
+				parent = ik_tgt
 			)
-			rik_chain.append(rik_bone)
-			ik_chain[i].parent = rik_bone
 
-			if i == 1:
-				rik_bone.add_constraint(self.obj, 'TRANSFORM',
-					subtarget = roll_ctrl.name,
-					map_from = 'ROTATION',
-					map_to = 'ROTATION',
-					from_min_x_rot = 90 * pi/180,
-					from_max_x_rot = 166 * pi/180,
-					to_min_x_rot = 0 * pi/180,
-					to_max_x_rot = 169 * pi/180,
-					from_min_z_rot = -60 * pi/180,
-					from_max_z_rot = 60 * pi/180,
-					to_min_z_rot = 10 * pi/180,
-					to_max_z_rot = -10 * pi/180
-				)
+			roll_ctrl.add_constraint(self.obj, 'LIMIT_ROTATION', 
+				use_limit_x=True,
+				min_x = -90 * pi/180,
+				max_x = 130 * pi/180,
+				use_limit_y=True,
+				use_limit_z=True,
+				min_z = -pi/2,
+				max_z = pi/2,
+			)
+
+			# Create bone to use as pivot point when rolling back. This is read from the metarig and should be placed at the heel of the shoe, pointing forward.
+			# We hardcode name for ankle pivot for now. (TODO? I don't know if this could/should be avoided.)
+			ankle_pivot = self.generator.metarig.data.bones.get("AnklePivot." + self.side_suffix)
+			assert ankle_pivot, "ERROR: Could not find AnklePivot bone in the metarig."
 			
-			if i == 0:
-				rik_bone.add_constraint(self.obj, 'COPY_LOCATION',
-					true_defaults = True,
-					target = self.obj,
-					subtarget = rik_chain[-2].name,
-					head_tail = 1,
-				)
+			# I want to be able to customize the shape size of the foot controls from the metarig, via ankle pivot bone bbone scale.
+			self.ik_mstr.bbone_x = ankle_pivot.bbone_x
+			self.ik_mstr.bbone_z = ankle_pivot.bbone_z
+			if self.params.double_ik_control:
+				self.ik_mstr.parent.bbone_x = ankle_pivot.bbone_x
+				self.ik_mstr.parent.bbone_z = ankle_pivot.bbone_z
 
-				rik_bone.add_constraint(self.obj, 'TRANSFORM',
-					name = "Transformation Roll",
-					subtarget = roll_ctrl.name,
-					map_from = 'ROTATION',
-					map_to = 'ROTATION',
-					from_min_x_rot = 0 * pi/180,
-					from_max_x_rot = 135 * pi/180,
-					to_min_x_rot = 0 * pi/180,
-					to_max_x_rot = 118 * pi/180,
-					from_min_z_rot = -45 * pi/180,
-					from_max_z_rot = 45 * pi/180,
-					to_min_z_rot = 25 * pi/180,
-					to_max_z_rot = -25 * pi/180
+			ankle_pivot_ctrl = self.bone_infos.bone(
+				name = "IK-RollBack." + self.side_suffix,
+				bbone_x = self.org_chain[-1].bbone_x,
+				bbone_z = self.org_chain[-1].bbone_z,
+				head = ankle_pivot.head_local,
+				tail = ankle_pivot.tail_local,
+				roll = pi,
+				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
+				parent = ik_tgt
+			)
+
+			ankle_pivot_ctrl.add_constraint(self.obj, 'TRANSFORM',
+				subtarget = roll_ctrl.name,
+				map_from = 'ROTATION',
+				map_to = 'ROTATION',
+				from_min_x_rot = -90 * pi/180,
+				to_min_x_rot = -60 * pi/180,
+			)
+			
+			# Create reverse bones
+			# TODO: Does this really need to be a loop? We are just dealing with a foot and a toe, never anything more.
+			rik_chain = []
+			for i, b in reversed(list(enumerate(org_chain))):
+				rik_bone = self.bone_infos.bone(
+					name = b.name.replace("ORG", "RIK"),
+					source = b,
+					head = b.tail.copy(),
+					tail = b.head.copy(),
+					parent = ankle_pivot_ctrl,
+					bone_group = 'Body: IK-MCH - IK Mechanism Bones'
 				)
-				rik_bone.add_constraint(self.obj, 'TRANSFORM',
-					name = "Transformation CounterRoll",
-					subtarget = roll_ctrl.name,
-					map_from = 'ROTATION',
-					map_to = 'ROTATION',
-					from_min_x_rot = 90 * pi/180,
-					from_max_x_rot = 135 * pi/180,
-					to_min_x_rot = 0 * pi/180,
-					to_max_x_rot = -31.8 * pi/180
-				)
-		
+				rik_chain.append(rik_bone)
+				ik_chain[i].parent = rik_bone
+
+				if i == 1:
+					rik_bone.add_constraint(self.obj, 'TRANSFORM',
+						subtarget = roll_ctrl.name,
+						map_from = 'ROTATION',
+						map_to = 'ROTATION',
+						from_min_x_rot = 90 * pi/180,
+						from_max_x_rot = 166 * pi/180,
+						to_min_x_rot = 0 * pi/180,
+						to_max_x_rot = 169 * pi/180,
+						from_min_z_rot = -60 * pi/180,
+						from_max_z_rot = 60 * pi/180,
+						to_min_z_rot = 10 * pi/180,
+						to_max_z_rot = -10 * pi/180
+					)
+				
+				if i == 0:
+					rik_bone.add_constraint(self.obj, 'COPY_LOCATION',
+						true_defaults = True,
+						target = self.obj,
+						subtarget = rik_chain[-2].name,
+						head_tail = 1,
+					)
+
+					rik_bone.add_constraint(self.obj, 'TRANSFORM',
+						name = "Transformation Roll",
+						subtarget = roll_ctrl.name,
+						map_from = 'ROTATION',
+						map_to = 'ROTATION',
+						from_min_x_rot = 0 * pi/180,
+						from_max_x_rot = 135 * pi/180,
+						to_min_x_rot = 0 * pi/180,
+						to_max_x_rot = 118 * pi/180,
+						from_min_z_rot = -45 * pi/180,
+						from_max_z_rot = 45 * pi/180,
+						to_min_z_rot = 25 * pi/180,
+						to_max_z_rot = -25 * pi/180
+					)
+					rik_bone.add_constraint(self.obj, 'TRANSFORM',
+						name = "Transformation CounterRoll",
+						subtarget = roll_ctrl.name,
+						map_from = 'ROTATION',
+						map_to = 'ROTATION',
+						from_min_x_rot = 90 * pi/180,
+						from_max_x_rot = 135 * pi/180,
+						to_min_x_rot = 0 * pi/180,
+						to_max_x_rot = -31.8 * pi/180
+					)
+			
 		# FK Toe bone should be parented between FK Foot and IK Toe.
 		fk_toe = self.fk_toe
 		fk_toe.parent = None

@@ -150,11 +150,8 @@ class CloudChainRig(CloudBaseRig):
 		if self.params.cap_control:
 			# Add final STR control.
 			last_def = def_sections[-1][-1]
-			sliced = slice_name(str_sections[-1][-1].name)
-			sliced[0].append("TIP")
-			if sliced[1][-1] in "1234567890":
-				sliced[1] = sliced[1][:-1] # (Remove number from end of name)
-			str_name = make_name(*sliced)
+			sliced = slice_name(last_def.name)
+			str_name = make_name(["STR", "TIP"], sliced[1], sliced[2])
 
 			str_bone = make_str_bone(last_def, str_name)
 			str_bone.head = last_def.tail
