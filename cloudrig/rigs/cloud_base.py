@@ -206,7 +206,13 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			for c in self.generator.metarig.users_collection:
 				wgt_collection = c.children.get("Widgets")
 				if wgt_collection: break
-		
+
+		if not wgt_collection:
+			# Try finding a "Widgets" collection next to the generated rig.
+			for c in self.obj.users_collection:
+				wgt_collection = c.children.get("Widgets")
+				if wgt_collection: break
+
 		if not wgt_collection:
 			# Fall back to master collection.
 			wgt_collection = bpy.context.scene.collection
