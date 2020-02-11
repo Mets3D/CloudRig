@@ -80,10 +80,10 @@ class Snap_Simple(bpy.types.Operator):
 		context.view_layer.update()
 
 		# Set the transforms to restore position
-		for i, bone in enumerate(bones):
+		for i, bone_name in enumerate(bone_names):
 			old_matrix = old_matrices[i]
 			self.set_transform_from_matrix(
-				obj, bone, old_matrix, keyflags=self.keyflags,
+				obj, bone_name, old_matrix, keyflags=self.keyflags,
 				no_loc=self.locks[0], no_rot=self.locks[1], no_scale=self.locks[2]
 			)
 
@@ -263,7 +263,7 @@ class POSE_OT_rigify_switch_parent(Snap_Simple):
 		items=lambda s,c: POSE_OT_rigify_switch_parent.parent_items
 	)
 
-	def apply_frame_state(self, context, obj, old_matrices, bones):
+	def apply_frame_state(self, context, obj, old_matrices, bone_names):
 		# Change the parent
 		self.set_custom_property_value(
 			obj, self.prop_bone, self.prop_id, int(self.selected),
@@ -273,10 +273,10 @@ class POSE_OT_rigify_switch_parent(Snap_Simple):
 		context.view_layer.update()
 
 		# Set the transforms to restore position
-		for i, bone in enumerate(bones):
+		for i, bone_name in enumerate(bone_names):
 			old_matrix = old_matrices[i]
 			self.set_transform_from_matrix(
-				obj, bone, old_matrix, keyflags=self.keyflags,
+				obj, bone_name, old_matrix, keyflags=self.keyflags,
 				no_loc=self.locks[0], no_rot=self.locks[1], no_scale=self.locks[2]
 			)
 
@@ -382,7 +382,7 @@ class Snap_Mapped(Snap_Simple):
 			# Keyframe properties
 			if self.keyflags is not None:
 				self.keyframe_transform_properties(
-					obj, bone_name, self.keyflags,
+					obj, affected_bone.name, self.keyflags,
 					no_loc=self.locks[0], no_rot=self.locks[1], no_scale=self.locks[2]
 				)
 
@@ -432,6 +432,8 @@ class IKFK_Toggle(bpy.types.Operator):
 
 		ik_pole = armature.pose.bones.get(self.ik_pole)
 		ik_control = armature.pose.bones.get(self.ik_control)
+		assert ik_pole, "ERROR: Could not find IK Pole: " + self.ik_pole
+		assert ik_control, "ERROR: Could not find IK Control: " + self.ik_control
 
 		map_on = []
 		map_off = []
@@ -1049,7 +1051,7 @@ class RigUI_Settings_Face(RigUI):
 	@classmethod
 	def poll(cls, context):
 		rig = get_rig()
-		return rig and "face_settings" in rig
+		return rig and "face_settings" in rig.data
 	
 	def draw(self, context):
 		layout = self.layout
@@ -1057,7 +1059,7 @@ class RigUI_Settings_Face(RigUI):
 		if not rig: return
 		face_props = rig.pose.bones.get('Properties_Face')
 
-		if 'face_settings' in rig:
+		if 'face_settings' in rig.data:
 			# Eyelid settings
 			layout.prop(face_props, '["sticky_eyelids"]',	text='Sticky Eyelids',  slider=True)
 			layout.prop(face_props, '["sticky_eyesockets"]', text='Sticky Eyerings', slider=True)
@@ -1069,7 +1071,7 @@ class RigUI_Settings_Face(RigUI):
 			layout.label(text="Eye Target Parent")
 			row = layout.row()
 			eye_parents = ['Root', 'Torso', 'Torso_Loc', 'Head']
-			row.prop(ikfk_props, '["eye_target_parent"]',  text=eye_parents[ikfk_props["eye_target_parent"]], slider=True)
+			row.prop(face_props, '["eye_target_parents"]',  text=eye_parents[face_props["eye_target_parents"]], slider=True)
 
 class RigUI_Settings_Misc(RigUI):
 	bl_idname = "OBJECT_PT_rig_ui_misc"
