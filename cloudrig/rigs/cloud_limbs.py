@@ -167,8 +167,11 @@ class Rig(CloudFKChainRig):
 		direction = 1 if limb_type=='ARM' else -1					# Character is expected to face +Y direction.
 		offset_scale = 3 if limb_type=='ARM' else 5					# Scalar on distance from the body.
 		offset = Vector((0, direction*offset_scale*self.scale, 0)) * self.params.pole_offset
+		limb_name = limb_type.capitalize()
+		if self.params.use_limb_name:
+			limb_name = self.params.limb_name
 		pole_ctrl = self.pole_ctrl = self.bone_infos.bone(
-			name = make_name(["IK", "POLE"], self.limb_name.capitalize(), [self.side_suffix]),
+			name = make_name(["IK", "POLE"], limb_name, [self.side_suffix]),
 			bbone_x = first_bone.bbone_x,
 			bbone_z = first_bone.bbone_x,
 			head = elbow + offset,
@@ -179,7 +182,7 @@ class Rig(CloudFKChainRig):
 			bone_group = 'Body: Main IK Controls',
 		)
 		pole_line = self.bone_infos.bone(
-			name = make_name(["IK", "POLE", "LINE"], limb_type.capitalize(), [self.side_suffix]),
+			name = make_name(["IK", "POLE", "LINE"], limb_name, [self.side_suffix]),
 			source = pole_ctrl,
 			tail = elbow,
 			custom_shape = self.load_widget('Pole_Line'),
@@ -226,7 +229,7 @@ class Rig(CloudFKChainRig):
 			source = org_bone, 
 			custom_shape = self.load_widget(wgt_name),
 			custom_shape_scale = 0.8 if self.params.type=='ARM' else 2.8,
-			parent = None,	# TODO: Parent switching with operator that corrects transforms.
+			parent = None,
 			bone_group = 'Body: Main IK Controls'
 		)
 		foot_dsp(self.ik_mstr)
@@ -710,7 +713,7 @@ class Rig(CloudFKChainRig):
 		"""
 		super().add_parameters(params)
 		# TODO: Add "Custom Limb Name"(boolean checkbox) and "Limb Name" parameters, to allow for more than 4 limbs in a character.
-		params.use_limb_name = BoolProperty(name="Custom Limb Name", default=False, description="Specify a unique name for this limb - Without this, there can only be a left and a right arm and a leg in a rig")
+		params.use_limb_name = BoolProperty(name="Custom Limb Name", default=False, description='Specify a name for this limb - There can be exactly two limbs with the same name, a Left and a Right one. This name should NOT include a side indicator such as "Left" or "Right" ')
 		params.limb_name = StringProperty(default="Left Arm")
 		params.type = EnumProperty(name="Type",
 		items = (
