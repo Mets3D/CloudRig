@@ -161,26 +161,39 @@ class CloudChainRig(CloudBaseRig):
 			str_section.append(str_bone)
 			str_sections.append(str_section)
 
+		main_str_bone = None
 		### Create Stretch Helpers and parent STR to them
 		for sec_i, section in enumerate(str_sections):
 			for i, str_bone in enumerate(section):
 				# If this STR bone is not the first in its section
 				# Create an STR-H parent helper for it, which will hold some constraints 
 				# that keep this bone between the first and last STR bone of the section.
-				if i==0: continue
+				if i==0: 
+					main_str_bone = str_bone
+					main_str_bone.sub_bones = []
+					continue
 				str_h_bone = self.bone_infos.bone(
 					name = str_bone.name.replace("STR-", "STR-H-"),
 					source = str_bone,
+					bbone_x = 30000,	# TODO: Why is this not working?
+					bbone_z = 30000,
 					bone_group = 'Body: STR-H - Stretch Helpers',
 					parent = str_bone.parent
 				)
-				str_bone.parent = str_h_bone.name
+				main_str_bone.sub_bones.append(str_bone)
+				str_bone.parent = str_h_bone
 
 				first_str = section[0].name
 				last_str = str_sections[sec_i+1][0].name
 
+				influence_unit = 1 / len(section)
+				influence = i * influence_unit
+
 				str_h_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True, target=self.obj, subtarget=first_str)
-				str_h_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True, target=self.obj, subtarget=last_str, influence=0.5)
+				str_h_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True, target=self.obj, subtarget=last_str, influence=influence)
+				# TODO: Rotation copying should maybe be a parameter?
+				str_h_bone.add_constraint(self.obj, 'COPY_ROTATION', true_defaults=True, target=self.obj, subtarget=first_str)
+				str_h_bone.add_constraint(self.obj, 'COPY_ROTATION', true_defaults=True, target=self.obj, subtarget=last_str, influence=influence)
 				str_h_bone.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=last_str)
 
 		### Configure Deform (parent to STR or previous DEF, set BBone handle)

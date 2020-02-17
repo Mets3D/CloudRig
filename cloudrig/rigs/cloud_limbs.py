@@ -156,6 +156,19 @@ class Rig(CloudFKChainRig):
 		)
 
 	@stage.prepare_bones
+	def prepare_str_limb(self):
+		# We want to make some changes to the STR chain to make it behave more limb-like.
+		
+		# Disable first Copy Rotation constraint on the upperarm
+		for b in self.main_str_bones[0].sub_bones:
+			str_h_bone = b.parent
+			if len(str_h_bone.constraints) < 3:
+				print(str_h_bone.name)
+				continue
+			str_h_bone.constraints[2][1]['mute'] = True	# TODO IMPORTANT: We have no proper way to access already existing constraints (by name, or even type) which is pretty sad. Instead of storing constraints as a (type, attribs) tuple, just store them as a dict, and initialize them a 'name' and 'type' attrib in add_constraint(). Relying on names can be tricky though... Maybe the proper solution here is proper code splitting, so adding the constraints to the str_h_bone would be done in a rig_str_h_bone() function, which we override here in cloud_limbs.
+
+
+	@stage.prepare_bones
 	def prepare_ik_limb(self):
 		limb_type = self.params.type
 		chain = self.bones.org.main
