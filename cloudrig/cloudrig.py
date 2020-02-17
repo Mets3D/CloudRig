@@ -1,6 +1,6 @@
 # Credit for keyframing and IK pole snapping code to Rigify.
-"2020-02-07"
-version = 1.5
+"2020-02-17"
+version = 1.6
 
 import bpy
 from bpy.props import *
@@ -641,32 +641,6 @@ class Rig_ColorProperties(bpy.types.PropertyGroup):
 		options={'LIBRARY_EDITABLE'}
 	)
 
-class Rig_BoolProperties(bpy.types.PropertyGroup):
-	""" Store a BoolProperty referencing an outfit/character property whose min==0 and max==1.
-		This BoolProperty will be used to display the property as a toggle button in the UI.
-	"""
-	# This is currently only used for outfit/character settings, NOT rig settings. Those booleans are instead hard-coded into rig_properties.
-
-	def update_id_prop(self, context):
-		""" Callback function to update the corresponding ID property when this BoolProperty's value is changed. """
-		rig = get_rig()
-		if not rig: return
-		rig_props = rig.rig_properties
-		outfit_bone = rig.pose.bones.get("Properties_Outfit_"+rig_props.outfit)
-		char_bone = get_char_bone(rig)
-		for prop_owner in [outfit_bone, char_bone]:
-			if(prop_owner != None):
-				if(self.name in prop_owner):
-					prop_owner[self.name] = self.value
-		
-
-	value: BoolProperty(
-		name='Boolean Value',
-		description='',
-		update=update_id_prop,
-		options={'LIBRARY_EDITABLE', 'ANIMATABLE'}
-	)
-
 class Rig_Properties(bpy.types.PropertyGroup):
 	""" PropertyGroup for storing fancy custom properties in.
 		Character and Outfit specific properties will still be stored in their relevant Properties bones (eg. Properties_Outfit_Rain).
@@ -678,30 +652,6 @@ class Rig_Properties(bpy.types.PropertyGroup):
 		for rig in get_rigs():
 			if(rig.rig_properties == self):
 				return rig
-
-	def update_bool_properties(self, context):
-		""" Create BoolProperties out of those outfit properties whose min==0 and max==1.
-			These BoolProperties are necessarry because only BoolProperties can be displayed in the UI as toggle buttons.
-		"""
-		
-		rig = self.get_rig()
-		if not rig: return
-		bool_props = rig.rig_boolproperties
-		bool_props.clear()	# Nuke all the bool properties
-		
-		outfit_bone = rig.pose.bones.get("Properties_Outfit_" + self.outfit)
-		char_bone = get_char_bone(rig)
-		for prop_owner in [outfit_bone, char_bone]:
-			if(prop_owner==None): continue
-			for p in prop_owner.keys():
-				if( type(prop_owner[p]) != int or p.startswith("_") ): continue
-				my_min = prop_owner['_RNA_UI'].to_dict()[p]['min']
-				my_max = prop_owner['_RNA_UI'].to_dict()[p]['max']
-				if(my_min==0 and my_max==1):
-					new_bool = bool_props.add()
-					new_bool.name = p
-					new_bool.value = prop_owner[p]
-					new_bool.rig = rig
 	
 	def outfits(self, context):
 		""" Callback function for finding the list of available outfits for the outfit enum.
@@ -736,8 +686,6 @@ class Rig_Properties(bpy.types.PropertyGroup):
 			self.outfit = self.outfits(context)[0][0]
 		
 		outfit_bone = rig.pose.bones.get("Properties_Outfit_"+self.outfit)
-		
-		self.update_bool_properties(context)
 
 		if outfit_bone:
 			# Reset all settings to default.
@@ -750,11 +698,7 @@ class Rig_Properties(bpy.types.PropertyGroup):
 			char_bone = get_char_bone(rig)
 			for key in outfit_bone.keys():
 				if key.startswith("_") and key[1:] in char_bone:
-					if key[1:] in rig.rig_boolproperties:
-						#If it's a boolean, find it and update that instead.
-						rig.rig_boolproperties[key[1:]].value = outfit_bone[key]
-					else:
-						char_bone[key[1:]] = outfit_bone[key]
+					char_bone[key[1:]] = outfit_bone[key]
 		
 		context.evaluated_depsgraph_get().update()
 
@@ -796,7 +740,6 @@ class RigUI_Outfits(RigUI):
 		rig = get_rig()
 		if not rig: return
 		rig_props = rig.rig_properties
-		bool_props = rig.rig_boolproperties
 		multiple_outfits = len(rig_props.outfits(context)) > 1
 		outfit_properties_bone = rig.pose.bones.get("Properties_Outfit_"+rig_props.outfit)
 		char_bone = get_char_bone(rig)
@@ -808,11 +751,8 @@ class RigUI_Outfits(RigUI):
 		rig = context.object
 
 		rig_props = rig.rig_properties
-		bool_props = rig.rig_boolproperties
 		
 		def add_props(prop_owner):
-			props_done = []
-
 			def get_text(prop_id, value):
 				""" If there is a property on prop_owner named $prop_id, expect it to be a list of strings and return the valueth element."""
 				text = prop_id.replace("_", " ")
@@ -826,18 +766,11 @@ class RigUI_Outfits(RigUI):
 					return text
 
 			for prop_id in prop_owner.keys():
-				if( prop_id in props_done or prop_id.startswith("_") ): continue
+				if( prop_id.startswith("_") ): continue
 				# Int Props
-				if(prop_id not in bool_props and type(prop_owner[prop_id]) in [int, float] ):
+				if(type(prop_owner[prop_id]) in [int, float] ):
 					layout.prop(prop_owner, '["'+prop_id+'"]', slider=True, 
 						text = get_text(prop_id, prop_owner[prop_id])
-					)
-					props_done.append(prop_id)
-			# Bool Props
-			for bp in bool_props:
-				if(bp.name in prop_owner.keys() and bp.name not in props_done):
-					layout.prop(bp, 'value', toggle=True, 
-						text = get_text(bp.name, prop_owner[bp.name])
 					)
 
 		# Add character properties to the UI, if any.
@@ -1121,7 +1054,6 @@ classes = (
 	Snap_Mapped,
 	Snap_Simple,
 	Rig_ColorProperties,
-	Rig_BoolProperties,
 	Rig_Properties,
 	RigUI_Outfits,
 	RigUI_Layers,
@@ -1141,5 +1073,4 @@ for c in classes:
 	register_class(c)
 
 bpy.types.Object.rig_properties = bpy.props.PointerProperty(type=Rig_Properties)
-bpy.types.Object.rig_boolproperties = bpy.props.CollectionProperty(type=Rig_BoolProperties)
 bpy.types.Object.rig_colorproperties = bpy.props.CollectionProperty(type=Rig_ColorProperties)
