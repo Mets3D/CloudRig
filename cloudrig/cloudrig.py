@@ -31,10 +31,10 @@ class Snap_Simple(bpy.types.Operator):
 
 	@classmethod
 	def poll(cls, context):
-		return context.object and context.object.type=='ARMATURE' and context.object.mode=='POSE'
+		return context.pose_object
 
 	def execute(self, context):
-		obj = context.active_object
+		obj = context.pose_object or context.active_object
 		# TODO: Instead of relying on scene settings(auto-keying, keyingset, etc) maybe it would be better to have a custom boolean to decide whether to insert keyframes or not. Ask animators.
 		self.keyflags = self.get_autokey_flags(context, ignore_keyset=True)
 		self.keyflags_switch = self.add_flags_if_set(self.keyflags, {'INSERTKEY_AVAILABLE'})
@@ -285,7 +285,8 @@ class POSE_OT_rigify_switch_parent(Snap_Simple):
 		col.prop(self, 'selected', expand=True)
 
 	def invoke(self, context, event):
-		pose = context.active_object.pose
+		obj = context.pose_object or context.active_object
+		pose = obj.pose
 
 		if (not pose or not self.parent_names
 			#or self.bone not in pose.bones
@@ -312,7 +313,7 @@ def get_rigs():
 
 def get_rig():
 	"""If the active object is a cloudrig, return it."""
-	rig = bpy.context.object
+	rig = bpy.context.pose_object or bpy.context.object
 	if rig and rig.type == 'ARMATURE' and 'cloudrig' in rig.data:
 		return rig
 
@@ -344,12 +345,8 @@ class Snap_Mapped(Snap_Simple):
 	hide_on: StringProperty()		# List of bone names to hide when property is toggled ON.
 	hide_off: StringProperty()		# List of bone names to hide when property is toggled OFF.
 
-	@classmethod
-	def poll(cls, context):
-		return context.object and context.object.type=='ARMATURE' and context.object.mode=='POSE'
-
 	def execute(self, context):
-		obj = context.active_object
+		obj = context.pose_object or context.active_object
 		self.keyflags = self.get_autokey_flags(context, ignore_keyset=True)
 		self.keyflags_switch = self.add_flags_if_set(self.keyflags, {'INSERTKEY_AVAILABLE'})
 
@@ -422,10 +419,10 @@ class IKFK_Toggle(bpy.types.Operator):
 
 	@classmethod
 	def poll(cls, context):
-		return context.object and context.object.type=='ARMATURE' and context.object.mode=='POSE'
+		return context.pose_object
 
 	def execute(self, context):
-		armature = context.object
+		armature = context.pose_object
 		
 		fk_chain = get_bones(armature, self.fk_chain)
 		ik_chain = get_bones(armature, self.ik_chain)
@@ -584,8 +581,9 @@ class IKFK_Toggle(bpy.types.Operator):
 			mat = self.get_pose_matrix_in_other_space(Matrix.Translation(ploc), pole)
 			self.set_pose_translation(pole, mat)
 
+			org_mode = bpy.context.object.mode
 			bpy.ops.object.mode_set(mode='OBJECT')
-			bpy.ops.object.mode_set(mode='POSE')
+			bpy.ops.object.mode_set(mode=org_mode)
 
 		set_pole(pv)
 
@@ -606,17 +604,18 @@ class IKFK_Toggle(bpy.types.Operator):
 			set_pole(pv1)
 
 class Reset_Rig_Colors(bpy.types.Operator):
-	"""Reset rig color properties to their stonred default."""
+	"""Reset rig color properties to their stored default."""
 	bl_idname = "object.reset_rig_colors"
 	bl_label = "Reset Rig Colors"
 	bl_options = {'REGISTER', 'UNDO'}
 
 	@classmethod
 	def poll(cls, context):
-		return 'cloudrig' in context.object.data
+		rig = context.pose_object or context.object
+		return 'cloudrig' in rig.data
 
 	def execute(self, context):
-		rig = context.object
+		rig = context.pose_object or context.object
 		for cp in rig.rig_colorproperties:
 			cp.color = cp.default
 		return {'FINISHED'}
@@ -748,7 +747,7 @@ class RigUI_Outfits(RigUI):
 
 	def draw(self, context):
 		layout = self.layout
-		rig = context.object
+		rig = context.pose_object or context.object
 
 		rig_props = rig.rig_properties
 		
