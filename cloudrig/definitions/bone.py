@@ -188,6 +188,10 @@ class BoneInfo(ID):
 		self.use_local_location = True
 		self.use_envelope_multiply = False
 		self.use_relative_parent = False
+		self.lock_location = [False, False, False]
+		self.lock_rotation = [False, False, False]
+		self.lock_rotation_w = False
+		self.lock_scale = [False, False, False]
 
 		self.custom_shape_transform = None # Bone name
 		

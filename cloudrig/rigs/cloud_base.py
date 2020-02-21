@@ -110,6 +110,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			del self.obj.data[k]
 
 		self.obj.name = self.generator.metarig.name.replace("META", "RIG")
+		self.obj.data.name = "Data_" + self.obj.name
 		self.obj.data['cloudrig'] = version
 
 		# If no layers are protected, protect all layers. Otherwise, we assume protected layers were set up manually in a previously generated rig, so we don't touch them.
@@ -231,11 +232,13 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	def transform_locks(self):
 		# Rigify automatically locks transforms of bones whose names match this regex: "[A-Z][A-Z][A-Z]-"
 		# We want to undo this... For now, we just don't want anything to be locked. In future, maybe lock based on bone groups. (TODO)
-		for pb in self.obj.pose.bones:
-			pb.lock_location = (False, False, False)
-			pb.lock_rotation = (False, False, False)
-			pb.lock_rotation_w = False
-			pb.lock_scale = (False, False, False)
+		for bd in self.bone_infos.bones:
+			pb = self.obj.pose.bones.get(bd.name)
+			if not pb: continue
+			pb.lock_location = bd.lock_location
+			pb.lock_rotation = bd.lock_rotation
+			pb.lock_rotation_w = bd.lock_rotation_w
+			pb.lock_scale = bd.lock_scale
 
 	##############################
 	# Parameters

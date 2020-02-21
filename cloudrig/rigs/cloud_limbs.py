@@ -102,7 +102,6 @@ class Rig(CloudFKChainRig):
 		# Note: This runs after super().prepare_fk_chain().
 
 		# TODO: Need bones to drive shape keys, such as HLP-Wrist2.L, HLP-Elbow2.L. (We cannot rely on ORG bone local rotations if we expect the shape keys to still behave when the STR bones are posed extremely)
-		# TODO: Elbow and Knee should be locked on 2 rotation axes.
 		# TODO: Drivers for rotation order?
 
 		hng_child = self.fk_chain[0]
@@ -116,6 +115,10 @@ class Rig(CloudFKChainRig):
 				# Store in the beginning of the FK list, since it's the new root of the FK chain.
 				#self.fk_chain.insert(0, fk_parent_bone)
 				hng_child = fk_parent_bone
+
+			if i == 1:
+				fk_bone.lock_rotation[1] = self.params.lock_yz
+				fk_bone.lock_rotation[2] = self.params.lock_yz
 
 			if i < 2:
 				# Setup DSP bone for all but last bone.
@@ -163,10 +166,9 @@ class Rig(CloudFKChainRig):
 		for b in self.main_str_bones[0].sub_bones:
 			str_h_bone = b.parent
 			if len(str_h_bone.constraints) < 3:
-				print(str_h_bone.name)
+				# print(str_h_bone.name)
 				continue
 			str_h_bone.constraints[2][1]['mute'] = True	# TODO IMPORTANT: We have no proper way to access already existing constraints (by name, or even type) which is pretty sad. Instead of storing constraints as a (type, attribs) tuple, just store them as a dict, and initialize them a 'name' and 'type' attrib in add_constraint(). Relying on names can be tricky though... Maybe the proper solution here is proper code splitting, so adding the constraints to the str_h_bone would be done in a rig_str_h_bone() function, which we override here in cloud_limbs.
-
 
 	@stage.prepare_bones
 	def prepare_ik_limb(self):
@@ -734,6 +736,8 @@ class Rig(CloudFKChainRig):
 			("LEG", "Leg", "Leg (Chain of 5, includes foot rig)"),
 			)
 		)
+		params.lock_yz = BoolProperty(name="Lock Elbow/Shin YZ", description="Lock Y and Z rotation of the elbow and shin.")
+
 		params.use_category_name = BoolProperty(name="Custom Category Name", default=False, description="Specify a category for this limb. Limbs in the same category will have their settings displayed in the same column")
 		params.category_name = StringProperty(default="arms")
 
@@ -785,6 +789,7 @@ class Rig(CloudFKChainRig):
 		double_row = layout.row()
 		double_row.prop(params, "double_first_control")
 		double_row.prop(params, "double_ik_control")
+		layout.prop(params, "lock_yz")
 		layout.prop(params, "world_aligned")
 		layout.prop(params, "pole_offset")
 		layout.prop(params, "display_middle")
