@@ -1,6 +1,5 @@
 # Credit for keyframing and IK pole snapping code to Rigify.
-"2020-02-17"
-version = 1.6
+"2020-02-24"
 
 import bpy
 from bpy.props import *
@@ -13,7 +12,8 @@ import math
 import traceback
 from mathutils import Euler, Quaternion
 from rna_prop_ui import rna_idprop_quote_path
-# TODO Refactor: rename most cases of "obj" to "rig".
+
+script_id = "SCRIPT_ID"		# This value replaced in the script file with a random or specified string during generation. The rig UI will only show up when the active rig has this script_id.
 
 class Snap_Simple(bpy.types.Operator):
 	bl_idname = "pose.snap_simple"
@@ -34,20 +34,20 @@ class Snap_Simple(bpy.types.Operator):
 		return context.pose_object
 
 	def execute(self, context):
-		obj = context.pose_object or context.active_object
+		rig = context.pose_object or context.active_object
 		# TODO: Instead of relying on scene settings(auto-keying, keyingset, etc) maybe it would be better to have a custom boolean to decide whether to insert keyframes or not. Ask animators.
 		self.keyflags = self.get_autokey_flags(context, ignore_keyset=True)
 		self.keyflags_switch = self.add_flags_if_set(self.keyflags, {'INSERTKEY_AVAILABLE'})
 
 		bone_names = json.loads(self.bones)
-		bones = get_bones(obj, self.bones)
+		bones = get_bones(rig, self.bones)
 
 		try:
 			matrices = []
 			for bone_name in bone_names:
-				matrices.append( self.save_frame_state(context, obj, bone_name) )
+				matrices.append( self.save_frame_state(context, rig, bone_name) )
 			
-			self.apply_frame_state(context, obj, matrices, bone_names)
+			self.apply_frame_state(context, rig, matrices, bone_names)
 
 		except Exception as e:
 			traceback.print_exc()
@@ -64,16 +64,16 @@ class Snap_Simple(bpy.types.Operator):
 			for b in bones:
 				b.bone.select=True
 
-	def save_frame_state(self, context, obj, bone):
-		return self.get_transform_matrix(obj, bone, with_constraints=False)
+	def save_frame_state(self, context, rig, bone):
+		return self.get_transform_matrix(rig, bone, with_constraints=False)
 
-	def apply_frame_state(self, context, obj, old_matrices, bones):
+	def apply_frame_state(self, context, rig, old_matrices, bones):
 		# Change the parent
 		# TODO: Instead of relying on scene settings(auto-keying, keyingset, etc) maybe it would be better to have a custom boolean to decide whether to insert keyframes or not. Ask animators.
-		value = self.get_custom_property_value(obj, self.prop_bone, self.prop_id)
+		value = self.get_custom_property_value(rig, self.prop_bone, self.prop_id)
 		
 		self.set_custom_property_value(
-			obj, self.prop_bone, self.prop_id, 1-value,
+			rig, self.prop_bone, self.prop_id, 1-value,
 			keyflags=self.keyflags_switch
 		)
 
@@ -83,7 +83,7 @@ class Snap_Simple(bpy.types.Operator):
 		for i, bone_name in enumerate(bone_names):
 			old_matrix = old_matrices[i]
 			self.set_transform_from_matrix(
-				obj, bone_name, old_matrix, keyflags=self.keyflags,
+				rig, bone_name, old_matrix, keyflags=self.keyflags,
 				no_loc=self.locks[0], no_rot=self.locks[1], no_scale=self.locks[2]
 			)
 
@@ -132,9 +132,9 @@ class Snap_Simple(bpy.types.Operator):
 		else:
 			return [all(bone.lock_rotation)] * 4
 
-	def keyframe_transform_properties(self, obj, bone_name, keyflags, *, ignore_locks=False, no_loc=False, no_rot=False, no_scale=False):
+	def keyframe_transform_properties(self, rig, bone_name, keyflags, *, ignore_locks=False, no_loc=False, no_rot=False, no_scale=False):
 		"Keyframe transformation properties, taking flags and mode into account, and avoiding keying locked channels."
-		bone = obj.pose.bones[bone_name]
+		bone = rig.pose.bones[bone_name]
 
 		def keyframe_channels(prop, locks):
 			if ignore_locks or not all(locks):
@@ -163,32 +163,32 @@ class Snap_Simple(bpy.types.Operator):
 	## Assign and keyframe tools ##
 	###############################
 
-	def get_custom_property_value(self, obj, bone_name, prop_id):
-		prop_bone = obj.pose.bones.get(self.prop_bone)
+	def get_custom_property_value(self, rig, bone_name, prop_id):
+		prop_bone = rig.pose.bones.get(self.prop_bone)
 		assert prop_bone, "Bone snapping failed: Properties bone %s not found.)" %self.bone_name
 		assert self.prop_id in prop_bone, "Bone snapping failed: Bone %s has no property %s" %(self.bone_name, self.bone_id)
 		return prop_bone[self.prop_id]
 
-	def set_custom_property_value(self, obj, bone_name, prop, value, *, keyflags=None):
+	def set_custom_property_value(self, rig, bone_name, prop, value, *, keyflags=None):
 		"Assign the value of a custom property, and optionally keyframe it."
 		from rna_prop_ui import rna_idprop_ui_prop_update
-		bone = obj.pose.bones[bone_name]
+		bone = rig.pose.bones[bone_name]
 		bone[prop] = value
 		rna_idprop_ui_prop_update(bone, prop)
 		if keyflags is not None:
 			bone.keyframe_insert(rna_idprop_quote_path(prop), group=bone.name, options=keyflags)
 
-	def get_transform_matrix(self, obj, bone_name, *, space='POSE', with_constraints=True):
+	def get_transform_matrix(self, rig, bone_name, *, space='POSE', with_constraints=True):
 		"Retrieve the matrix of the bone before or after constraints in the given space."
-		bone = obj.pose.bones[bone_name]
+		bone = rig.pose.bones[bone_name]
 		if with_constraints:
-			return obj.convert_space(pose_bone=bone, matrix=bone.matrix, from_space='POSE', to_space=space)
+			return rig.convert_space(pose_bone=bone, matrix=bone.matrix, from_space='POSE', to_space=space)
 		else:
-			return obj.convert_space(pose_bone=bone, matrix=bone.matrix_basis, from_space='LOCAL', to_space=space)
+			return rig.convert_space(pose_bone=bone, matrix=bone.matrix_basis, from_space='LOCAL', to_space=space)
 
-	def set_transform_from_matrix(self, obj, bone_name, matrix, *, space='POSE', ignore_locks=False, no_loc=False, no_rot=False, no_scale=False, keyflags=None):
+	def set_transform_from_matrix(self, rig, bone_name, matrix, *, space='POSE', ignore_locks=False, no_loc=False, no_rot=False, no_scale=False, keyflags=None):
 		"Apply the matrix to the transformation of the bone, taking locked channels, mode and certain constraints into account, and optionally keyframe it."
-		bone = obj.pose.bones[bone_name]
+		bone = rig.pose.bones[bone_name]
 
 		def restore_channels(prop, old_vec, locks, extra_lock):
 			if extra_lock or (not ignore_locks and all(locks)):
@@ -212,7 +212,7 @@ class Snap_Simple(bpy.types.Operator):
 
 		# Compute and assign the local matrix
 		if space != 'LOCAL':
-			matrix = obj.convert_space(pose_bone=bone, matrix=matrix, from_space=space, to_space='LOCAL')
+			matrix = rig.convert_space(pose_bone=bone, matrix=matrix, from_space=space, to_space='LOCAL')
 
 		bone.matrix_basis = matrix
 
@@ -237,7 +237,7 @@ class Snap_Simple(bpy.types.Operator):
 		# Keyframe properties
 		if keyflags is not None:
 			self.keyframe_transform_properties(
-				obj, bone_name, keyflags, ignore_locks=ignore_locks,
+				rig, bone_name, keyflags, ignore_locks=ignore_locks,
 				no_loc=no_loc, no_rot=no_rot, no_scale=no_scale
 			)
 
@@ -263,10 +263,10 @@ class POSE_OT_rigify_switch_parent(Snap_Simple):
 		items=lambda s,c: POSE_OT_rigify_switch_parent.parent_items
 	)
 
-	def apply_frame_state(self, context, obj, old_matrices, bone_names):
+	def apply_frame_state(self, context, rig, old_matrices, bone_names):
 		# Change the parent
 		self.set_custom_property_value(
-			obj, self.prop_bone, self.prop_id, int(self.selected),
+			rig, self.prop_bone, self.prop_id, int(self.selected),
 			keyflags=self.keyflags_switch
 		)
 
@@ -276,7 +276,7 @@ class POSE_OT_rigify_switch_parent(Snap_Simple):
 		for i, bone_name in enumerate(bone_names):
 			old_matrix = old_matrices[i]
 			self.set_transform_from_matrix(
-				obj, bone_name, old_matrix, keyflags=self.keyflags,
+				rig, bone_name, old_matrix, keyflags=self.keyflags,
 				no_loc=self.locks[0], no_rot=self.locks[1], no_scale=self.locks[2]
 			)
 
@@ -285,8 +285,8 @@ class POSE_OT_rigify_switch_parent(Snap_Simple):
 		col.prop(self, 'selected', expand=True)
 
 	def invoke(self, context, event):
-		obj = context.pose_object or context.active_object
-		pose = obj.pose
+		rig = context.pose_object or context.active_object
+		pose = rig.pose
 
 		if (not pose or not self.parent_names
 			#or self.bone not in pose.bones
@@ -346,17 +346,17 @@ class Snap_Mapped(Snap_Simple):
 	hide_off: StringProperty()		# List of bone names to hide when property is toggled OFF.
 
 	def execute(self, context):
-		obj = context.pose_object or context.active_object
+		rig = context.pose_object or context.active_object
 		self.keyflags = self.get_autokey_flags(context, ignore_keyset=True)
 		self.keyflags_switch = self.add_flags_if_set(self.keyflags, {'INSERTKEY_AVAILABLE'})
 
-		value = self.get_custom_property_value(obj, self.prop_bone, self.prop_id)
+		value = self.get_custom_property_value(rig, self.prop_bone, self.prop_id)
 		my_map = self.map_off if value==1 else self.map_on
 		names_hide = self.hide_off if value==1 else self.hide_on
 		names_unhide = self.hide_on if value==1 else self.hide_off
 
 		self.set_custom_property_value(
-			obj, self.prop_bone, self.prop_id, 1-value, 
+			rig, self.prop_bone, self.prop_id, 1-value, 
 			keyflags=self.keyflags
 		)
 		my_map = json.loads(my_map)
@@ -366,12 +366,12 @@ class Snap_Mapped(Snap_Simple):
 
 		matrices = []
 		for affector_name in names_affector:
-			affector_bone = obj.pose.bones.get(affector_name)
+			affector_bone = rig.pose.bones.get(affector_name)
 			assert affector_bone, "Error: Snapping failed, bone not found: %s" %affector_name
 			matrices.append(affector_bone.matrix.copy())
 
 		for i, affected_name in enumerate(names_affected):
-			affected_bone = obj.pose.bones.get(affected_name)
+			affected_bone = rig.pose.bones.get(affected_name)
 			assert affected_bone, "Error: Snapping failed, bones not found: %s" %affected_name
 			affected_bone.matrix = matrices[i]
 			context.evaluated_depsgraph_get().update()
@@ -379,12 +379,12 @@ class Snap_Mapped(Snap_Simple):
 			# Keyframe properties
 			if self.keyflags is not None:
 				self.keyframe_transform_properties(
-					obj, affected_bone.name, self.keyflags,
+					rig, affected_bone.name, self.keyflags,
 					no_loc=self.locks[0], no_rot=self.locks[1], no_scale=self.locks[2]
 				)
 
-		self.hide_unhide_bones(get_bones(obj, names_hide), get_bones(obj, names_unhide))
-		self.set_selection(context, get_bones(obj, json.dumps(names_affected)))
+		self.hide_unhide_bones(get_bones(rig, names_hide), get_bones(rig, names_unhide))
+		self.set_selection(context, get_bones(rig, json.dumps(names_affected)))
 		
 		return {'FINISHED'}
 
