@@ -110,6 +110,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			del self.obj.data[k]
 
 		self.obj.name = self.generator.metarig.name.replace("META", "RIG")
+		self.generator.metarig.data.name = "Data_" + self.generator.metarig.name
 		self.obj.data.name = "Data_" + self.obj.name
 		self.obj.data['cloudrig'] = version
 
