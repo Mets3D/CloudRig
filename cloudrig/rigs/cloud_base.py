@@ -47,6 +47,10 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		"""Gather and validate data about the rig."""
 		self.parent_candidates = {}
 		
+		self.script_id = bpy.path.basename(bpy.data.filepath).split(".")[0]
+		if self.script_id=="":
+			assert False, "Error: Save your file before generating."
+		
 		self.prepare_bone_groups()
 
 		# Determine rig scale by armature height.
@@ -112,7 +116,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		self.obj.name = self.generator.metarig.name.replace("META", "RIG")
 		self.generator.metarig.data.name = "Data_" + self.generator.metarig.name
 		self.obj.data.name = "Data_" + self.obj.name
-		self.obj.data['cloudrig'] = version
+		self.obj.data['cloudrig'] = self.script_id
 
 		# If no layers are protected, protect all layers. Otherwise, we assume protected layers were set up manually in a previously generated rig, so we don't touch them.
 		if list(self.obj.data.layers_protected) == [False]*32:

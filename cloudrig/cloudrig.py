@@ -13,7 +13,11 @@ import traceback
 from mathutils import Euler, Quaternion
 from rna_prop_ui import rna_idprop_quote_path
 
-script_id = "SCRIPT_ID"		# This value replaced in the script file with a random or specified string during generation. The rig UI will only show up when the active rig has this script_id.
+# This is a replacement for the versioning system we had previously.
+# During rig generation, this value is set to the name of the blend file in which the rig was generated.
+# The same value is saved in the generated rig's 'cloudrig' property, which allows matching UI scripts to the rigs that were generated with them
+# This is useful when linking multiple characters that were generated at different times with different versions, into a single scene.
+script_id = "SCRIPT_ID"
 
 class Snap_Simple(bpy.types.Operator):
 	bl_idname = "pose.snap_simple"
@@ -313,9 +317,9 @@ def get_rigs():
 
 def get_rig():
 	"""If the active object is a cloudrig, return it."""
-	rig = bpy.context.pose_object or bpy.context.object
-	if rig and rig.type == 'ARMATURE' and 'cloudrig' in rig.data:
-		return rig
+	o = bpy.context.pose_object or bpy.context.object
+	if o and o.type == 'ARMATURE' and 'cloudrig' in o.data and o.data['cloudrig']==script_id:
+		return o
 
 def get_char_bone(rig):
 	for b in rig.pose.bones:
@@ -667,7 +671,7 @@ class Rig_Properties(bpy.types.PropertyGroup):
 		# Convert the list into what an EnumProperty expects.
 		items = []
 		for i, outfit in enumerate(outfits):
-			items.append((outfit, outfit, outfit, i))	# Identifier, name, description, can all be the character name.
+			items.append((outfit, outfit, outfit, i))	# Identifier, name, description, can all be the outfit name.
 		
 		# If no outfits were found, don't return an empty list so the console doesn't spam "'0' matches no enum" warnings.
 		if(items==[]):
@@ -727,7 +731,7 @@ class RigUI(bpy.types.Panel):
 		layout = self.layout
 
 class RigUI_Outfits(RigUI):
-	bl_idname = "OBJECT_PT_rig_ui_properties"
+	bl_idname = "OBJECT_PT_rig_ui_properties_" + script_id
 	bl_label = "Outfits"
 
 	@classmethod
@@ -785,7 +789,7 @@ class RigUI_Outfits(RigUI):
 			add_props(outfit_properties_bone)
 
 class RigUI_Layers(RigUI):
-	bl_idname = "OBJECT_PT_rig_ui_layers"
+	bl_idname = "OBJECT_PT_rig_ui_layers_" + script_id
 	bl_label = "Layers"
 	
 	def draw(self, context):
@@ -840,7 +844,7 @@ class RigUI_Layers(RigUI):
 			death_row.prop(data, 'layers', index=31, toggle=True, text='Black Box')
 
 class RigUI_Settings(RigUI):
-	bl_idname = "OBJECT_PT_rig_ui_settings"
+	bl_idname = "OBJECT_PT_rig_ui_settings_" + script_id
 	bl_label = "Settings"
 	
 	def draw(self, context):
@@ -908,9 +912,9 @@ def draw_rig_settings(layout, rig, settings_name, label=""):
 						setattr(switch, param, value)
 
 class RigUI_Settings_FKIK(RigUI):
-	bl_idname = "OBJECT_PT_rig_ui_ikfk"
+	bl_idname = "OBJECT_PT_rig_ui_ikfk_" + script_id
 	bl_label = "FK/IK Switch"
-	bl_parent_id = "OBJECT_PT_rig_ui_settings"
+	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
 
 	@classmethod
 	def poll(cls, context):
@@ -926,9 +930,9 @@ class RigUI_Settings_FKIK(RigUI):
 		draw_rig_settings(layout, rig, "ik_switches")
 
 class RigUI_Settings_IK(RigUI):
-	bl_idname = "OBJECT_PT_rig_ui_ik"
+	bl_idname = "OBJECT_PT_rig_ui_ik_" + script_id
 	bl_label = "IK Settings"
-	bl_parent_id = "OBJECT_PT_rig_ui_settings"
+	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
 
 	@classmethod
 	def poll(cls, context):
@@ -953,9 +957,9 @@ class RigUI_Settings_IK(RigUI):
 		draw_rig_settings(layout, rig, "ik_pole_follows", label="IK Pole Follow")
 
 class RigUI_Settings_FK(RigUI):
-	bl_idname = "OBJECT_PT_rig_ui_fk"
+	bl_idname = "OBJECT_PT_rig_ui_fk_" + script_id
 	bl_label = "FK Settings"
-	bl_parent_id = "OBJECT_PT_rig_ui_settings"
+	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
 
 	@classmethod
 	def poll(cls, context):
@@ -976,9 +980,9 @@ class RigUI_Settings_FK(RigUI):
 		draw_rig_settings(layout, rig, "fk_hinges", label='FK Hinge')
 
 class RigUI_Settings_Face(RigUI):
-	bl_idname = "OBJECT_PT_rig_ui_face"
+	bl_idname = "OBJECT_PT_rig_ui_face_" + script_id
 	bl_label = "Face Settings"
-	bl_parent_id = "OBJECT_PT_rig_ui_settings"
+	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
 
 	@classmethod
 	def poll(cls, context):
@@ -1006,9 +1010,9 @@ class RigUI_Settings_Face(RigUI):
 			row.prop(face_props, '["eye_target_parents"]',  text=eye_parents[face_props["eye_target_parents"]], slider=True)
 
 class RigUI_Settings_Misc(RigUI):
-	bl_idname = "OBJECT_PT_rig_ui_misc"
+	bl_idname = "OBJECT_PT_rig_ui_misc_" + script_id
 	bl_label = "Misc"
-	bl_parent_id = "OBJECT_PT_rig_ui_settings"
+	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
 
 	@classmethod
 	def poll(cls, context):
@@ -1031,7 +1035,7 @@ class RigUI_Settings_Misc(RigUI):
 			row.prop(ikfk_props, '["grab_parent_right"]',  text="Right Hand [" + grab_parents[ikfk_props["grab_parent_right"]] + "]", slider=True)
 
 class RigUI_Viewport_Display(RigUI):
-	bl_idname = "OBJECT_PT_rig_ui_viewport_display"
+	bl_idname = "OBJECT_PT_rig_ui_viewport_display_" + script_id
 	bl_label = "Viewport Display"
 
 	@classmethod

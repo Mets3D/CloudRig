@@ -180,6 +180,8 @@ class CloudUtilities:
 		readfile = open(os.path.join(filedir, filename), 'r')
 
 		for line in readfile:
+			if 'SCRIPT_ID' in line:
+				line = line.replace("SCRIPT_ID", self.script_id)
 			text.write(line)
 		readfile.close()
 
