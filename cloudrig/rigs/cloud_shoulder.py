@@ -51,14 +51,7 @@ class Rig(CloudFKChainRig):
 		self.fk_chain[0].bone_group = 'Body: Main IK Controls'
 		self.register_parent(self.fk_chain[0], self.side_prefix.capitalize() + " Shoulder")
 
-		# HACK: If parent rig is a spine rig, hard-code parenting to last FK child bone.
-		if self.rigify_parent and type(self.rigify_parent) == CloudSpineRig:
-			fk_bone = self.rigify_parent.fk_chain[-3]
-			if hasattr(fk_bone, "fk_child"):
-				fk_bone = fk_bone.fk_child
-			self.fk_chain[0].parent = fk_bone
-			pass
-
+		self.fk_chain[0].parent = self.get_bone(self.base_bone).parent.name
 
 	##############################
 	# Parameters

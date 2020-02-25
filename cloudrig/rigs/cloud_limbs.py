@@ -393,6 +393,7 @@ class Rig(CloudFKChainRig):
 			"prop_id" 				: self.ikfk_name,
 			"fk_chain" 				: [b.name for b in fk_chain],
 			"ik_chain" 				: [b.name for b in ik_chain],
+			"str_chain"				: [b.name for b in self.main_str_bones],
 			"double_first_control"	: self.params.double_first_control,
 			"double_ik_control"		: self.params.double_ik_control,
 			"ik_pole" 				: self.pole_ctrl.name,

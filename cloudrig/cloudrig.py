@@ -13,10 +13,10 @@ import traceback
 from mathutils import Euler, Quaternion
 from rna_prop_ui import rna_idprop_quote_path
 
-# This is a replacement for the versioning system we had previously.
-# During rig generation, this value is set to the name of the blend file in which the rig was generated.
+# During rig generation, SCRIPT_ID is replaced with the name of the blend file in which the rig was generated.
 # The same value is saved in the generated rig's 'cloudrig' property, which allows matching UI scripts to the rigs that were generated with them
 # This is useful when linking multiple characters that were generated at different times with different versions, into a single scene.
+# So that each rig would use the script that belongs to it.
 script_id = "SCRIPT_ID"
 
 class Snap_Simple(bpy.types.Operator):
@@ -414,6 +414,7 @@ class IKFK_Toggle(bpy.types.Operator):
 
 	fk_chain: StringProperty()
 	ik_chain: StringProperty()
+	str_chain: StringProperty()
 
 	double_first_control: BoolProperty(default=False)
 	double_ik_control: BoolProperty(default=False)
@@ -430,6 +431,7 @@ class IKFK_Toggle(bpy.types.Operator):
 		
 		fk_chain = get_bones(armature, self.fk_chain)
 		ik_chain = get_bones(armature, self.ik_chain)
+		str_chain = get_bones(armature, self.str_chain)
 
 		ik_pole = armature.pose.bones.get(self.ik_pole)
 		ik_control = armature.pose.bones.get(self.ik_control)
@@ -449,7 +451,7 @@ class IKFK_Toggle(bpy.types.Operator):
 			hide_on.append( (fk_chain[0].parent.name) )
 			map_off.append( (fk_chain[0].parent.name, ik_chain[0].name) )
 		map_off.append( (fk_chain[0].name, ik_chain[0].name) )
-		map_off.append( (fk_chain[1].name, ik_chain[1].name) )
+		map_off.append( (fk_chain[1].name, str_chain[1].name) )
 		map_off.append( (fk_chain[2].name, ik_control.name) )
 
 		prop_bone = armature.pose.bones.get(self.prop_bone)
@@ -705,18 +707,13 @@ class Rig_Properties(bpy.types.PropertyGroup):
 		
 		context.evaluated_depsgraph_get().update()
 
+	# TODO: This could be implemented like an operator instead, just like parent switching. But maybe this way is better?
 	outfit: EnumProperty(
-		name="Outfit",
-		items=outfits,
-		update=change_outfit)
-	
-	render_modifiers: BoolProperty(
-		name='render_modifiers',
-		description='Enable SubSurf, Solidify, Bevel, etc. modifiers in the viewport')
-	
-	use_proxy: BoolProperty(
-		name='use_proxy',
-		description='Use Proxy Meshes')
+		name	= "Outfit",
+		items	= outfits,
+		update	= change_outfit,
+		options	= {"LIBRARY_EDITABLE"} # Make it not animatable.
+	)
 
 class RigUI(bpy.types.Panel):
 	bl_space_type = 'VIEW_3D'
@@ -852,8 +849,8 @@ class RigUI_Settings(RigUI):
 		rig = get_rig()
 		if not rig: return
 
-		rig_props = rig.rig_properties
-		layout.row().prop(rig_props, 'render_modifiers', text='Enable Modifiers', toggle=True)
+		if 'render_modifiers' in rig.data:
+			layout.row().prop(rig.data, 'render_modifiers', text='Enable Modifiers', toggle=True)
 
 def draw_rig_settings(layout, rig, settings_name, label=""):
 	""" Draw UI settings in the layout, if info for those settings can be found in the rig's data. 
