@@ -1,6 +1,7 @@
 from .definitions.driver import *
 from .definitions.custom_props import CustomProp
 
+# Default BoneGroup color schemes that come with Blender.
 presets = {
 	'PRESET01' : [(0.6039215922355652, 0.0, 0.0), (0.7411764860153198, 0.06666667014360428, 0.06666667014360428), (0.9686275124549866, 0.03921568766236305, 0.03921568766236305)],
 	'PRESET02' : [(0.9686275124549866, 0.250980406999588, 0.0941176563501358), (0.9647059440612793, 0.4117647409439087, 0.07450980693101883), (0.9803922176361084, 0.6000000238418579, 0.0)],
@@ -46,7 +47,7 @@ DSP = 10
 PROPERTIES = 17
 BLACK_BOX = 31
 
-default_active_layers = [IK_MAIN, IK_SECOND, FK_MAIN, PROPERTIES]
+default_active_layers = [IK_MAIN, IK_SECOND, FK_MAIN, PROPERTIES]	# This is just a set of recommended active layers. Rigs can grab these defaults or use their own.
 
 # Name : Params dictionary.
 group_defs = {
@@ -82,7 +83,6 @@ group_defs = {
 		'select' : presets['PRESET11'][1],
 		'active' : presets['PRESET11'][2],
 		'layers' : [IK_SECOND]
-
 	},
 	'Body: FK Helper Bones' : {
 		'normal' : presets['PRESET02'][0],

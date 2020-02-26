@@ -169,6 +169,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			bd.write_edit_data(self.obj, edit_bone)
 	
 	def configure_bones(self):
+		self.init_bone_groups()
 		for bd in self.bone_infos.bones:
 			pose_bone = self.get_bone(bd.name)
 			

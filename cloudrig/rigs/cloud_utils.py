@@ -269,7 +269,7 @@ class CloudUtilities:
 	def make_bbone_scale_drivers(self, boneinfo):
 		bi = boneinfo
 		armature = self.obj
-		
+
 		my_d = Driver()
 		my_d.expression = "var/scale"
 		my_var = my_d.make_var("var")
@@ -334,6 +334,43 @@ class CloudUtilities:
 			Y_tgt.bone_target = scale_tgt.bone_target = bi.bbone_custom_handle_end
 			bi.drivers["bbone_easeout"] = my_d.clone()
 
+	def ensure_bone_group(self, name, group_def={}):
+		"""Find or create and return a bone group on the armature."""
+		armature = self.obj
+		ensure_bone_group(armature, name, group_def)
+
+	def init_bone_groups(self):
+		"""Go through every boneinfo and check for bone groups that don't exist on the rig yet.
+		Check for them on the metarig first. If it exists there, use the colors from there, 
+		otherwise create the bonegroup on both rigs with the default settings found in group_defs.
+		"""
+		metarig = self.generator.metarig
+		rig = self.obj
+
+		group_defs = layers.group_defs
+
+		for bi in self.bone_infos.bones:
+			bg_name = bi.bone_group
+			if bg_name == "": continue
+
+			group_def = {}
+			# Find definition for this group which contains color information.
+			if bg_name in group_defs:
+				group_def = group_defs[bg_name]
+			
+			# Try getting the bone group from the metarig.
+			meta_bg = metarig.pose.bone_groups.get(bg_name)
+			if meta_bg:
+				# If it exists, override the definition.
+				group_def['normal'] = meta_bg.colors.normal[:]
+				group_def['select'] = meta_bg.colors.select[:]
+				group_def['active'] = meta_bg.colors.active[:]
+			else:
+				ensure_bone_group(metarig, bg_name, group_def)
+			
+			# Ensure bone group exists on the generated rig.
+			self.ensure_bone_group(bg_name, group_def)
+
 	@staticmethod
 	def make_name(prefixes=[], base="", suffixed=[]):
 		return make_name(prefixed, base, suffixes)
@@ -358,3 +395,16 @@ def slice_name(name):
 	suffixes = name.split(".")[1:]
 	base = name.split("-")[-1].split(".")[0]
 	return [prefixes, base, suffixes]
+
+def ensure_bone_group(armature, name, group_def={}):
+	"""Find or create and return a bone group on the armature."""
+	bg = armature.pose.bone_groups.get(name)
+	if bg:
+		return bg
+
+	bg = armature.pose.bone_groups.new(name=name)
+	for prop in ['normal', 'select', 'active']:
+		if prop in group_def:
+			bg.color_set='CUSTOM'
+			setattr(bg.colors, prop, group_def[prop])
+	return bg

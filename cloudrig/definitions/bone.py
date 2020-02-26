@@ -270,6 +270,7 @@ class BoneInfo(ID):
 		return self.head + self.vec/2
 
 	def set_layers(self, layerlist, additive=False):
+		# We can use the same code for setting bone layers as we do for setting the armature's active layers.
 		set_layers(self, layerlist, additive)
 
 	def put(self, loc, length=None, width=None, scale=None, bbone_scale=None):
@@ -412,6 +413,23 @@ class BoneInfo(ID):
 
 		my_dict = self.__dict__
 
+		# Bone group
+		if self.bone_group!="":
+			bone_group = armature.pose.bone_groups.get(self.bone_group)
+
+			# If the bone group doesn't already exist, warn about it. It should've been created in cloud_utils.init_bone_groups().
+			if not bone_group:
+				print("Warning: Could not find bone group %s for bone %s." %(self.bone_group, self.name))
+			else:
+				pose_bone.bone_group = bone_group
+
+				# Set layers if specified in the group definition.
+				if self.bone_group in group_defs:
+					group_def = group_defs[self.bone_group]
+					if 'layers' in group_def:
+						self.set_layers(group_def['layers'])
+						pose_bone.bone.layers = self.layers[:]
+
 		# Pose bone data.
 		skip = ['constraints', 'head', 'tail', 'parent', 'children', 'length', 'use_connect', 'bone_group']
 		for attr in my_dict.keys():
@@ -422,31 +440,6 @@ class BoneInfo(ID):
 				if(attr in ['custom_shape_transform'] and value):
 					value = armature.pose.bones.get(value.name)
 				setattr_safe(pose_bone, attr, value)
-		
-		# Bone group
-		if self.bone_group:
-			bone_group = armature.pose.bone_groups.get(self.bone_group)
-			group_def = {}
-
-			# If the bone group doesn't already exist, create it.
-			if not bone_group:
-				bone_group = armature.pose.bone_groups.new(name=self.bone_group)
-			# If we have a definition for this group, set its attributes accordingly.
-			if self.bone_group in group_defs:
-				group_def = group_defs[self.bone_group]
-				if self.bone_group in group_defs:
-					for prop in ['normal', 'select', 'active']:
-						if prop in group_def:
-							bone_group.color_set='CUSTOM'
-							setattr(bone_group.colors, prop, group_def[prop])
-			
-			pose_bone.bone_group = bone_group
-
-			# Set layers if specified in the group definition.
-			if 'layers' in group_def:
-				self.set_layers(group_def['layers'])
-		
-		pose_bone.bone.layers = self.layers[:]
 		
 		# Constraints.
 		for cd in self.constraints:
