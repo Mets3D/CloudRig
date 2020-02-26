@@ -5,7 +5,7 @@ from .id import *
 from mathutils import *
 from mets_tools.utils import *
 import copy
-from ..shared import group_defs, set_layers
+from ..layers import group_defs, set_layers
 
 # Attributes that reference an actual bone ID. These should get special treatment, because we don't want to store said bone ID. 
 # Ideally we would store a BoneInfo, but a string is allowed too(less safe).

@@ -21,16 +21,12 @@ from bpy.props import *
 from mathutils import *
 from math import pi
 
-from rigify.utils.errors import MetarigError
 from rigify.base_rig import stage
 from rigify.utils.bones import BoneDict
 from rigify.utils.rig import connected_children_names
-from rigify.utils.misc import map_list
 
-from .. import shared
 from ..definitions.driver import *
 from ..definitions.custom_props import CustomProp
-from ..definitions.bone import BoneInfoContainer, BoneInfo
 from .cloud_utils import make_name, slice_name
 from .cloud_fk_chain import CloudFKChainRig
 
@@ -108,9 +104,9 @@ class Rig(CloudFKChainRig):
 		for i, fk_bone in enumerate(self.fk_chain):
 			if i == 0 and self.params.double_first_control:
 				# Make a parent for the first control.
-				fk_parent_bone = shared.create_parent_bone(self, fk_bone)
+				fk_parent_bone = self.create_parent_bone(fk_bone)
 				fk_parent_bone.custom_shape = self.load_widget("FK_Limb")
-				shared.create_dsp_bone(self, fk_parent_bone, center=True)
+				self.create_dsp_bone(fk_parent_bone, center=True)
 
 				# Store in the beginning of the FK list, since it's the new root of the FK chain.
 				#self.fk_chain.insert(0, fk_parent_bone)
@@ -122,7 +118,7 @@ class Rig(CloudFKChainRig):
 
 			if i < 2:
 				# Setup DSP bone for all but last bone.
-				shared.create_dsp_bone(self, fk_bone, center=True)
+				self.create_dsp_bone(fk_bone, center=True)
 				pass
 
 			if i == 2:
@@ -220,12 +216,12 @@ class Rig(CloudFKChainRig):
 		pole_line.bone_drivers['hide'] = drv
 		pole_line.hide_select=True
 		
-		pole_dsp = shared.create_dsp_bone(self, pole_ctrl)
+		pole_dsp = self.create_dsp_bone(pole_ctrl)
 
 		def foot_dsp(bone):
 			# Create foot DSP helpers
 			if limb_type=='LEG':
-				dsp_bone = shared.create_dsp_bone(self, bone)
+				dsp_bone = self.create_dsp_bone(bone)
 				direction = 1 if self.side_suffix=='L' else -1
 				projected_head = Vector((bone.head[0], bone.head[1], 0))
 				projected_tail = Vector((bone.tail[0], bone.tail[1], 0))
@@ -251,7 +247,7 @@ class Rig(CloudFKChainRig):
 		# Parent control
 		double_control = None
 		if self.params.double_ik_control:
-			double_control = shared.create_parent_bone(self, self.ik_mstr)
+			double_control = self.create_parent_bone(self.ik_mstr)
 			double_control.bone_group = 'Body: Main IK Controls Extra Parents'
 			foot_dsp(double_control)
 		
@@ -470,8 +466,8 @@ class Rig(CloudFKChainRig):
 
 		# Create ROLL control behind the foot (Limit Rotation, lock other transforms)
 		if self.params.use_foot_roll:	# TODO: Don't like this big if block. Maybe toe part should be moved out of this function, and the if check put before calling of this function, and then this function can be renamed to prepare_footroll.
-			sliced_name = shared.slice_name(ik_foot.name)
-			roll_name = shared.make_name(["ROLL"], sliced_name[1], sliced_name[2])
+			sliced_name = slice_name(ik_foot.name)
+			roll_name = make_name(["ROLL"], sliced_name[1], sliced_name[2])
 			roll_ctrl = self.bone_infos.bone(
 				name = roll_name,
 				bbone_x = self.scale/18,
@@ -658,7 +654,7 @@ class Rig(CloudFKChainRig):
 		ik_parents_prop_name = "ik_parents_" + self.limb_name_props
 
 		for cb in child_bones:
-			shared.rig_child(self, cb, parents, self.prop_bone, ik_parents_prop_name)
+			self.rig_child(cb, parents, self.prop_bone, ik_parents_prop_name)
 		
 
 

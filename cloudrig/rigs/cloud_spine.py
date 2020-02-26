@@ -29,7 +29,7 @@ from rigify.utils.bones import BoneDict
 from rigify.utils.rig import connected_children_names
 from rigify.utils.misc import map_list
 
-from .. import shared
+from .. import layers
 from ..definitions.driver import *
 from ..definitions.custom_props import CustomProp
 from ..definitions.bone import BoneInfoContainer, BoneInfo
@@ -74,7 +74,7 @@ class Rig(CloudChainRig):
 		self.register_parent(self.mstr_torso, "Torso")
 		self.mstr_torso.flatten()
 		if self.params.double_controls:
-			double_mstr_pelvis = shared.create_parent_bone(self, self.mstr_torso)
+			double_mstr_pelvis = self.create_parent_bone(self.mstr_torso)
 			double_mstr_pelvis.bone_group = 'Body: Main IK Controls Extra Parents'
 
 		# Create FK bones
@@ -154,7 +154,7 @@ class Rig(CloudChainRig):
 		self.register_parent(self.mstr_chest, "Chest")
 
 		if self.params.double_controls:
-			double_mstr_chest = shared.create_parent_bone(self, self.mstr_chest)
+			double_mstr_chest = self.create_parent_bone(self.mstr_chest)
 			double_mstr_chest.bone_group = 'Body: Main IK Controls Extra Parents'
 		
 		# Create master (reverse) hip control

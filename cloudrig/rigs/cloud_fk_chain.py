@@ -27,11 +27,7 @@ from rigify.utils.bones import BoneDict
 from rigify.utils.rig import connected_children_names
 from rigify.utils.misc import map_list
 
-from .. import shared
 from ..definitions.driver import *
-from ..definitions.custom_props import CustomProp
-from ..definitions.bone import BoneInfoContainer, BoneInfo
-from .cloud_utils import make_name, slice_name
 from .cloud_chain import CloudChainRig
 
 class CloudFKChainRig(CloudChainRig):

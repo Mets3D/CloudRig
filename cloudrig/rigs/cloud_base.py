@@ -27,7 +27,7 @@ from rigify.utils.rig import connected_children_names
 from ..definitions.driver import *
 from ..definitions.custom_props import CustomProp
 from ..definitions.bone import BoneInfoContainer, BoneInfo
-from .. import shared
+from .. import layers
 from .cloud_utils import *
 
 version = 1.5
@@ -106,7 +106,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			custom_shape_scale = 1.5
 		)
 		self.register_parent(self.root_bone, "Root")
-		self.root_parent = shared.create_parent_bone(self, self.root_bone)
+		self.root_parent = self.create_parent_bone(self.root_bone)
 		self.root_parent.bone_group = 'Body: Main IK Controls Extra Parents'
 
 		for k in self.obj.data.keys():
@@ -190,11 +190,11 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 					break
 
 	def finalize(self):
-		self.select_layers(shared.default_active_layers)
+		self.select_layers(layers.default_active_layers)
 
 		# Set root bone layers
 		root_bone = self.get_bone("root")
-		shared.set_layers(root_bone.bone, [0, 1, 16, 17])
+		layers.set_layers(root_bone.bone, [0, 1, 16, 17])
 
 		# Nuke Rigify's generated root bone shape so it cannot be applied.
 		root_shape = bpy.data.objects.get("WGT-"+self.obj.name+"_root")

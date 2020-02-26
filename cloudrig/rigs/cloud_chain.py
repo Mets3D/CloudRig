@@ -27,7 +27,7 @@ from rigify.utils.bones import BoneDict
 from rigify.utils.rig import connected_children_names
 from rigify.utils.misc import map_list
 
-from .. import shared
+from .. import layers
 from ..definitions.driver import *
 from ..definitions.custom_props import CustomProp
 from ..definitions.bone import BoneInfoContainer, BoneInfo
@@ -226,7 +226,7 @@ class CloudChainRig(CloudBaseRig):
 				def_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=next_str)
 
 				# BBone scale drivers
-				shared.make_bbone_scale_drivers(self.obj, def_bone)
+				self.make_bbone_scale_drivers(def_bone)
 
 		# Connect parent chain rig.
 		# (If the parent rig is a chain rig with cap_control=False, make the last DEF bone stretch to this rig's first STR.)
@@ -239,7 +239,7 @@ class CloudChainRig(CloudBaseRig):
 					str_bone = self.str_bones[0]
 					def_bone.bbone_custom_handle_end = str_bone.name
 					def_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget = str_bone.name)
-					shared.make_bbone_scale_drivers(self.obj, def_bone)
+					self.make_bbone_scale_drivers(def_bone)
 
 	##############################
 	# Parameters

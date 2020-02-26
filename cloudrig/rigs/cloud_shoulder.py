@@ -25,11 +25,7 @@ from rigify.utils.bones import BoneDict
 from rigify.utils.rig import connected_children_names
 
 from ..definitions.driver import *
-from ..definitions.custom_props import CustomProp
-from ..definitions.bone import BoneInfoContainer, BoneInfo
-from .cloud_utils import make_name, slice_name
 from .cloud_fk_chain import CloudFKChainRig
-from .cloud_spine import Rig as CloudSpineRig
 
 class Rig(CloudFKChainRig):
 	"""Cloud shoulder rig. (Currently very simple)"""
