@@ -335,9 +335,7 @@ class CloudUtilities:
 			bi.drivers["bbone_easeout"] = my_d.clone()
 
 	def ensure_bone_group(self, name, group_def={}):
-		"""Find or create and return a bone group on the armature."""
-		armature = self.obj
-		ensure_bone_group(armature, name, group_def)
+		ensure_bone_group(self.obj, name, group_def)
 
 	def init_bone_groups(self):
 		"""Go through every boneinfo and check for bone groups that don't exist on the rig yet.
@@ -346,6 +344,10 @@ class CloudUtilities:
 		"""
 		metarig = self.generator.metarig
 		rig = self.obj
+
+		# Wipe any existing bone groups from the generated rig.
+		for bone_group in rig.pose.bone_groups:
+			rig.pose.bone_groups.remove(bone_group)
 
 		group_defs = layers.group_defs
 

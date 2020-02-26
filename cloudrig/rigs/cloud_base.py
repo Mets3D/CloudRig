@@ -1,21 +1,3 @@
-#====================== BEGIN GPL LICENSE BLOCK ======================
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-#======================= END GPL LICENSE BLOCK ========================
-
 import bpy, os
 from bpy.props import *
 from mathutils import *
@@ -25,7 +7,6 @@ from rigify.utils.bones import BoneDict
 from rigify.utils.rig import connected_children_names
 
 from ..definitions.driver import *
-from ..definitions.custom_props import CustomProp
 from ..definitions.bone import BoneInfoContainer, BoneInfo
 from .. import layers
 from .cloud_utils import *
@@ -50,8 +31,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		self.script_id = bpy.path.basename(bpy.data.filepath).split(".")[0]
 		if self.script_id=="":
 			assert False, "Error: Save your file before generating."
-		
-		self.prepare_bone_groups()
 
 		# Determine rig scale by armature height.
 		self.scale = self.obj.dimensions[2]/10
@@ -122,11 +101,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		if list(self.obj.data.layers_protected) == [False]*32:
 			self.obj.data.layers_protected = [True]*32
 	
-	def prepare_bone_groups(self):
-		# Wipe any existing bone groups.
-		for bone_group in self.obj.pose.bone_groups:
-			self.obj.pose.bone_groups.remove(bone_group)
-
 	@stage.prepare_bones
 	def load_org_bones(self):
 		# Load ORG bones into BoneInfo instances.
