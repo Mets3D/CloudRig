@@ -24,6 +24,35 @@ class CloudChainRig(CloudBaseRig):
 		
 		return (segments, bbone_segments)
 
+	def create_shape_key_helpers(self, def_bone_1, def_bone_2):
+		"""Create two bones between two deform bones. 
+		Let's call the first SKP for Shape Key Helper Parent. 
+			This copies the transforms of the end of the first def bone's bbone spline. What this bone is parented to doesn't really matter.
+		Let's call the second SKH for Shape Key Helper.
+			This is parented to the first def bone, but copies the transforms of the start of second deform bone's bbone spline.
+		The goal is that when we read the local rotation of the SKH bone, we get an accurate representation of how much rotation is happening in this joint - Even when using the toon controls to deform the character in crazy ways.
+		"""
+
+		skp_bone = self.bone_infos.bone(
+			name = def_bone_2.name.replace("DEF", "SKP"),
+			head = def_bone_1.tail.copy(),
+			tail = def_bone_1.tail + def_bone_1.vec,
+			bone_group = "SKH/SKP - Shape Key Helper Bones",
+			parent = def_bone_1
+		)
+		skp_bone.scale(0.3)
+		skp_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=def_bone_1.name, use_bbone_shape=True, head_tail=1)
+
+		skh_bone = self.bone_infos.bone(
+			name = def_bone_2.name.replace("DEF", "SKH"),
+			head = def_bone_2.head.copy(),
+			tail = def_bone_2.tail.copy(),
+			bone_group = "SKH/SKP - Shape Key Helper Bones",
+			parent = skp_bone
+		)
+		skh_bone.scale(0.3)
+		skh_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=def_bone_2.name, use_bbone_shape=True, head_tail=0)
+
 	@stage.prepare_bones
 	def prepare_def_str_chains(self):
 		chain = self.bones.org.main[:]
@@ -175,6 +204,9 @@ class CloudChainRig(CloudBaseRig):
 				if i==0:
 					# If this is the first bone in the section, parent it to the STR bone of the same indices.
 					def_bone.parent = str_sections[sec_i][i].name
+					# Create shape key helpers
+					if self.params.shape_key_helpers and sec_i>0:
+						self.create_shape_key_helpers(def_sections[sec_i-1][-1], def_bone)
 					if (i==len(section)-1) and (sec_i==len(def_sections)-1) and (not self.params.cap_control): 
 						# If this is also the last bone of the last section(eg. Wrist bone), don't do anything else, unless the Final Control option is enabled.
 						break
@@ -213,6 +245,8 @@ class CloudChainRig(CloudBaseRig):
 					def_bone.bbone_custom_handle_end = str_bone.name
 					def_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget = str_bone.name)
 					self.make_bbone_scale_drivers(def_bone)
+					if self.params.shape_key_helpers:
+						self.create_shape_key_helpers(def_bone, self.def_bones[0])
 
 	##############################
 	# Parameters
@@ -238,6 +272,10 @@ class CloudChainRig(CloudBaseRig):
 			min=1,
 			max=32
 		)
+		params.shape_key_helpers = BoolProperty(
+			name="Shape Key Helpers",
+			description="Create SKH- bones that reliably read the rotation between two deform bones, and can therefore be used to drive shape keys."
+		)
 		params.sharp_sections = BoolProperty(
 			name="Sharp Sections",
 			description="BBone EaseIn/Out is set to 0 for controls connectiong two chain sections",
@@ -257,6 +295,7 @@ class CloudChainRig(CloudBaseRig):
 
 		layout.prop(params, "deform_segments")
 		layout.prop(params, "bbone_segments")
+		layout.prop(params, "shape_key_helpers")
 		layout.prop(params, "sharp_sections")
 		layout.prop(params, "cap_control")
 

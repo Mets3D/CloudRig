@@ -28,6 +28,10 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		"""Gather and validate data about the rig."""
 		self.parent_candidates = {}
 		
+		# Wipe any existing bone groups from the generated rig.
+		for bone_group in self.obj.pose.bone_groups:
+			self.obj.pose.bone_groups.remove(bone_group)
+
 		self.script_id = bpy.path.basename(bpy.data.filepath).split(".")[0]
 		if self.script_id=="":
 			assert False, "Error: Save your file before generating."

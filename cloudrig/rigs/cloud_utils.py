@@ -345,17 +345,13 @@ class CloudUtilities:
 		metarig = self.generator.metarig
 		rig = self.obj
 
-		# Wipe any existing bone groups from the generated rig.
-		for bone_group in rig.pose.bone_groups:
-			rig.pose.bone_groups.remove(bone_group)
-
 		group_defs = layers.group_defs
 
 		for bi in self.bone_infos.bones:
 			bg_name = bi.bone_group
 			if bg_name == "": continue
 
-			group_def = {}
+			group_def = dict()
 			# Find definition for this group which contains color information.
 			if bg_name in group_defs:
 				group_def = group_defs[bg_name]
