@@ -102,6 +102,12 @@ group_defs = {
 		'active' : presets['PRESET09'][2],
 		'layers' : [STRETCH]
 	},
+	'SKH/SKP - Shape Key Helper Bones' : {
+		'normal' : presets['PRESET11'][0],
+		'select' : presets['PRESET11'][1],
+		'active' : presets['PRESET11'][2],
+		'layers' : [BODY_MECH]
+	},
 	'Body: DEF - Limb Deform Bones' : {
 		'layers' : [BODY_DEFORM]
 	},

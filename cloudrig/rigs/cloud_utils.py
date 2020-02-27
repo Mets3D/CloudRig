@@ -358,7 +358,7 @@ class CloudUtilities:
 			
 			# Try getting the bone group from the metarig.
 			meta_bg = metarig.pose.bone_groups.get(bg_name)
-			if meta_bg:
+			if meta_bg and meta_bg.color_set=='CUSTOM':
 				# If it exists, override the definition.
 				group_def['normal'] = meta_bg.colors.normal[:]
 				group_def['select'] = meta_bg.colors.select[:]
