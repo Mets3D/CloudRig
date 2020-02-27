@@ -230,7 +230,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	# Parameters
 
 	@classmethod
-	def add_parameters(self, params):
+	def add_parameters(cls, params):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
 		"""
@@ -243,7 +243,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		)
 
 	@classmethod
-	def parameters_ui(self, layout, params):
+	def parameters_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
 		layout.prop(params, "display_scale")

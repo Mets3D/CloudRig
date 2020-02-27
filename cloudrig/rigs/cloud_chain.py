@@ -38,7 +38,8 @@ class CloudChainRig(CloudBaseRig):
 			head = def_bone_1.tail.copy(),
 			tail = def_bone_1.tail + def_bone_1.vec,
 			bone_group = "SKH/SKP - Shape Key Helper Bones",
-			parent = def_bone_1
+			parent = def_bone_1,
+			bbone_width = 0.05
 		)
 		skp_bone.scale_length(0.3)
 		skp_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=def_bone_1.name, use_bbone_shape=True, head_tail=1)
@@ -48,9 +49,10 @@ class CloudChainRig(CloudBaseRig):
 			head = def_bone_2.head.copy(),
 			tail = def_bone_2.tail.copy(),
 			bone_group = "SKH/SKP - Shape Key Helper Bones",
-			parent = skp_bone
+			parent = skp_bone,
+			bbone_width = 0.03
 		)
-		skh_bone.scale_length(0.3)
+		skh_bone.scale_length(0.4)
 		skh_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=def_bone_2.name, use_bbone_shape=True, head_tail=0)
 
 	@stage.prepare_bones
@@ -251,7 +253,7 @@ class CloudChainRig(CloudBaseRig):
 	# Parameters
 
 	@classmethod
-	def add_parameters(self, params):
+	def add_parameters(cls, params):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
 		"""
@@ -287,7 +289,7 @@ class CloudChainRig(CloudBaseRig):
 		)
 
 	@classmethod
-	def parameters_ui(self, layout, params):
+	def parameters_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
 		super().parameters_ui(layout, params)

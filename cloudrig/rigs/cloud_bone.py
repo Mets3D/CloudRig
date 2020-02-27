@@ -16,7 +16,7 @@ class CloudBoneRig(BaseRig):
 	# Parameters
 
 	@classmethod
-	def add_parameters(self, params):
+	def add_parameters(cls, params):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
 		"""
@@ -68,13 +68,13 @@ class CloudBoneRig(BaseRig):
 		)
 
 	@classmethod
-	def parameters_ui(self, layout, params):
+	def parameters_ui(cls, layout, params):
 		"""Create the ui for the rig parameters."""
 		super().parameters_ui(layout, params)
 
 		layout.prop(params, "constraints_additive")
 		layout.prop(params, "tweak_existing")
-		if self.params.tweak_existing:
+		if params.tweak_existing:
 			layout.prop(params, "transforms")
 			layout.prop(params, "transform_locks")
 			layout.prop(params, "bone_shape")
