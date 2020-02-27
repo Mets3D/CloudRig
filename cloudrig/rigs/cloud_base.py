@@ -52,13 +52,12 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			self.side_prefix = "Right"
 
 		self.defaults = {
-			"bbone_x" : self.scale/10,
-			"bbone_z" : self.scale/10,
+			"bbone_width" : 0.1,
 			"rotation_mode" : "XYZ",
 			#"use_custom_shape_bone_size" : False#True
 		}
 		# Bone Info container used for storing new bone info created by the script.
-		self.bone_infos = BoneInfoContainer(self.obj, self.defaults)
+		self.bone_infos = BoneInfoContainer(self)
 		
 		# Keep track of created widgets, so we can add them to Rigify-created Widgets collection at the end.
 		self.widgets = []
@@ -73,8 +72,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			custom_shape = self.load_widget("Cogwheel"),
 			head = Vector((0, self.scale*2, 0)),
 			tail = Vector((0, self.scale*4, 0)),
-			bbone_x = self.scale/8,
-			bbone_z = self.scale/8
+			bbone_width = 1/8
 		)
 
 		# Root bone
@@ -83,8 +81,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			bone_group = 'Body: Main IK Controls',
 			head = Vector((0, 0, 0)),
 			tail = Vector((0, self.scale*5, 0)),
-			bbone_x = self.scale/3,
-			bbone_z = self.scale/3,
+			bbone_width = 1/3,
 			custom_shape = self.load_widget("Root"),
 			custom_shape_scale = 1.5
 		)
@@ -118,15 +115,14 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			# Rigify discards the bbone scale values from the metarig, but I'd like to keep them for easy visual scaling.
 			meta_org_name = eb.name.replace("ORG-", "")
 			meta_org = self.generator.metarig.pose.bones.get(meta_org_name)
-			org_bi.bbone_x = meta_org.bone.bbone_x
-			org_bi.bbone_z = meta_org.bone.bbone_z
+			org_bi._bbone_x = meta_org.bone.bbone_x
+			org_bi._bbone_z = meta_org.bone.bbone_z
 
 			self.org_chain.append(org_bi)
 
 	def generate_bones(self):
 		root_bone = self.get_bone("root")
-		root_bone.bbone_x = self.scale/10
-		root_bone.bbone_z = self.scale/10
+		# root_bone.bbone_width = 1/10
 
 		for bd in self.bone_infos.bones:
 			if (
@@ -141,9 +137,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		for bd in self.bone_infos.bones:
 			edit_bone = self.get_bone(bd.name)
 
-			# Get a bone-specific scale factor based on the bone's original bbone scale.
-			bd.scale_mult = (bd.bbone_x*10) / self.scale
-
 			bd.write_edit_data(self.obj, edit_bone)
 	
 	def configure_bones(self):
@@ -153,7 +146,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			
 			# Apply scaling
 			if not bd.use_custom_shape_bone_size:
-				bd.custom_shape_scale *= self.display_scale * bd.scale_mult
+				bd.custom_shape_scale *= self.display_scale * bd.bbone_width * 10
 			bd.write_pose_data(pose_bone)
 
 	@stage.apply_bones
@@ -188,8 +181,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			if not bi:
 				print("How come there's no BoneInfo for %s?" %b.name)
 				continue
-			b.bbone_x = bi.bbone_x
-			b.bbone_z = bi.bbone_z
+			b.bbone_x = bi._bbone_x
+			b.bbone_z = bi._bbone_z
 
 	@stage.finalize
 	def organize_widgets(self):

@@ -40,7 +40,7 @@ class CloudChainRig(CloudBaseRig):
 			bone_group = "SKH/SKP - Shape Key Helper Bones",
 			parent = def_bone_1
 		)
-		skp_bone.scale(0.3)
+		skp_bone.scale_length(0.3)
 		skp_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=def_bone_1.name, use_bbone_shape=True, head_tail=1)
 
 		skh_bone = self.bone_infos.bone(
@@ -50,7 +50,7 @@ class CloudChainRig(CloudBaseRig):
 			bone_group = "SKH/SKP - Shape Key Helper Bones",
 			parent = skp_bone
 		)
-		skh_bone.scale(0.3)
+		skh_bone.scale_length(0.3)
 		skh_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=def_bone_2.name, use_bbone_shape=True, head_tail=0)
 
 	@stage.prepare_bones
@@ -132,7 +132,7 @@ class CloudChainRig(CloudBaseRig):
 				bone_group = 'Body: STR - Stretch Controls',
 				parent = chain[sec_i],
 			)
-			str_bone.scale(0.3)
+			str_bone.scale_length(0.3)
 			self.str_bones.append(str_bone)
 			return str_bone
 
@@ -177,8 +177,7 @@ class CloudChainRig(CloudBaseRig):
 				str_h_bone = self.bone_infos.bone(
 					name = str_bone.name.replace("STR-", "STR-H-"),
 					source = str_bone,
-					bbone_x = self.scale/10,
-					bbone_z = self.scale/10,
+					bbone_width = 1/10,
 					bone_group = 'Body: STR-H - Stretch Helpers',
 					parent = str_bone.parent
 				)

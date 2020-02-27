@@ -59,10 +59,11 @@ def setattr_safe(thing, key, value):
 
 class BoneInfoContainer(ID):
 	# TODO: implement __iter__ and such.
-	def __init__(self, armature, defaults={}):
+	def __init__(self, cloudrig):
 		self.bones = []
-		self.armature = armature
-		self.defaults = defaults	# For overriding arbitrary properties' default values when creating bones in this container.
+		self.armature = cloudrig.obj
+		self.defaults = cloudrig.defaults	# For overriding arbitrary properties' default values when creating bones in this container.
+		self.scale = cloudrig.scale
 
 	def find(self, name):
 		"""Find a BoneInfo instance by name, return it if found."""
@@ -152,8 +153,9 @@ class BoneInfo(ID):
 		self.hide = False
 
 		### Properties that are shared between pose and edit mode.
-		self.bbone_x = 0.1
-		self.bbone_z = 0.1
+		self.bbone_width = 0.1
+		self._bbone_x = 0.1	# These get special treatment to avoid having to put self.scale everywhere.
+		self._bbone_z = 0.1
 		self.bbone_segments = 1
 		self.bbone_handle_type_start = "AUTO"
 		self.bbone_handle_type_end = "AUTO"
@@ -203,8 +205,11 @@ class BoneInfo(ID):
 			self.head = copy.copy(source.head)
 			self.tail = copy.copy(source.tail)
 			self.roll = source.roll
-			self.bbone_x = source.bbone_x
-			self.bbone_z = source.bbone_z
+			if type(source)==BoneInfo:
+				self.bbone_width = source.bbone_width
+			else:
+				self._bbone_x = source.bbone_x
+				self._bbone_z = source.bbone_z
 			if source.parent:
 				if type(source)==bpy.types.EditBone:
 					self.parent = source.parent.name
@@ -220,24 +225,23 @@ class BoneInfo(ID):
 
 	@property
 	def bbone_width(self):
-		return self.bbone_x
+		return self._bbone_x / self.container.scale
 
 	@bbone_width.setter
 	def bbone_width(self, value):
-		self.bbone_x = value
-		self.bbone_z = value
+		self._bbone_x = value * self.container.scale
+		self._bbone_z = value * self.container.scale
 
 	@property
 	def vec(self):
 		"""Vector pointing from head to tail."""
 		return self.tail-self.head
 
-	def bbone_scale(self, value):
+	def scale_width(self, value):
 		"""Set bbone width relative to current."""
-		self.bbone_x *= value
-		self.bbone_z *= value
+		self.bbone_width *= value
 
-	def scale(self, value):
+	def scale_length(self, value):
 		"""Set bone length relative to its current length."""
 		self.tail = self.head + self.vec * value
 
@@ -273,7 +277,7 @@ class BoneInfo(ID):
 		# We can use the same code for setting bone layers as we do for setting the armature's active layers.
 		set_layers(self, layerlist, additive)
 
-	def put(self, loc, length=None, width=None, scale=None, bbone_scale=None):
+	def put(self, loc, length=None, width=None, scale_length=None, scale_width=None):
 		offset = loc-self.head
 		self.head = loc
 		self.tail = loc+offset
@@ -282,10 +286,10 @@ class BoneInfo(ID):
 			self.length=length
 		if width:
 			self.bbone_width = width
-		if scale:
-			self.scale(scale)
-		if bbone_scale:
-			self.bbone_scale(bbone_scale)
+		if scale_length:
+			self.scale_length(scale_length)
+		if scale_width:
+			self.scale_width(scale_width)
 	
 	def copy_info(self, bone_info):
 		"""Called from __init__ to initialize using existing BoneInfo."""

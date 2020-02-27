@@ -164,8 +164,7 @@ class Rig(CloudFKChainRig):
 			limb_name = self.params.limb_name
 		pole_ctrl = self.pole_ctrl = self.bone_infos.bone(
 			name = make_name(["IK", "POLE"], limb_name, [self.side_suffix]),
-			bbone_x = self.scale/10,
-			bbone_z = self.scale/10,
+			bbone_width = 0.1,
 			head = elbow + offset,
 			tail = elbow + offset*1.1,
 			roll = 0,
@@ -285,8 +284,7 @@ class Rig(CloudFKChainRig):
 			parent = self.limb_root_bone.name,
 			bone_group = 'Body: IK-MCH - IK Mechanism Bones'
 		)
-		str_bone.bbone_x *= 0.4
-		str_bone.bbone_z *= 0.4
+		str_bone.scale_width(0.4)
 
 		self.ik_tgt_bone.add_constraint(self.obj, 'COPY_LOCATION',
 			target = self.obj,
@@ -451,8 +449,7 @@ class Rig(CloudFKChainRig):
 			roll_name = make_name(["ROLL"], sliced_name[1], sliced_name[2])
 			roll_ctrl = self.bone_infos.bone(
 				name = roll_name,
-				bbone_x = self.scale/18,
-				bbone_z = self.scale/18,
+				bbone_width = 1/18,
 				head = ik_foot.head + Vector((0, self.scale, self.scale/4)),
 				tail = ik_foot.head + Vector((0, self.scale/2, self.scale/4)),
 				roll = pi,
@@ -477,16 +474,15 @@ class Rig(CloudFKChainRig):
 			assert ankle_pivot, "ERROR: Could not find AnklePivot bone in the metarig."
 			
 			# I want to be able to customize the shape size of the foot controls from the metarig, via ankle pivot bone bbone scale.
-			self.ik_mstr.bbone_x = ankle_pivot.bbone_x
-			self.ik_mstr.bbone_z = ankle_pivot.bbone_z
+			self.ik_mstr._bbone_x = ankle_pivot.bbone_x
+			self.ik_mstr._bbone_z = ankle_pivot.bbone_z
 			if self.params.double_ik_control:
-				self.ik_mstr.parent.bbone_x = ankle_pivot.bbone_x
-				self.ik_mstr.parent.bbone_z = ankle_pivot.bbone_z
+				self.ik_mstr.parent._bbone_x = ankle_pivot.bbone_x
+				self.ik_mstr.parent._bbone_z = ankle_pivot.bbone_z
 
 			ankle_pivot_ctrl = self.bone_infos.bone(
 				name = "IK-RollBack." + self.side_suffix,
-				bbone_x = self.org_chain[-1].bbone_x,
-				bbone_z = self.org_chain[-1].bbone_z,
+				bbone_width = self.org_chain[-1].bbone_width,
 				head = ankle_pivot.head_local,
 				tail = ankle_pivot.tail_local,
 				roll = pi,
