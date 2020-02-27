@@ -164,8 +164,8 @@ class Rig(CloudFKChainRig):
 			limb_name = self.params.limb_name
 		pole_ctrl = self.pole_ctrl = self.bone_infos.bone(
 			name = make_name(["IK", "POLE"], limb_name, [self.side_suffix]),
-			bbone_x = first_bone.bbone_x,
-			bbone_z = first_bone.bbone_x,
+			bbone_x = self.scale/10,
+			bbone_z = self.scale/10,
 			head = elbow + offset,
 			tail = elbow + offset*1.1,
 			roll = 0,

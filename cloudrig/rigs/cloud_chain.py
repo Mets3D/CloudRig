@@ -177,8 +177,8 @@ class CloudChainRig(CloudBaseRig):
 				str_h_bone = self.bone_infos.bone(
 					name = str_bone.name.replace("STR-", "STR-H-"),
 					source = str_bone,
-					bbone_x = 30000,	# TODO: Why is this not working?
-					bbone_z = 30000,
+					bbone_x = self.scale/10,
+					bbone_z = self.scale/10,
 					bone_group = 'Body: STR-H - Stretch Helpers',
 					parent = str_bone.parent
 				)

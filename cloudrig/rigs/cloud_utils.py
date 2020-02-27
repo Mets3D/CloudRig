@@ -236,12 +236,10 @@ class CloudUtilities:
 		parent_bone = self.bone_infos.bone(
 			parent_name, 
 			child, 
-			only_transform=True, 
 			custom_shape = child.custom_shape,
 			custom_shape_scale = child.custom_shape_scale*1.1,
 			bone_group = child.bone_group,
-			parent = child.parent,
-			**self.defaults
+			parent = child.parent
 		)
 
 		child.parent = parent_bone

@@ -24,7 +24,6 @@ class CloudFKChainRig(CloudChainRig):
 			fk_bone = self.bone_infos.bone(
 				name				= fk_name, 
 				source				= org_bone,
-				**self.defaults,
 				custom_shape 		= self.load_widget("FK_Limb"),
 				custom_shape_scale 	= org_bone.custom_shape_scale,# * 0.8,
 				parent				= self.bones.parent,

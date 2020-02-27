@@ -195,6 +195,10 @@ class BoneInfo(ID):
 
 		self.custom_shape_transform = None # Bone name
 		
+		# Apply property values from container's defaults
+		for key, value in self.container.defaults.items():
+			setattr_safe(self, key, value)
+
 		if source:
 			self.head = copy.copy(source.head)
 			self.tail = copy.copy(source.tail)
@@ -206,10 +210,6 @@ class BoneInfo(ID):
 					self.parent = source.parent.name
 				else:
 					self.parent = source.parent 
-		
-		# Apply property values from container's defaults
-		for key, value in self.container.defaults.items():
-			setattr_safe(self, key, value)
 
 		# Apply property values from arbitrary keyword arguments if any were passed.
 		for key, value in kwargs.items():

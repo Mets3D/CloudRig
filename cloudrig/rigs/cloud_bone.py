@@ -1,3 +1,4 @@
+from bpy.props import *
 from rigify.base_rig import BaseRig, stage
 
 class CloudBoneRig(BaseRig):

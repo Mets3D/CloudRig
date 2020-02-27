@@ -52,8 +52,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			self.side_prefix = "Right"
 
 		self.defaults = {
-			# "bbone_x" : 0.05,
-			# "bbone_z" : 0.05,
+			"bbone_x" : self.scale/10,
+			"bbone_z" : self.scale/10,
 			"rotation_mode" : "XYZ",
 			#"use_custom_shape_bone_size" : False#True
 		}
@@ -181,6 +181,15 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			bpy.data.objects.remove(root_shape)
 
 		self.obj.data['script'] = self.load_ui_script()
+
+		# For some god-forsaken reason, this is the earliest point when we can set bbone_x and bbone_z.
+		for b in self.obj.data.bones:
+			bi = self.bone_infos.find(b.name)
+			if not bi:
+				print("How come there's no BoneInfo for %s?" %b.name)
+				continue
+			b.bbone_x = bi.bbone_x
+			b.bbone_z = bi.bbone_z
 
 	@stage.finalize
 	def organize_widgets(self):
