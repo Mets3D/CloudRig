@@ -507,6 +507,7 @@ class Rig(CloudFKChainRig):
 					source = b,
 					head = b.tail.copy(),
 					tail = b.head.copy(),
+					roll = 0,
 					parent = ankle_pivot_ctrl,
 					bone_group = 'Body: IK-MCH - IK Mechanism Bones'
 				)
@@ -701,8 +702,12 @@ class Rig(CloudFKChainRig):
 			RigifyParameters PropertyGroup
 		"""
 		super().add_parameters(params)
-		# TODO: Add "Custom Limb Name"(boolean checkbox) and "Limb Name" parameters, to allow for more than 4 limbs in a character.
-		params.use_limb_name = BoolProperty(name="Custom Limb Name", default=False, description='Specify a name for this limb - There can be exactly two limbs with the same name, a Left and a Right one. This name should NOT include a side indicator such as "Left" or "Right" ')
+
+		params.use_limb_name = BoolProperty(
+			name="Custom Limb Name", 
+			default=False, 
+			description='Specify a name for this limb - There can be exactly two limbs with the same name, a Left and a Right one. This name should NOT include a side indicator such as "Left" or "Right" '
+		)
 		params.limb_name = StringProperty(default="Left Arm")
 		params.type = EnumProperty(name="Type",
 		items = (

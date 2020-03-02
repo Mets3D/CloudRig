@@ -59,7 +59,6 @@ class Rig(CloudChainRig):
 			fk_bone = self.bone_infos.bone(
 				name				= fk_name,
 				source				= org_bone,
-				**self.defaults,
 				custom_shape 		= self.load_widget("FK_Limb"),
 				custom_shape_scale 	= 0.9 * org_bone.custom_shape_scale,
 				parent				= next_parent,
@@ -117,7 +116,6 @@ class Rig(CloudChainRig):
 				source 				= self.org_chain[-4],
 				head				= self.org_chain[-4].center,
 				tail 				= self.org_chain[-4].center + Vector((0, 0, self.scale)),
-				**self.defaults,
 				custom_shape 		= self.load_widget("Chest_Master"),
 				custom_shape_scale 	= 0.7,
 				parent				= self.mstr_torso,
@@ -135,7 +133,6 @@ class Rig(CloudChainRig):
 				source				= self.org_chain[0],
 				head				= self.org_chain[0].center,
 				# tail 				= self.org_chain[0].center + Vector((0, 0, -self.scale)),
-				**self.defaults,
 				custom_shape 		= self.load_widget("Hips"),
 				custom_shape_scale 	= 0.7,
 				parent				= self.mstr_torso,
@@ -150,7 +147,6 @@ class Rig(CloudChainRig):
 			ik_ctr_bone = self.bone_infos.bone(
 				name				= ik_ctr_name, 
 				source				= fk_bone,
-				**self.defaults,
 				custom_shape 		= self.load_widget("Oval"),
 				# custom_shape_scale 	= 0.9 * fk_bone.custom_shape_scale,
 				# parent				= next_parent,

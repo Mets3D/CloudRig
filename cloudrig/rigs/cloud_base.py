@@ -7,7 +7,7 @@ from rigify.utils.bones import BoneDict
 from rigify.utils.rig import connected_children_names
 
 from ..definitions.driver import *
-from ..definitions.bone import BoneInfoContainer, BoneInfo
+from ..definitions.bone import BoneInfoContainer
 from .. import layers
 from .cloud_utils import *
 
@@ -107,7 +107,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		# Load ORG bones into BoneInfo instances.
 		self.org_chain = []
 
-		for bn in self.bones.org.main:	# NOTE: Make sure we don't define the parent bone. This rig should never define a BoneInfo instance for its parent!
+		for bn in self.bones.org.main:
 			eb = self.get_bone(bn)
 			eb.use_connect = False
 			org_bi = self.bone_infos.bone(bn, eb, self.obj)
