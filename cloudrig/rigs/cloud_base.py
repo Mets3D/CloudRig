@@ -248,5 +248,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		"""
 		layout.prop(params, "display_scale")
 
-class Rig(CloudBaseRig):
-	pass	# For testing purposes
+# For testing purposes
+# class Rig(CloudBaseRig):
+# 	pass

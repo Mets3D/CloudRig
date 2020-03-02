@@ -79,13 +79,12 @@ class CloudChainRig(CloudBaseRig):
 			segments, bbone_segments = self.get_segments(org_i, chain)
 			
 			for i in range(0, segments):
-				## Deform
+				## Create Deform bones
 				def_name = org_name.replace("ORG", "DEF")
 				sliced = slice_name(def_name)
 				number = str(i+1) if segments > 1 else ""
 				def_name = make_name(sliced[0], sliced[1] + number, sliced[2])
 
-				# Move head and tail into correct places
 				org_bone = self.get_bone(org_name)
 				org_vec = org_bone.tail-org_bone.head
 				unit = org_vec / segments
