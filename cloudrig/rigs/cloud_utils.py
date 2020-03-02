@@ -349,17 +349,17 @@ class CloudUtilities:
 			if bg_name == "": continue
 
 			group_def = dict()
-			# Find definition for this group which contains color information.
+			# Find definition for this group.
 			if bg_name in group_defs:
-				group_def = group_defs[bg_name]
+				group_def = dict(group_defs[bg_name])
 			
 			# Try getting the bone group from the metarig.
 			meta_bg = metarig.pose.bone_groups.get(bg_name)
 			if meta_bg and meta_bg.color_set=='CUSTOM':
 				# If it exists, override the definition.
-				group_def['normal'] = meta_bg.colors.normal[:]
-				group_def['select'] = meta_bg.colors.select[:]
-				group_def['active'] = meta_bg.colors.active[:]
+				group_def['normal'] = meta_bg.colors.normal.copy()
+				group_def['select'] = meta_bg.colors.select.copy()
+				group_def['active'] = meta_bg.colors.active.copy()
 			else:
 				ensure_bone_group(metarig, bg_name, group_def)
 			
@@ -401,5 +401,5 @@ def ensure_bone_group(armature, name, group_def={}):
 	for prop in ['normal', 'select', 'active']:
 		if prop in group_def:
 			bg.color_set='CUSTOM'
-			setattr(bg.colors, prop, group_def[prop])
+			setattr(bg.colors, prop, group_def[prop][:])
 	return bg
