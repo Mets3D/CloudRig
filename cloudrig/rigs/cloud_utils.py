@@ -109,7 +109,7 @@ class CloudUtilities:
 		for parent_name in self.parent_candidates.keys():
 			candidates[parent_name] = self.parent_candidates[parent_name]
 
-		if self.rigify_parent:
+		if self.rigify_parent and hasattr(self.rigify_parent, "get_parent_candidates"):
 			return self.rigify_parent.get_parent_candidates(candidates)
 		
 		return candidates
@@ -367,6 +367,10 @@ class CloudUtilities:
 			self.ensure_bone_group(bg_name, group_def)
 
 	@staticmethod
+	def lock_transforms(obj, loc=True, rot=True, scale=True):
+		return lock_transforms(obj, loc, rot, scale)
+
+	@staticmethod
 	def make_name(prefixes=[], base="", suffixed=[]):
 		return make_name(prefixed, base, suffixes)
 	
@@ -390,6 +394,26 @@ def slice_name(name):
 	suffixes = name.split(".")[1:]
 	base = name.split("-")[-1].split(".")[0]
 	return [prefixes, base, suffixes]
+
+
+def lock_transforms(obj, loc=True, rot=True, scale=True):
+	if type(loc)==list:
+		obj.lock_location = loc
+	else:
+		obj.lock_location = [loc, loc, loc]
+
+	if type(rot)==list:
+		obj.lock_rotation = rot[:3]
+		if len(rot)==4:
+			obj.lock_rotation_w = rot[-1]
+	else:
+		obj.lock_rotation = [rot, rot, rot]
+		obj.lock_rotation_w = rot
+
+	if type(scale)==list:
+		obj.lock_scale = scale
+	else:
+		obj.lock_scale = [scale, scale, scale]
 
 def ensure_bone_group(armature, name, group_def={}):
 	"""Find or create and return a bone group on the armature."""

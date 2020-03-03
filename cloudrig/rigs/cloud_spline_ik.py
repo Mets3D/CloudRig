@@ -56,7 +56,7 @@ class CloudSplineIKRig(CloudBaseRig):
 	@stage.prepare_bones
 	def create_def_chain(self):
 		self.def_bones = []
-		segments = self.params.segments
+		segments = self.params.subdivide_deform
 
 		for org_bone in self.org_chain:
 			for i in range(0, segments):
@@ -90,6 +90,7 @@ class CloudSplineIKRig(CloudBaseRig):
 		length_unit = sum_bone_length / (num_controls-1)
 
 		self.hook_bones = []
+		next_parent = self.bones.parent
 		for i in range(0, num_controls):
 			point_along_chain = i * length_unit
 			index = i if self.params.match_controls_to_bones else -1
@@ -98,11 +99,17 @@ class CloudSplineIKRig(CloudBaseRig):
 				name = "Hook_" + str(i).zfill(2),
 				head = loc,
 				tail = loc + direction*self.scale,
+				parent = next_parent,
 				custom_shape = self.load_widget("CurveHandle")
 			)
+			if self.params.custom_parent != "":
+				next_parent = self.params.custom_parent
+
 			self.hook_bones.append(hook_ctr)
 
-	def create_curve(self):
+	def setup_curve(self):
+		""" Create and configure the bezier curve that will be used by the rig."""
+
 		sum_bone_length = sum([b.length for b in self.org_chain])
 		num_controls = len(self.org_chain)+1 if self.params.match_controls_to_bones else self.params.num_controls
 		length_unit = sum_bone_length / (num_controls-1)
@@ -122,12 +129,7 @@ class CloudSplineIKRig(CloudBaseRig):
 		bpy.ops.curve.select_all(action='DESELECT')
 		self.curve = curve_ob = bpy.context.view_layer.objects.active
 		curve_ob.name = curve_name
-		# TODO: move this to a util function, lock_transforms(...)
-		curve_ob.lock_location = [True, True, True]
-		curve_ob.lock_rotation = [True, True, True]
-		curve_ob.lock_scale = [True, True, True]
-		curve_ob.lock_rotation_w = True
-		# TODO: parent curve object to rig object?
+		self.lock_transforms(curve_ob)
 
 		# Place the first and last bezier points to the first and last bone.
 		spline = curve_ob.data.splines[0]
@@ -147,8 +149,8 @@ class CloudSplineIKRig(CloudBaseRig):
 			index = i if self.params.match_controls_to_bones else -1
 			loc, direction = self.fit_on_bone_chain(self.org_chain, point_along_chain, index)
 			p.co = loc
-			p.handle_right = loc + handle_length*direction
-			p.handle_left  = loc - handle_length*direction
+			p.handle_right = loc + handle_length * direction
+			p.handle_left  = loc - handle_length * direction
 
 			p.select_control_point = True
 			p.select_left_handle = True
@@ -181,16 +183,21 @@ class CloudSplineIKRig(CloudBaseRig):
 			p.select_left_handle = False
 			p.select_right_handle = False
 
-
 		bpy.ops.object.mode_set(mode='OBJECT')
-		bpy.context.scene.collection.objects.unlink(curve_ob)
+
+		# Collections and visibility
 		self.generator.collection.objects.link(curve_ob)
+		for c in curve_ob.users_collection:
+			if c == self.generator.collection: continue
+			c.objects.unlink(curve_ob)
 		curve_ob.hide_viewport=True
+
+		# Reset selection so Rigify can continue execution.
 		bpy.context.view_layer.objects.active = self.obj
 		self.obj.select_set(True)
 
 	def configure_bones(self):
-		self.create_curve()
+		self.setup_curve()
 
 		# Add constraint to deform chain
 		self.def_bones[-1].add_constraint(self.obj, 'SPLINE_IK', 
@@ -212,6 +219,11 @@ class CloudSplineIKRig(CloudBaseRig):
 		"""
 		super().add_parameters(params)
 		
+		params.custom_parent = StringProperty(
+			name="Custom Parent",
+			description="If not empty, parent all hooks except the first one to a bone with this name.",
+			default=""
+		)
 		params.match_controls_to_bones = BoolProperty(
 			name="Match Controls to Bones",
 			description="Hook controls will be created at each bone, instead of being equally distributed across the length of the chain",
@@ -234,7 +246,7 @@ class CloudSplineIKRig(CloudBaseRig):
 			min=3,
 			max=99
 		)
-		params.segments = IntProperty(
+		params.subdivide_deform = IntProperty(
 			name="Subdivide bones",
 			description="For each original bone, create this many deform bones in the spline chain",
 			default=3,
@@ -250,9 +262,10 @@ class CloudSplineIKRig(CloudBaseRig):
 		layout.prop(params, "segments")
 		layout.prop(params, "curve_handle_ratio")
 
+		layout.prop(params, "custom_parent")
 		layout.prop(params, "controls_for_handles")	# TODO implement this.
 
-		layout.prop(params, "match_controls_to_bones")
+		layout.prop(params, "match_controls_to_bones")	# TODO: When this is false, the directions of the curve points and bones don't match, and both of them are unsatisfactory. It would be nice if we would interpolate between the direction of the two bones, using length_remaining/bone.length as a factor, or something similar to that.
 		if not params.match_controls_to_bones:
 			layout.prop(params, "num_controls")
 
