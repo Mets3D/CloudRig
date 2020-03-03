@@ -19,8 +19,25 @@ class CloudSplineIKRig(CloudBaseRig):
 		self.params.cap_control = True
 		self.params.shape_key_helpers=False
 
-	def fit_on_bone_chain(self, chain, length):
+	def fit_on_bone_chain(self, chain, length, index=-1):
 		"""On a bone chain, find the point a given length down the chain. Return its position and direction."""
+		if index > -1:
+			# Instead of using bone length, simply return the location and direction of a bone at a given index.
+			
+			# If the index is too high, return the tail of the bone.
+			if index >= len(chain):
+				b = chain[-1]
+				return (b.tail.copy(), b.vec.normalized())
+			
+			b = chain[index]
+			direction = b.vec.normalized()
+
+			if index > 0:
+				prev_bone = chain[index-1]
+				direction = (b.vec + prev_bone.vec)#.normalized()
+			return (b.head.copy(), direction)
+		
+		
 		length_cumultative = 0
 		for b in chain:
 			if length_cumultative + b.length > length:
@@ -69,12 +86,14 @@ class CloudSplineIKRig(CloudBaseRig):
 	@stage.prepare_bones
 	def create_hook_controls(self):
 		sum_bone_length = sum([b.length for b in self.org_chain])
-		length_unit = sum_bone_length / (self.params.num_controls-1)
+		num_controls = len(self.org_chain)+1 if self.params.match_controls_to_bones else self.params.num_controls
+		length_unit = sum_bone_length / (num_controls-1)
 
 		self.hook_bones = []
-		for i in range(0, self.params.num_controls):
+		for i in range(0, num_controls):
 			point_along_chain = i * length_unit
-			loc, direction = self.fit_on_bone_chain(self.org_chain, point_along_chain)
+			index = i if self.params.match_controls_to_bones else -1
+			loc, direction = self.fit_on_bone_chain(self.org_chain, point_along_chain, index)
 			hook_ctr = self.bone_infos.bone(
 				name = "Hook_" + str(i).zfill(2),
 				head = loc,
@@ -85,7 +104,8 @@ class CloudSplineIKRig(CloudBaseRig):
 
 	def create_curve(self):
 		sum_bone_length = sum([b.length for b in self.org_chain])
-		length_unit = sum_bone_length / (self.params.num_controls-1)
+		num_controls = len(self.org_chain)+1 if self.params.match_controls_to_bones else self.params.num_controls
+		length_unit = sum_bone_length / (num_controls-1)
 		handle_length = length_unit / self.params.curve_handle_ratio
 		
 		# Find or create Bezier Curve object for this rig.
@@ -102,29 +122,33 @@ class CloudSplineIKRig(CloudBaseRig):
 		bpy.ops.curve.select_all(action='DESELECT')
 		self.curve = curve_ob = bpy.context.view_layer.objects.active
 		curve_ob.name = curve_name
+		# TODO: move this to a util function, lock_transforms(...)
 		curve_ob.lock_location = [True, True, True]
 		curve_ob.lock_rotation = [True, True, True]
 		curve_ob.lock_scale = [True, True, True]
 		curve_ob.lock_rotation_w = True
+		# TODO: parent curve object to rig object?
 
 		# Place the first and last bezier points to the first and last bone.
 		spline = curve_ob.data.splines[0]
 		points = spline.bezier_points
 
 		# Add the necessary number of curve points
-		points.add( self.params.num_controls-len(points) )
+		points.add( num_controls-len(points) )
 
-		# Place the curve points along the bone chain.
+		# Configure control points...
 		for i, p in enumerate(points):
 			point_along_chain = i * length_unit
 
-			p.radius = 0.2
-			p.handle_left_type = 'ALIGNED'
-			p.handle_right_type = 'ALIGNED'
+			# p.handle_left_type = 'ALIGNED'
+			# p.handle_right_type = 'ALIGNED'
 
-			p.co = self.fit_on_bone_chain(self.org_chain, point_along_chain)[0]
-			p.handle_right = self.fit_on_bone_chain(self.org_chain, point_along_chain + handle_length)[0]
-			p.handle_left  = self.fit_on_bone_chain(self.org_chain, point_along_chain - handle_length)[0]
+			# Place control points
+			index = i if self.params.match_controls_to_bones else -1
+			loc, direction = self.fit_on_bone_chain(self.org_chain, point_along_chain, index)
+			p.co = loc
+			p.handle_right = loc + handle_length*direction
+			p.handle_left  = loc - handle_length*direction
 
 			p.select_control_point = True
 			p.select_left_handle = True
@@ -134,8 +158,25 @@ class CloudSplineIKRig(CloudBaseRig):
 			hook_b = self.obj.data.bones.get(self.hook_bones[i].name)
 			self.obj.data.bones.active = hook_b
 
+			# Add hook
 			bpy.ops.object.hook_add_selob(use_bone=True)
 
+			# Add radius driver
+			D = p.driver_add("radius")
+			driver = D.driver
+
+			driver.expression = "var"
+			my_var = driver.variables.new()
+			my_var.name = "var"
+			my_var.type = 'TRANSFORMS'
+			
+			var_tgt = my_var.targets[0]
+			var_tgt.id = self.obj
+			var_tgt.transform_space = 'LOCAL_SPACE'
+			var_tgt.transform_type = 'SCALE_X'
+			var_tgt.bone_target = self.hook_bones[i].name
+
+			# Deselect
 			p.select_control_point = False
 			p.select_left_handle = False
 			p.select_right_handle = False
@@ -153,7 +194,7 @@ class CloudSplineIKRig(CloudBaseRig):
 
 		# Add constraint to deform chain
 		self.def_bones[-1].add_constraint(self.obj, 'SPLINE_IK', 
-			use_curve_radius=False,
+			use_curve_radius=True,
 			chain_count=len(self.def_bones),
 			target=self.curve,
 			true_defaults=True
@@ -175,6 +216,11 @@ class CloudSplineIKRig(CloudBaseRig):
 			name="Match Controls to Bones",
 			description="Hook controls will be created at each bone, instead of being equally distributed across the length of the chain",
 			default=True
+		)
+		params.controls_for_handles = BoolProperty(
+			name="Controls for Handles",
+			description="For every curve point control, create two children that control the handles of that curve point.",
+			default=False
 		)
 		params.curve_handle_ratio = FloatProperty(
 			name="Curve Handle Length Ratio",
@@ -204,7 +250,9 @@ class CloudSplineIKRig(CloudBaseRig):
 		layout.prop(params, "segments")
 		layout.prop(params, "curve_handle_ratio")
 
-		layout.prop(params, "match_controls_to_bones")	# TODO implement this.
+		layout.prop(params, "controls_for_handles")	# TODO implement this.
+
+		layout.prop(params, "match_controls_to_bones")
 		if not params.match_controls_to_bones:
 			layout.prop(params, "num_controls")
 

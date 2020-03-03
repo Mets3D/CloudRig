@@ -37,7 +37,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			assert False, "Error: Save your file before generating."
 
 		# Determine rig scale by armature height.
-		self.scale = self.obj.dimensions[2]/10
+		self.scale = self.obj.dimensions[2]/10	# TODO: This has bad effect when the generated rig already has scale. Either use metarig for setting self.scale, or reset self.obj scale, or both.
 		# Slap user-provided multiplier on top.
 		self.display_scale = self.params.display_scale * self.scale
 
