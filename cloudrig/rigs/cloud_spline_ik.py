@@ -88,6 +88,7 @@ class CloudSplineIKRig(CloudBaseRig):
 		sum_bone_length = sum([b.length for b in self.org_chain])
 		num_controls = len(self.org_chain)+1 if self.params.match_controls_to_bones else self.params.num_controls
 		length_unit = sum_bone_length / (num_controls-1)
+		handle_length = length_unit / self.params.curve_handle_ratio
 
 		self.hook_bones = []
 		next_parent = self.bones.parent
@@ -95,15 +96,51 @@ class CloudSplineIKRig(CloudBaseRig):
 			point_along_chain = i * length_unit
 			index = i if self.params.match_controls_to_bones else -1
 			loc, direction = self.fit_on_bone_chain(self.org_chain, point_along_chain, index)
+			hook_name = self.params.custom_name if self.params.custom_name!="" else self.base_bone
 			hook_ctr = self.bone_infos.bone(
-				name = "Hook_" + str(i).zfill(2),
+				name = "Hook_%s_%s" %(hook_name, str(i).zfill(2)),
 				head = loc,
 				tail = loc + direction*self.scale,
 				parent = next_parent,
-				custom_shape = self.load_widget("CurveHandle")
+				bone_group = "Spline IK Hooks"
 			)
 			if self.params.custom_parent != "":
 				next_parent = self.params.custom_parent
+			if self.params.controls_for_handles:
+				hook_ctr.custom_shape = self.load_widget("Circle")
+				
+				handle_left_ctr = self.bone_infos.bone(
+					name		 = "Hook_L_%s_%s" %(hook_name, str(i).zfill(2)),
+					head 		 = hook_ctr.head.copy(),
+					tail 		 = loc - handle_length * direction,
+					bone_group 	 			  = "Spline IK Hooks",
+					parent = hook_ctr,
+					custom_shape 			  = self.load_widget("CurveHandle"),
+				)
+				hook_ctr.left_handle_control = handle_left_ctr
+
+				handle_right_ctr = self.bone_infos.bone(
+					name 		 = "Hook_R_%s_%s" %(hook_name, str(i).zfill(2)),
+					head 		 = hook_ctr.head.copy(),
+					tail 		 = loc + handle_length * direction,
+					bone_group 	 = "Spline IK Hooks",
+					parent 		 = hook_ctr,
+					custom_shape = self.load_widget("CurveHandle"),
+				)
+				hook_ctr.right_handle_control = handle_right_ctr
+
+				for handle in [handle_left_ctr, handle_right_ctr]:
+					dsp_bone = self.create_dsp_bone(handle)
+					dsp_bone.head = handle.tail.copy()
+					dsp_bone.tail = handle.head.copy()
+					
+					handle.custom_shape_scale 		  = 1,
+					handle.use_custom_shape_bone_size = True
+
+					dsp_bone.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=hook_ctr.name)
+					dsp_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=hook_ctr.name)
+			else:
+				hook_ctr.custom_shape = self.load_widget("CurvePoint")
 
 			self.hook_bones.append(hook_ctr)
 
@@ -152,16 +189,30 @@ class CloudSplineIKRig(CloudBaseRig):
 			p.handle_right = loc + handle_length * direction
 			p.handle_left  = loc - handle_length * direction
 
-			p.select_control_point = True
-			p.select_left_handle = True
-			p.select_right_handle = True
+			def add_hook(cp, boneinfo, main_handle=False, left_handle=False, right_handle=False):				
+				cp.select_control_point = main_handle
+				cp.select_left_handle = left_handle
+				cp.select_right_handle = right_handle
 
-			# Set active bone
-			hook_b = self.obj.data.bones.get(self.hook_bones[i].name)
-			self.obj.data.bones.active = hook_b
+				# Set active bone
+				bone = self.obj.data.bones.get(boneinfo.name)
+				self.obj.data.bones.active = bone
 
-			# Add hook
-			bpy.ops.object.hook_add_selob(use_bone=True)
+				# Add hook
+				bpy.ops.object.hook_add_selob(use_bone=True)
+				
+				# Deselect
+				cp.select_control_point = False
+				cp.select_left_handle = False
+				cp.select_right_handle = False
+
+			hook_b = self.hook_bones[i]
+			if not self.params.controls_for_handles:
+				add_hook(p, hook_b, main_handle=True, left_handle=True, right_handle=True)
+			else:
+				add_hook(p, hook_b, main_handle=True)
+				add_hook(p, hook_b.left_handle_control, left_handle=True)
+				add_hook(p, hook_b.right_handle_control, right_handle=True)
 
 			# Add radius driver
 			D = p.driver_add("radius")
@@ -178,10 +229,6 @@ class CloudSplineIKRig(CloudBaseRig):
 			var_tgt.transform_type = 'SCALE_X'
 			var_tgt.bone_target = self.hook_bones[i].name
 
-			# Deselect
-			p.select_control_point = False
-			p.select_left_handle = False
-			p.select_right_handle = False
 
 		bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -219,6 +266,11 @@ class CloudSplineIKRig(CloudBaseRig):
 		"""
 		super().add_parameters(params)
 		
+		params.custom_name = StringProperty(
+			name="Custom Name",
+			description="If not empty, use this string for naming the control bones. Otherwise, use the base bone's name.",
+			default=""
+		)
 		params.custom_parent = StringProperty(
 			name="Custom Parent",
 			description="If not empty, parent all hooks except the first one to a bone with this name.",
@@ -259,11 +311,12 @@ class CloudSplineIKRig(CloudBaseRig):
 		"""
 		super().parameters_ui(layout, params)
 
-		layout.prop(params, "segments")
+		layout.prop(params, "custom_name")
+		layout.prop(params, "subdivide_deform")
 		layout.prop(params, "curve_handle_ratio")
 
 		layout.prop(params, "custom_parent")
-		layout.prop(params, "controls_for_handles")	# TODO implement this.
+		layout.prop(params, "controls_for_handles")
 
 		layout.prop(params, "match_controls_to_bones")	# TODO: When this is false, the directions of the curve points and bones don't match, and both of them are unsatisfactory. It would be nice if we would interpolate between the direction of the two bones, using length_remaining/bone.length as a factor, or something similar to that.
 		if not params.match_controls_to_bones:

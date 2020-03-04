@@ -50,6 +50,7 @@ BLACK_BOX = 31
 default_active_layers = [IK_MAIN, IK_SECOND, FK_MAIN, PROPERTIES]	# This is just a set of recommended active layers. Rigs can grab these defaults or use their own.
 
 # Name : Params dictionary.
+# TODO Would be nice if rig elements had their own group_defs instead of relying on a global var.
 group_defs = {
 	'Body: Main FK Controls' : {
 		'normal' : presets['PRESET02'][0],
@@ -114,7 +115,14 @@ group_defs = {
 	'Body: STR-H - Stretch Helpers' : {
 		'layers' : [BODY_MECH]
 	},
+	'Spline IK Hooks' : {
+		'normal' : presets['PRESET04'][0],
+		'select' : presets['PRESET04'][1],
+		'active' : presets['PRESET04'][2],
+		'layers' : [IK_MAIN]
+	},
 }
+
 
 def set_layers(obj, layerlist, additive=False):
 	"""Layer setting function that can take either a list of booleans or a list of ints.

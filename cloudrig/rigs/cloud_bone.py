@@ -1,7 +1,6 @@
 from bpy.props import *
 from rigify.base_rig import BaseRig, stage
 from rigify.utils.bones import BoneDict
-from rigify.rigs.basic.raw_copy import RelinkConstraintsMixin
 from ..definitions.bone import BoneInfoContainer, BoneInfo
 
 # TODO: Implement more parameters.
@@ -9,20 +8,18 @@ from ..definitions.bone import BoneInfoContainer, BoneInfo
 # TODO: When Transforms param is unchecked, move the metabone to the generated bone's transforms during generation.
 # It would be ideal to be able to delete the ORG bone, but life will be a lot easier if we just don't do that.
 
-class CloudBoneRig(BaseRig, RelinkConstraintsMixin):
+class CloudBoneRig(BaseRig):
 	""" A rig type to add or modify a single bone in the generated rig. 
 	For modifying other generated bones, you want to make sure this rig gets executed last. This may require that you don't parent this bone to anything.
 	"""
-	def find_org_bones(self, bone):
-		"""Populate self.bones.org."""
-		return BoneDict(
-			main=[bone.name],
-		)
-	
+	def find_org_bones(self, pose_bone):
+		return pose_bone.name
+
 	def initialize(self):
 		super().initialize()
 		self.defaults={}
 		self.scale=1
+		self.orgless_name = self.bones.org.replace("ORG-", "")
 
 	def copy_constraint(self, from_con, to_bone):
 		new_con = to_bone.constraints.new(from_con.type)
@@ -49,6 +46,23 @@ class CloudBoneRig(BaseRig, RelinkConstraintsMixin):
 		
 		return new_con
 
+	def copy_pose_bone(self, from_bone, to_bone):
+		pass
+
+	@stage.generate_bones
+	def create_copy(self):
+		# Make a copy of the ORG- bone without the ORG- prefix.
+		if not self.params.op_type == "Create": return
+		mod_bone = self.copy_bone(self.bones.org, self.orgless_name, parent=True)
+		
+		# And then we hack our parameters, so future stages just modify this newly created bone :)
+		# Afaik, we only need to worry about pose bone properties, edit_bone stuff is taken care of by self.copy_bone().
+		self.params.op_type='Tweak'
+		self.params.transform_locks = True
+		self.params.rot_mode = True
+		self.params.bone_shape = True
+		self.params.layers = True
+
 	@stage.apply_bones
 	def modify_edit_bone(self):
 		if not self.params.op_type=='Tweak': return
@@ -63,13 +77,27 @@ class CloudBoneRig(BaseRig, RelinkConstraintsMixin):
 			mod_bone.roll = org_bone.roll
 			mod_bone.bbone_x = meta_bone.bbone_x
 			mod_bone.bbone_z = meta_bone.bbone_z
-	
+		
+		parent = self.obj.data.edit_bones.get(self.params.parent)
+		
+		# WHY DOESN'T THIS WORK??? (When does the parent get overwritten after this, to be None?!)
+		if parent:
+			print(mod_bone)
+			print("Trying to set parent for " + mod_bone.name)
+			print("to " + parent.name)
+			print(parent)
+			mod_bone.parent = parent
+			print("did it work? ")
+			print(mod_bone.parent)
+		else:
+			print("Did not find parent for " + mod_bone.name)
+			print("called " + self.params.parent)
+
 	@stage.configure_bones
 	def modify_bone_group(self):
 		if not self.params.op_type=='Tweak': return
-		bone_name = self.base_bone.replace("ORG-", "")
-		mod_bone = self.get_bone(bone_name)
-		meta_bone = self.generator.metarig.pose.bones.get(bone_name)
+		mod_bone = self.get_bone(self.orgless_name)
+		meta_bone = self.generator.metarig.pose.bones.get(self.orgless_name)
 
 		meta_bg = meta_bone.bone_group
 		if self.params.bone_group:
@@ -173,6 +201,11 @@ class CloudBoneRig(BaseRig, RelinkConstraintsMixin):
 		# TODO: We should do a search for P- bones, and have an option to affect those as well
 		#	Better yet, when we create a P- bone for a bone, that bone should store the name of that P- bone in a custom property, so we don't need to do slow searches like this.
 		#	Another idea is to be able to input a list of names that this bone should affect. But I'm not sure if there's a use case good enough for any of these things to bother implementing.
+		params.parent = StringProperty(
+			name="Parent",
+			description="When this is not an empty string, set the parent to the bone with this name.",
+			default=""
+		)
 		params.transforms = BoolProperty(
 			name="Transforms",
 			description="Replace the matching generated bone's transforms with this bone's transforms", # TODO: An idea: when this is False, let the generation script affect the metarig - and move this bone, to where it is in the generated rig.
@@ -241,6 +274,7 @@ class CloudBoneRig(BaseRig, RelinkConstraintsMixin):
 		col1 = row.column()	# Empty column for indent
 		col2 = row.column()
 		if params.op_type=='Tweak':
+			col2.prop(params, "parent")
 			col2.prop(params, "transforms")
 			col2.prop(params, "transform_locks")
 			col2.prop(params, "rot_mode")

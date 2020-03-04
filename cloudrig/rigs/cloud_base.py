@@ -179,7 +179,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		for b in self.obj.data.bones:
 			bi = self.bone_infos.find(b.name)
 			if not bi:
-				print("How come there's no BoneInfo for %s?" %b.name)
+				# print("How come there's no BoneInfo for %s?" %b.name)	# TODO?
 				continue
 			b.bbone_x = bi._bbone_x
 			b.bbone_z = bi._bbone_z

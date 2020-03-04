@@ -247,7 +247,6 @@ class CloudUtilities:
 
 	def create_dsp_bone(self, parent, center=False):
 		"""Create a bone to be used as another control's custom_shape_transform."""
-		if not self.params.display_middle: return   # TODO: This check shouldn't be in this function.
 		dsp_name = "DSP-" + parent.name
 		dsp_bone = self.bone_infos.bone(
 			name = dsp_name, 
