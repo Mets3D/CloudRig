@@ -9,6 +9,9 @@ from ..definitions.driver import *
 from .cloud_base import CloudBaseRig
 from .cloud_utils import make_name, slice_name
 
+# TODO: handle_length_ratio should have an option to be calculated automatically, based on the total chain length and the number of controls.
+# FIXME: When Match Controls to Bones is disabled, the first and last hook's single handles are longer than they should be. No idea why.
+
 class CloudSplineIKRig(CloudBaseRig):
 	"""CloudRig Spline IK chain."""
 
@@ -102,43 +105,60 @@ class CloudSplineIKRig(CloudBaseRig):
 				head = loc,
 				tail = loc + direction*self.scale,
 				parent = next_parent,
-				bone_group = "Spline IK Hooks"
+				bone_group = "Spline IK Hooks",
 			)
+			hook_ctr.left_handle_control = None
+			hook_ctr.right_handle_control = None
 			if self.params.custom_parent != "":
 				next_parent = self.params.custom_parent
 			if self.params.controls_for_handles:
 				hook_ctr.custom_shape = self.load_widget("Circle")
-				
-				handle_left_ctr = self.bone_infos.bone(
-					name		 = "Hook_L_%s_%s" %(hook_name, str(i).zfill(2)),
-					head 		 = hook_ctr.head.copy(),
-					tail 		 = loc - handle_length * direction,
-					bone_group 	 			  = "Spline IK Hooks",
-					parent = hook_ctr,
-					custom_shape 			  = self.load_widget("CurveHandle"),
-				)
-				hook_ctr.left_handle_control = handle_left_ctr
+				handles = []
 
-				handle_right_ctr = self.bone_infos.bone(
-					name 		 = "Hook_R_%s_%s" %(hook_name, str(i).zfill(2)),
-					head 		 = hook_ctr.head.copy(),
-					tail 		 = loc + handle_length * direction,
-					bone_group 	 = "Spline IK Hooks",
-					parent 		 = hook_ctr,
-					custom_shape = self.load_widget("CurveHandle"),
-				)
-				hook_ctr.right_handle_control = handle_right_ctr
+				if i > 0:				# Skip for first hook.
+					handle_left_ctr = self.bone_infos.bone(
+						name		 = "Hook_L_%s_%s" %(hook_name, str(i).zfill(2)),
+						head 		 = hook_ctr.head.copy(),
+						tail 		 = loc - handle_length * direction,
+						bone_group 	 = "Spline IK Handles",
+						parent 		 = hook_ctr,
+						custom_shape = self.load_widget("CurveHandle"),
+					)
+					hook_ctr.left_handle_control = handle_left_ctr
+					handles.append(handle_left_ctr)
 
-				for handle in [handle_left_ctr, handle_right_ctr]:
-					dsp_bone = self.create_dsp_bone(handle)
-					dsp_bone.head = handle.tail.copy()
-					dsp_bone.tail = handle.head.copy()
-					
+				if i < num_controls-1:	# Skip for last hook.
+					handle_right_ctr = self.bone_infos.bone(
+						name 		 = "Hook_R_%s_%s" %(hook_name, str(i).zfill(2)),
+						head 		 = hook_ctr.head.copy(),
+						tail 		 = loc + handle_length * direction,
+						bone_group 	 = "Spline IK Handles",
+						parent 		 = hook_ctr,
+						custom_shape = self.load_widget("CurveHandle"),
+					)
+					hook_ctr.right_handle_control = handle_right_ctr
+					handles.append(handle_right_ctr)
+
+				for handle in handles:
 					handle.custom_shape_scale 		  = 1,
 					handle.use_custom_shape_bone_size = True
+					if self.params.rotatable_handles:
+						dsp_bone = self.create_dsp_bone(handle)
+						dsp_bone.head = handle.tail.copy()
+						dsp_bone.tail = handle.head.copy()
 
-					dsp_bone.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=hook_ctr.name)
-					dsp_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=hook_ctr.name)
+						dsp_bone.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=hook_ctr.name)
+						dsp_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=hook_ctr.name)
+					else:
+						head = handle.head.copy()
+						handle.head = handle.tail.copy()
+						handle.tail = head
+
+						self.lock_transforms(handle, loc=False)
+
+						handle.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=hook_ctr.name)
+						handle.add_constraint(self.obj, 'STRETCH_TO', subtarget=hook_ctr.name)
+
 			else:
 				hook_ctr.custom_shape = self.load_widget("CurvePoint")
 
@@ -190,6 +210,7 @@ class CloudSplineIKRig(CloudBaseRig):
 			p.handle_left  = loc - handle_length * direction
 
 			def add_hook(cp, boneinfo, main_handle=False, left_handle=False, right_handle=False):				
+				if not boneinfo: return
 				cp.select_control_point = main_handle
 				cp.select_left_handle = left_handle
 				cp.select_right_handle = right_handle
@@ -286,6 +307,11 @@ class CloudSplineIKRig(CloudBaseRig):
 			description="For every curve point control, create two children that control the handles of that curve point.",
 			default=False
 		)
+		params.rotatable_handles = BoolProperty(
+			name="Rotatable Handles",
+			description="Use a setup which allows handles to be rotated and scaled - Will behave oddly when rotation is done after translation.",
+			default=False
+		)
 		params.curve_handle_ratio = FloatProperty(
 			name="Curve Handle Length Ratio",
 			description="Increasing this will result in shorter curve handles, resulting in a sharper curve.",
@@ -300,7 +326,7 @@ class CloudSplineIKRig(CloudBaseRig):
 		)
 		params.subdivide_deform = IntProperty(
 			name="Subdivide bones",
-			description="For each original bone, create this many deform bones in the spline chain",
+			description="For each original bone, create this many deform bones in the spline chain (Bendy Bones do not work well with Spline IK, so we create real bones)",
 			default=3,
 			min=3
 		)
@@ -317,6 +343,8 @@ class CloudSplineIKRig(CloudBaseRig):
 
 		layout.prop(params, "custom_parent")
 		layout.prop(params, "controls_for_handles")
+		if params.controls_for_handles:
+			layout.prop(params, "rotatable_handles")
 
 		layout.prop(params, "match_controls_to_bones")	# TODO: When this is false, the directions of the curve points and bones don't match, and both of them are unsatisfactory. It would be nice if we would interpolate between the direction of the two bones, using length_remaining/bone.length as a factor, or something similar to that.
 		if not params.match_controls_to_bones:

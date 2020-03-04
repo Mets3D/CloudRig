@@ -116,9 +116,15 @@ group_defs = {
 		'layers' : [BODY_MECH]
 	},
 	'Spline IK Hooks' : {
-		'normal' : presets['PRESET04'][0],
-		'select' : presets['PRESET04'][1],
-		'active' : presets['PRESET04'][2],
+		'normal' : presets['PRESET01'][0],
+		'select' : presets['PRESET01'][1],
+		'active' : presets['PRESET01'][2],
+		'layers' : [IK_MAIN]
+	},
+	'Spline IK Handles' : {
+		'normal' : presets['PRESET09'][0],
+		'select' : presets['PRESET09'][1],
+		'active' : presets['PRESET09'][2],
 		'layers' : [IK_MAIN]
 	},
 }
