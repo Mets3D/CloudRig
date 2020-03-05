@@ -147,6 +147,8 @@ class CloudSplineIKRig(CloudBaseRig):
 						dsp_bone.head = handle.tail.copy()
 						dsp_bone.tail = handle.head.copy()
 
+						self.lock_transforms(handle, loc=False, rot=False, scale=[True, False, True])
+
 						dsp_bone.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=hook_ctr.name)
 						dsp_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=hook_ctr.name)
 					else:
