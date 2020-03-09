@@ -29,7 +29,7 @@ class CloudChainRig(CloudBaseRig):
 		Let's call the first SKP for Shape Key Helper Parent. 
 			This copies the transforms of the end of the first def bone's bbone spline. What this bone is parented to doesn't really matter.
 		Let's call the second SKH for Shape Key Helper.
-			This is parented to the first def bone, but copies the transforms of the start of second deform bone's bbone spline.
+			This is parented to SKP, but copies the transforms of the start of second deform bone's bbone spline.
 		The goal is that when we read the local rotation of the SKH bone, we get an accurate representation of how much rotation is happening in this joint - Even when using the toon controls to deform the character in crazy ways.
 		"""
 
