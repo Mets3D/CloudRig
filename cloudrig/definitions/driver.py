@@ -44,20 +44,6 @@ class Driver(ID):
 			new.variables.append(var.clone())
 		return new
 
-	@staticmethod
-	def copy_drivers(obj_from, obj_to):
-		"""Copy all drivers from one object to another."""
-		if not obj_from.animation_data: return
-
-		for d in obj_from.animation_data.drivers:
-			copy_driver(d, obj_to, d.data_path, d.array_index)
-
-	@staticmethod
-	def copy_driver(BPY_driver, obj, data_path, index=-1):
-		"""Copy a driver to some other data path."""
-		driver = Driver(BPY_driver)
-		driver.make_real(obj, data_path, index)
-
 	# TODO: Isn't this redundant? I think there's a builtin find() function for this.
 	@staticmethod
 	def get_driver_by_data_path(obj, data_path):
@@ -89,7 +75,12 @@ class Driver(ID):
 		"""Add this driver to a property."""
 		assert hasattr(target, "driver_add"), "Target does not have driver_add(): " + str(target)
 		driver_removed = target.driver_remove(data_path, index)
-		BPY_fcurve = target.driver_add(data_path, index)
+		# index 0 is not allowed to be passed...
+		BPY_fcurve = None
+		if index == 0:
+			BPY_fcurve = target.driver_add(data_path)
+		else:
+			BPY_fcurve = target.driver_add(data_path, index)
 		self.last_data_path = BPY_fcurve.data_path
 		BPY_driver = BPY_fcurve.driver
 
@@ -172,3 +163,19 @@ class DriverVariableTarget(ID):
 
 	def __str__(self):
 		return "DriverVariableTarget " + str(self.id) + " " + self.bone_target + " " + self.transform_type
+
+
+def copy_drivers(obj_from, obj_to):
+	"""Copy all drivers from one object to another."""
+	if not obj_from.animation_data: return
+
+	# TODO: I guess we would also expect to copy things that are stored in obj_from.data to obj_to.data.
+	for d in obj_from.animation_data.drivers:
+		copy_driver(d, obj_to, d.data_path, d.array_index)
+	for d in obj_from.data.animation_data.drivers:
+		copy_driver(d, obj_to.data, d.data_path, d.array_index)
+
+def copy_driver(BPY_driver, obj, data_path, index=-1):
+	"""Copy a driver to some other data path."""
+	driver = Driver(BPY_driver)
+	driver.make_real(obj, data_path, index)

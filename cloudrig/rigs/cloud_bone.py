@@ -2,6 +2,7 @@ from bpy.props import *
 from rigify.base_rig import BaseRig, stage
 from rigify.utils.bones import BoneDict
 from ..definitions.bone import BoneInfoContainer, BoneInfo
+from ..definitions.driver import Driver
 
 # TODO: Implement more parameters.
 # TODO: Implement constraint re-targetting(take code and conventions from Rigify where ideal)
@@ -160,7 +161,37 @@ class CloudBoneRig(BaseRig):
 				continue
 			new_con.target = self.obj
 			new_con.subtarget = subtargets[0]
-			new_con.name = split_name[0]			
+			new_con.name = split_name[0]
+		
+		self.copy_and_retarget_drivers(mod_bone)
+
+	def copy_and_retarget_driver(self, BPY_driver, obj, data_path, index=-1):
+		"""Copy a driver to some other data path."""
+		driver = Driver(BPY_driver)
+		data_path = BPY_driver.data_path
+		if 'constraints' in data_path:
+			org_con_name = data_path.split('constraints["')[-1].split('"]')[0]	# Oh, it's magnificent.
+			new_con_name = org_con_name.split("@")[0]
+			data_path = data_path.replace(org_con_name, new_con_name)
+		for var in driver.variables:
+			for t in var.targets:
+				if t.id == self.generator.metarig:
+					t.id = self.obj
+		driver.make_real(obj, data_path, index)
+
+	def copy_and_retarget_drivers(self, bone):
+		metarig = self.generator.metarig
+		rig = self.obj
+		if not metarig.animation_data: return
+
+		for d in metarig.animation_data.drivers:
+			if bone.name in d.data_path:
+				self.copy_and_retarget_driver(d, rig, d.data_path, d.array_index)
+		
+		if not metarig.data.animation_data: return
+		for d in metarig.data.animation_data.drivers:
+			if bone.name in d.data_path:
+				self.copy_and_retarget_driver(d, rig.data, d.data_path, d.array_index)
 
 	##############################
 	# Parameters
