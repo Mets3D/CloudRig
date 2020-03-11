@@ -257,6 +257,7 @@ class CloudUtilities:
 			parent = parent,
 			bone_group = 'DSP - Display Transform Helpers'
 		)
+		parent.dsp_bone = dsp_bone
 		if center:
 			dsp_bone.put(parent.center, scale_length=0.3, scale_width=1.5)
 		parent.custom_shape_transform = dsp_bone

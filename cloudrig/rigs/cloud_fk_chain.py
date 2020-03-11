@@ -37,7 +37,7 @@ class CloudFKChainRig(CloudChainRig):
 			if self.params.counter_rotate_str:
 				str_bone = self.main_str_bones[i]
 				str_bone.add_constraint(self.obj, 'TRANSFORM',
-				subtarget = fk_bone.name,
+				subtarget = fk_bone.name,	# TODO: Shouldn't this be targetting an ORG- bone instead of an FK- bone?
 				map_from = 'ROTATION', map_to='ROTATION',
 				use_motion_extrapolate = True,
 				from_max_x_rot = 1, from_max_y_rot = 1, from_max_z_rot = 1,
@@ -80,6 +80,9 @@ class CloudFKChainRig(CloudChainRig):
 		""" Create the ui for the rig parameters.
 		"""
 		super().parameters_ui(layout, params)
+
+		layout.label(text="FK Chain Settings")
+		layout = layout.box()
 
 		layout.prop(params, "counter_rotate_str")
 		layout.prop(params, "center_all_fk")

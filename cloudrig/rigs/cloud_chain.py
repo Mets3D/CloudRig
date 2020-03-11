@@ -293,6 +293,9 @@ class CloudChainRig(CloudBaseRig):
 		"""
 		super().parameters_ui(layout, params)
 
+		layout.label(text="Stretchy Chain Settings")
+		layout = layout.box()
+
 		layout.prop(params, "deform_segments")
 		layout.prop(params, "bbone_segments")
 		layout.prop(params, "shape_key_helpers")

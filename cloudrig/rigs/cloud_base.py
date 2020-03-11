@@ -246,6 +246,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	def parameters_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
+		layout.label(text="CloudRig Settings")
+		layout = layout.box()
 		layout.prop(params, "display_scale")
 
 # For testing purposes
