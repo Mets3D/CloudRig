@@ -188,12 +188,17 @@ class BoneInfo(ID):
 		self.use_inherit_rotation = True
 		self.use_inherit_scale = True
 		self.use_local_location = True
-		self.use_envelope_multiply = False
 		self.use_relative_parent = False
 		self.lock_location = [False, False, False]
 		self.lock_rotation = [False, False, False]
 		self.lock_rotation_w = False
 		self.lock_scale = [False, False, False]
+
+		self.envelope_distance = 0.25
+		self.envelope_weight = 1.0
+		self.use_envelope_multiply = False
+		self.head_radius = 0.1
+		self.tail_radius = 0.1
 
 		self.custom_shape_transform = None # Bone name
 		
@@ -205,6 +210,11 @@ class BoneInfo(ID):
 			self.head = copy.copy(source.head)
 			self.tail = copy.copy(source.tail)
 			self.roll = source.roll
+			self.envelope_distance = source.envelope_distance
+			self.envelope_weight = source.envelope_weight
+			self.use_envelope_multiply = source.use_envelope_multiply
+			self.head_radius = source.head_radius
+			self.tail_radius = source.tail_radius
 			if type(source)==BoneInfo:
 				self.bbone_width = source.bbone_width
 			else:
@@ -231,6 +241,9 @@ class BoneInfo(ID):
 	def bbone_width(self, value):
 		self._bbone_x = value * self.container.scale
 		self._bbone_z = value * self.container.scale
+		self.envelope_distance = value * self.container.scale
+		self.head_radius = value * self.container.scale
+		self.tail_radius = value * self.container.scale
 
 	@property
 	def vec(self):
