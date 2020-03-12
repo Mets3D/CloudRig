@@ -3,6 +3,7 @@ from rigify.base_rig import BaseRig, stage
 from rigify.utils.bones import BoneDict
 from ..definitions.bone import BoneInfoContainer, BoneInfo
 from ..definitions.driver import Driver
+from ..definitions import custom_props
 
 # TODO: Implement more parameters.
 # TODO: Implement constraint re-targetting(take code and conventions from Rigify where ideal)
@@ -163,10 +164,16 @@ class CloudBoneRig(BaseRig):
 			new_con.subtarget = subtargets[0]
 			new_con.name = split_name[0]
 		
+		# Copy custom properties
+		if '_RNA_UI' in meta_bone.keys():
+			keys = [k for k in meta_bone.keys() if k not in ['_RNA_UI', 'rigify_parameters', 'rigify_type']]
+			custom_props.copy_custom_properties(meta_bone, keys, mod_bone)
+
+		# Copy and retarget drivers
 		self.copy_and_retarget_drivers(mod_bone)
 
 	def copy_and_retarget_driver(self, BPY_driver, obj, data_path, index=-1):
-		"""Copy a driver to some other data path."""
+		"""Copy a driver to some other data path, while accounting for any constraint retargetting."""
 		driver = Driver(BPY_driver)
 		data_path = BPY_driver.data_path
 		if 'constraints' in data_path:
@@ -180,6 +187,7 @@ class CloudBoneRig(BaseRig):
 		driver.make_real(obj, data_path, index)
 
 	def copy_and_retarget_drivers(self, bone):
+		"""Copy and retarget drivers from both the metarig Object and the metarig Data."""
 		metarig = self.generator.metarig
 		rig = self.obj
 		if not metarig.animation_data: return
