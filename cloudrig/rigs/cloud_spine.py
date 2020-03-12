@@ -103,7 +103,7 @@ class Rig(CloudChainRig):
 			prop_bone = self.prop_bone,
 			prop_name = "fk_hinge_head",
 			limb_name = "Head",
-			default_value = 0.0,
+			default_value = 1.0,
 			head_tail = 1
 		)
 
@@ -119,7 +119,7 @@ class Rig(CloudChainRig):
 				custom_shape 		= self.load_widget("Chest_Master"),
 				custom_shape_scale 	= 0.7,
 				parent				= self.mstr_torso,
-				bone_group = "Body: Main IK Controls"
+				bone_group 			= "Body: Main IK Controls"
 			)
 		self.register_parent(self.mstr_chest, "Chest")
 
@@ -136,7 +136,7 @@ class Rig(CloudChainRig):
 				custom_shape 		= self.load_widget("Hips"),
 				custom_shape_scale 	= 0.7,
 				parent				= self.mstr_torso,
-				bone_group = "Body: Main IK Controls"
+				bone_group 			= "Body: Main IK Controls"
 		)
 		self.mstr_hips.flatten()
 		self.register_parent(self.mstr_hips, "Hips")
@@ -148,9 +148,7 @@ class Rig(CloudChainRig):
 				name				= ik_ctr_name, 
 				source				= fk_bone,
 				custom_shape 		= self.load_widget("Oval"),
-				# custom_shape_scale 	= 0.9 * fk_bone.custom_shape_scale,
-				# parent				= next_parent,
-				bone_group = "Body: IK - Secondary IK Controls"
+				bone_group 			= "Body: IK - Secondary IK Controls"
 			)
 			if i > len(self.fk_chain)-5:
 				ik_ctr_bone.parent = self.mstr_chest
@@ -195,11 +193,12 @@ class Rig(CloudChainRig):
 			next_parent = ik_bone
 			
 			if i > 0:
-				influence_unit = 0.5   #1 / (len(self.fk_chain) - 3)	# Minus three because there are no IK bones for the head and neck, and no stretchy constraint on the first IK spine bone.
+				influence_unit = 0.5   #1 / (len(self.fk_chain) - 3)	# Minus three because there are no IK bones for the head and neck, and no stretchy constraint on the first IK spine bone. TODO: Allow arbitrary spine length.
 				influence = influence_unit * i
 				# IK Stretch Copy Location
+				con_name = "Copy Location (Stretchy Spine)"
 				ik_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True,
-					name = "Copy Location (Stretchy Spine)",
+					name = con_name,
 					target = self.obj,
 					subtarget = self.ik_r_chain[i-2].name,
 					head_tail = 1,
@@ -212,7 +211,7 @@ class Rig(CloudChainRig):
 				var.targets[0].id = self.obj
 				var.targets[0].data_path = 'pose.bones["%s"]["%s"]' %(self.prop_bone.name, self.ik_stretch_name)
 
-				data_path = 'constraints["Copy Location (Stretchy Spine)"].influence'
+				data_path = f'constraints["{con_name}"].influence'
 				ik_bone.drivers[data_path] = drv
 
 				ik_bone.add_constraint(self.obj, 'COPY_ROTATION', true_defaults=True,
@@ -239,8 +238,9 @@ class Rig(CloudChainRig):
 		# Attach FK to IK
 		for i, ik_bone in enumerate(self.ik_chain[1:]):
 			fk_bone = self.fk_chain[i]
+			con_name = "Copy Transforms IK"
 			fk_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True,
-				name = "Copy Transforms IK",
+				name = con_name,
 				target = self.obj,
 				subtarget = ik_bone.name
 			)
@@ -252,7 +252,7 @@ class Rig(CloudChainRig):
 			var.targets[0].id = self.obj
 			var.targets[0].data_path = 'pose.bones["%s"]["%s"]' %(self.prop_bone.name, self.ik_prop_name)
 
-			data_path = 'constraints["Copy Transforms IK"].influence'
+			data_path = f'constraints["{con_name}"].influence'
 			fk_bone.drivers[data_path] = drv
 		
 		# Store info for UI
@@ -269,7 +269,7 @@ class Rig(CloudChainRig):
 		self.store_ui_data("ik_switches", "spine", "Spine", info)
 
 		# Create custom properties
-		self.prop_bone.custom_props[self.ik_prop_name] = CustomProp(self.ik_prop_name, default=1.0)
+		self.prop_bone.custom_props[self.ik_prop_name] = CustomProp(self.ik_prop_name, default=0.0)
 		self.prop_bone.custom_props[self.ik_stretch_name] = CustomProp(self.ik_stretch_name, default=1.0)
 
 	@stage.prepare_bones

@@ -371,7 +371,8 @@ class Rig(CloudFKChainRig):
 			"ik_control"			: self.ik_mstr.name
 		}
 		self.store_ui_data("ik_switches", self.category, self.limb_name, info)
-		self.prop_bone.custom_props[self.ikfk_name] = CustomProp(self.ikfk_name, default=1.0)
+		default = 1.0 if self.params.cloud_limb_type == 'LEG' else 0.0
+		self.prop_bone.custom_props[self.ikfk_name] = CustomProp(self.ikfk_name, default=default)
 
 	def first_str_counterrotate_setup(self, str_bone, org_bone, factor):
 		str_bone.add_constraint(self.obj, 'TRANSFORM',
