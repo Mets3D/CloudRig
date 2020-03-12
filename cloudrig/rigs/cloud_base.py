@@ -38,9 +38,12 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 		# Determine rig scale by armature height.
 		self.scale = self.obj.dimensions[2]/10	# TODO: This has bad effect when the generated rig already has scale. Either use metarig for setting self.scale, or reset self.obj scale, or both.
+												# It also works badly for flat rigs. Should grab longest dimension instead of always Z axis.
 		# Slap user-provided multiplier on top.
 		self.display_scale = self.params.display_scale * self.scale
 
+		self.mch_disable_select = False	# TODO: In future, this could be exposed as a parameter, but I wish it could be a generator parameter instead of a per-rig parametere.
+	
 		self.side_suffix = ""
 		self.side_prefix = ""
 		base_bone_name = self.slice_name(self.base_bone)
@@ -101,7 +104,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		# If no layers are protected, protect all layers. Otherwise, we assume protected layers were set up manually in a previously generated rig, so we don't touch them.
 		if list(self.obj.data.layers_protected) == [False]*32:
 			self.obj.data.layers_protected = [True]*32
-	
+		
 	@stage.prepare_bones
 	def load_org_bones(self):
 		# Load ORG bones into BoneInfo instances.
@@ -110,7 +113,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		for bn in self.bones.org.main:
 			eb = self.get_bone(bn)
 			eb.use_connect = False
-			org_bi = self.bone_infos.bone(bn, eb, self.obj)
+			org_bi = self.bone_infos.bone(bn, eb, self.obj, hide_select=self.mch_disable_select)
 			
 			# Rigify discards the bbone scale values from the metarig, but I'd like to keep them for easy visual scaling.
 			meta_org_name = eb.name.replace("ORG-", "")

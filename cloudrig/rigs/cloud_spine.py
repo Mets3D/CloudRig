@@ -168,7 +168,8 @@ class Rig(CloudChainRig):
 				source 		= fk_bone,
 				tail 		= self.fk_chain[-i+1].head,
 				parent		= next_parent,
-				bone_group = 'Body: IK-MCH - IK Mechanism Bones'
+				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
+				hide_select	= self.mch_disable_select
 			)
 			next_parent = ik_r_bone
 			self.ik_r_chain.append(ik_r_bone)
@@ -187,7 +188,8 @@ class Rig(CloudChainRig):
 				head = copy.copy(self.fk_chain[i-1].head) if i>0 else copy.copy(self.def_bones[0].head),
 				tail = fk_bone.head,
 				parent = next_parent,
-				bone_group = 'Body: IK-MCH - IK Mechanism Bones'
+				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
+				hide_select	= self.mch_disable_select
 			)
 			self.ik_chain.append(ik_bone)
 			next_parent = ik_bone

@@ -172,6 +172,7 @@ class Rig(CloudFKChainRig):
 			use_custom_shape_bone_size = True,
 			parent = pole_ctrl,
 			bone_group = 'Body: Main IK Controls',
+			hide_select = True
 		)
 		pole_line.add_constraint(self.obj, 'STRETCH_TO', 
 			subtarget = first_bone.name, 
@@ -186,7 +187,6 @@ class Rig(CloudFKChainRig):
 		var.targets[0].data_path = 'bones["%s"].hide' %pole_ctrl.name
 
 		pole_line.bone_drivers['hide'] = drv
-		pole_line.hide_select=True
 		
 		pole_dsp = self.create_dsp_bone(pole_ctrl)
 
@@ -237,6 +237,7 @@ class Rig(CloudFKChainRig):
 			ik_bone = self.bone_infos.bone(ik_name, org_bone, 
 				#ik_stretch = 0.1,
 				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
+				hide_select = self.mch_disable_select
 			)
 			ik_chain.append(ik_bone)
 			
@@ -255,7 +256,8 @@ class Rig(CloudFKChainRig):
 						name = bn.replace("ORG", "IK-TGT"),
 						source = org_bone,
 						bone_group = 'Body: IK-MCH - IK Mechanism Bones',
-						parent = self.ik_mstr
+						parent = self.ik_mstr,
+						hide_select = self.mch_disable_select
 					)
 				else:
 					self.ik_tgt_bone = ik_bone
@@ -274,7 +276,8 @@ class Rig(CloudFKChainRig):
 			source = self.get_bone(chain[0]),
 			tail = copy.copy(self.ik_mstr.head),
 			parent = self.limb_root_bone.name,
-			bone_group = 'Body: IK-MCH - IK Mechanism Bones'
+			bone_group = 'Body: IK-MCH - IK Mechanism Bones',
+			hide_select = self.mch_disable_select
 		)
 		str_bone.scale_width(0.4)
 
@@ -291,7 +294,8 @@ class Rig(CloudFKChainRig):
 			name = str_tgt_name, 
 			source = org_chain[2], 
 			parent = self.ik_mstr,
-			bone_group = 'Body: IK-MCH - IK Mechanism Bones'
+			bone_group = 'Body: IK-MCH - IK Mechanism Bones',
+			hide_select = self.mch_disable_select
 		)
 
 		arm_length = ik_chain[0].length + ik_chain[1].length
@@ -463,28 +467,29 @@ class Rig(CloudFKChainRig):
 			# Create bone to use as pivot point when rolling back. This is read from the metarig and should be placed at the heel of the shoe, pointing forward.
 			ankle_pivot_name = self.params.ankle_pivot_bone
 			if ankle_pivot_name=="":
-				ankle_pivot_name = "AnklePivot.{self.side_suffix}"
-			ankle_pivot = self.generator.metarig.data.bones.get(ankle_pivot_name)
-			assert ankle_pivot, "ERROR: Could not find AnklePivot bone in the metarig."
+				ankle_pivot_name = "AnklePivot." + self.side_suffix
+			meta_ankle_pivot = self.generator.metarig.data.bones.get(ankle_pivot_name)
+			assert meta_ankle_pivot, "ERROR: Could not find AnklePivot bone in the metarig: %s." %ankle_pivot_name
 			
 			# I want to be able to customize the shape size of the foot controls from the metarig, via ankle pivot bone bbone scale.
-			self.ik_mstr._bbone_x = ankle_pivot.bbone_x
-			self.ik_mstr._bbone_z = ankle_pivot.bbone_z
+			self.ik_mstr._bbone_x = meta_ankle_pivot.bbone_x
+			self.ik_mstr._bbone_z = meta_ankle_pivot.bbone_z
 			if self.params.double_ik_control:
-				self.ik_mstr.parent._bbone_x = ankle_pivot.bbone_x
-				self.ik_mstr.parent._bbone_z = ankle_pivot.bbone_z
+				self.ik_mstr.parent._bbone_x = meta_ankle_pivot.bbone_x
+				self.ik_mstr.parent._bbone_z = meta_ankle_pivot.bbone_z
 
-			ankle_pivot_ctrl = self.bone_infos.bone(
+			ankle_pivot = self.bone_infos.bone(
 				name = "IK-RollBack." + self.side_suffix,
 				bbone_width = self.org_chain[-1].bbone_width,
-				head = ankle_pivot.head_local,
-				tail = ankle_pivot.tail_local,
+				head = meta_ankle_pivot.head_local,
+				tail = meta_ankle_pivot.tail_local,
 				roll = pi,
 				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
-				parent = ik_tgt
+				parent = ik_tgt,
+				hide_select = self.mch_disable_select
 			)
 
-			ankle_pivot_ctrl.add_constraint(self.obj, 'TRANSFORM',
+			ankle_pivot.add_constraint(self.obj, 'TRANSFORM',
 				subtarget = roll_ctrl.name,
 				map_from = 'ROTATION',
 				map_to = 'ROTATION',
@@ -502,8 +507,9 @@ class Rig(CloudFKChainRig):
 					head = b.tail.copy(),
 					tail = b.head.copy(),
 					roll = 0,
-					parent = ankle_pivot_ctrl,
-					bone_group = 'Body: IK-MCH - IK Mechanism Bones'
+					parent = ankle_pivot,
+					bone_group = 'Body: IK-MCH - IK Mechanism Bones',
+					hide_select = self.mch_disable_select
 				)
 				rik_chain.append(rik_bone)
 				ik_chain[i].parent = rik_bone
@@ -700,7 +706,7 @@ class Rig(CloudFKChainRig):
 		params.use_limb_name = BoolProperty(
 			name="Custom Limb Name", 
 			default=False, 
-			description='Specify a name for this limb - There can be exactly two limbs with the same name, a Left and a Right one. This name should NOT include a side indicator such as "Left" or "Right" '
+			description='Specify a name for this limb - There can be exactly two limbs with the same name, a Left and a Right one. This name should NOT include a side indicator such as "Left" or "Right". Limbs with the same name will be displayed on the same row'
 		)
 		params.limb_name = StringProperty(default="Left Arm")
 		params.cloud_limb_type = EnumProperty(name="Type",

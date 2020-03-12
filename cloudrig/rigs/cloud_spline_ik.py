@@ -77,6 +77,7 @@ class CloudSplineIKRig(CloudBaseRig):
 					head = org_bone.head + (unit * i),
 					tail = org_bone.head + (unit * (i+1)),
 					roll = org_bone.roll,
+					hide_select	= self.mch_disable_select
 				)
 
 				if len(self.def_bones) > 0:

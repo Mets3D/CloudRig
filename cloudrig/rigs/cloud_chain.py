@@ -39,7 +39,8 @@ class CloudChainRig(CloudBaseRig):
 			tail = def_bone_1.tail + def_bone_1.vec,
 			bone_group = "SKH/SKP - Shape Key Helper Bones",
 			parent = def_bone_1,
-			bbone_width = 0.05
+			bbone_width = 0.05,
+			hide_select = self.mch_disable_select
 		)
 		skp_bone.scale_length(0.3)
 		skp_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=def_bone_1.name, use_bbone_shape=True, head_tail=1)
@@ -50,7 +51,8 @@ class CloudChainRig(CloudBaseRig):
 			tail = def_bone_2.tail.copy(),
 			bone_group = "SKH/SKP - Shape Key Helper Bones",
 			parent = skp_bone,
-			bbone_width = 0.03
+			bbone_width = 0.03,
+			hide_select = self.mch_disable_select
 		)
 		skh_bone.scale_length(0.4)
 		skh_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=def_bone_2.name, use_bbone_shape=True, head_tail=0)
@@ -99,6 +101,7 @@ class CloudChainRig(CloudBaseRig):
 					bbone_handle_type_end = 'TANGENT',
 					bbone_segments = bbone_segments,
 					inherit_scale = 'NONE',
+					hide_select = self.mch_disable_select
 				)
 				self.def_bones.append(def_bone)
 			
@@ -180,7 +183,8 @@ class CloudChainRig(CloudBaseRig):
 					source = str_bone,
 					bbone_width = 1/10,
 					bone_group = 'Body: STR-H - Stretch Helpers',
-					parent = str_bone.parent
+					parent = str_bone.parent,
+					hide_select = self.mch_disable_select
 				)
 				main_str_bone.sub_bones.append(str_bone)
 				str_bone.parent = str_h_bone

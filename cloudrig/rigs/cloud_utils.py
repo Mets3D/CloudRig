@@ -6,6 +6,7 @@ from ..definitions.custom_props import CustomProp
 
 class CloudUtilities:
 	# Utility functions that probably won't be overriden by a sub-class because they perform a very specific task.
+	# If a class inherits this class, it's also expected to inherit CloudBaseRig - These are only split up for organizational purposes.
 
 	def store_ui_data(self, switch_type, category, bodypart, info):
 		""" Store some data in the rig, to be used by the UI script.
@@ -56,6 +57,7 @@ class CloudUtilities:
 			name			= hng_name,
 			source			= bone, 
 			bone_group 		= 'Body: FK Helper Bones',
+			hide_select		= self.mch_disable_select
 		)
 
 		# Hinge Armature constraint
@@ -239,7 +241,8 @@ class CloudUtilities:
 			custom_shape = child.custom_shape,
 			custom_shape_scale = child.custom_shape_scale*1.1,
 			bone_group = child.bone_group,
-			parent = child.parent
+			parent = child.parent,
+			hide_select	= self.mch_disable_select
 		)
 
 		child.parent = parent_bone
@@ -255,7 +258,8 @@ class CloudUtilities:
 			only_transform = True,
 			custom_shape = None, 
 			parent = parent,
-			bone_group = 'DSP - Display Transform Helpers'
+			bone_group = 'DSP - Display Transform Helpers',
+			hide_select	= self.mch_disable_select
 		)
 		parent.dsp_bone = dsp_bone
 		if center:
