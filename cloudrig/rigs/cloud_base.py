@@ -89,8 +89,9 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			custom_shape_scale = 1.5
 		)
 		self.register_parent(self.root_bone, "Root")
-		self.root_parent = self.create_parent_bone(self.root_bone)
-		self.root_parent.bone_group = 'Body: Main IK Controls Extra Parents'
+		if self.params.double_root:
+			self.root_parent = self.create_parent_bone(self.root_bone)
+			self.root_parent.bone_group = 'Body: Main IK Controls Extra Parents'
 
 		for k in self.obj.data.keys():
 			if k in ['_RNA_UI', 'rig_id']: continue
@@ -237,6 +238,12 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
 		"""
+		# TODO: This should be generator parameter.
+		params.double_root = BoolProperty(
+			name="Double Root",
+			description="Create two root bones for this rig. Note: If any other rig element on this metarig has this set to True, the second root bone will be created",
+			default=True
+		)
 		params.display_scale = FloatProperty(
 			name="Display Scale",
 			description="Scale Bone Display Sizes",
@@ -252,6 +259,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		layout.label(text="CloudRig Settings")
 		layout = layout.box()
 		layout.prop(params, "display_scale")
+		layout.prop(params, "double_root")
 
 # For testing purposes
 # class Rig(CloudBaseRig):

@@ -110,8 +110,8 @@ class CloudSplineIKRig(CloudBaseRig):
 			)
 			hook_ctr.left_handle_control = None
 			hook_ctr.right_handle_control = None
-			if self.params.custom_parent != "":
-				next_parent = self.params.custom_parent
+			if self.params.custom_hook_parent != "":
+				next_parent = self.params.custom_hook_parent
 			if self.params.controls_for_handles:
 				hook_ctr.custom_shape = self.load_widget("Circle")
 				handles = []
@@ -295,7 +295,7 @@ class CloudSplineIKRig(CloudBaseRig):
 			description="If not empty, use this string for naming the control bones. Otherwise, use the base bone's name.",
 			default=""
 		)
-		params.custom_parent = StringProperty(
+		params.custom_hook_parent = StringProperty(
 			name="Custom Parent",
 			description="If not empty, parent all hooks except the first one to a bone with this name.",
 			default=""

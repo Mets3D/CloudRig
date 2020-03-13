@@ -21,7 +21,7 @@ class Rig(CloudChainRig):
 		self.ik_stretch_name = "ik_stretch_spine"
 
 	def get_segments(self, org_i, chain):
-		"""Calculate how many segments should be in a section of the chain."""
+		"""Determine how many deform segments should be in a section of the chain."""
 		segments = self.params.deform_segments
 		bbone_segments = self.params.bbone_segments
 		
@@ -33,8 +33,6 @@ class Rig(CloudChainRig):
 	@stage.prepare_bones
 	def prepare_fk_spine(self):
 		# Create Troso Master control
-		# TODO/NOTE: The pelvis can be placed arbitrarily, but there's no good way currently to do this from the metarig.
-		# To be fair, the more customizability we add to the metarig, the less it becomes a metarig...
 		self.mstr_torso = self.bone_infos.bone(
 			name 					= "MSTR-Torso",
 			source 					= self.org_chain[0],
@@ -42,6 +40,18 @@ class Rig(CloudChainRig):
 			# tail 					= self.org_chain[0].center + Vector((0, 0, self.scale)),
 			custom_shape 			= self.load_widget("Torso_Master"),
 			bone_group 				= 'Body: Main IK Controls',
+		)
+
+		# Create master (reverse) hip control
+		self.mstr_hips = self.bone_infos.bone(
+				name				= "MSTR-Hips",
+				source				= self.org_chain[0],
+				head				= self.org_chain[0].center,
+				# tail 				= self.org_chain[0].center + Vector((0, 0, -self.scale)),
+				custom_shape 		= self.load_widget("Hips"),
+				custom_shape_scale 	= 0.7,
+				parent				= self.mstr_torso,
+				bone_group 			= "Body: Main IK Controls"
 		)
 		self.register_parent(self.mstr_torso, "Torso")
 		self.mstr_torso.flatten()
@@ -109,8 +119,9 @@ class Rig(CloudChainRig):
 
 	@stage.prepare_bones
 	def prepare_ik_spine(self):
+		if not self.params.create_ik_spine: return
+
 		# Create master chest control
-		# TODO: Once again, the position of this can be arbitrary.
 		self.mstr_chest = self.bone_infos.bone(
 				name				= "MSTR-Chest", 
 				source 				= self.org_chain[-4],
@@ -127,17 +138,6 @@ class Rig(CloudChainRig):
 			double_mstr_chest = self.create_parent_bone(self.mstr_chest)
 			double_mstr_chest.bone_group = 'Body: Main IK Controls Extra Parents'
 		
-		# Create master (reverse) hip control
-		self.mstr_hips = self.bone_infos.bone(
-				name				= "MSTR-Hips",
-				source				= self.org_chain[0],
-				head				= self.org_chain[0].center,
-				# tail 				= self.org_chain[0].center + Vector((0, 0, -self.scale)),
-				custom_shape 		= self.load_widget("Hips"),
-				custom_shape_scale 	= 0.7,
-				parent				= self.mstr_torso,
-				bone_group 			= "Body: Main IK Controls"
-		)
 		self.mstr_hips.flatten()
 		self.register_parent(self.mstr_hips, "Hips")
 
@@ -323,8 +323,20 @@ class Rig(CloudChainRig):
 		"""
 		super().add_parameters(params)
 
+		params.spine_length = IntProperty(
+			name="Spine Length",
+			description="Number of bones on the chain until the spine ends and the neck begins. The spine and neck can both be made up of an arbitrary number of bones. The final bone of the chain is always treated as the head.",
+			default=3,
+			min=3,
+			max=99
+		)
+		params.create_ik_spine = BoolProperty(
+			name="Create IK Setup",
+			description="If disabled, this spine rig will only have FK controls",
+			default=True
+		)
 		params.double_controls = BoolProperty(
-			name="Double Pelvis and Chest Controls", 
+			name="Double Controls", 
 			description="Make duplicates of the main spine controls",
 			default=True,
 		)
@@ -334,4 +346,9 @@ class Rig(CloudChainRig):
 		"""Create the ui for the rig parameters."""
 		super().parameters_ui(layout, params)
 
-		layout.prop(params, "double_first_control")
+		layout.label(text="Spine Settings")
+		layout = layout.box()
+
+		layout.prop(params, "spine_length")
+		layout.prop(params, "create_ik_spine")
+		layout.prop(params, "double_controls")
