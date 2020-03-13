@@ -22,8 +22,8 @@ class Rig(CloudChainRig):
 
 	def get_segments(self, org_i, chain):
 		"""Determine how many deform segments should be in a section of the chain."""
-		segments = self.params.deform_segments
-		bbone_segments = self.params.bbone_segments
+		segments = self.params.CR_deform_segments
+		bbone_segments = self.params.CR_bbone_segments
 		
 		if (org_i == len(chain)-1):
 			return (1, 1)
@@ -55,7 +55,7 @@ class Rig(CloudChainRig):
 		)
 		self.register_parent(self.mstr_torso, "Torso")
 		self.mstr_torso.flatten()
-		if self.params.double_controls:
+		if self.params.CR_double_controls:
 			double_mstr_pelvis = self.create_parent_bone(self.mstr_torso)
 			double_mstr_pelvis.bone_group = 'Body: Main IK Controls Extra Parents'
 
@@ -119,7 +119,7 @@ class Rig(CloudChainRig):
 
 	@stage.prepare_bones
 	def prepare_ik_spine(self):
-		if not self.params.create_ik_spine: return
+		if not self.params.CR_create_ik_spine: return
 
 		# Create master chest control
 		self.mstr_chest = self.bone_infos.bone(
@@ -134,7 +134,7 @@ class Rig(CloudChainRig):
 			)
 		self.register_parent(self.mstr_chest, "Chest")
 
-		if self.params.double_controls:
+		if self.params.CR_double_controls:
 			double_mstr_chest = self.create_parent_bone(self.mstr_chest)
 			double_mstr_chest.bone_group = 'Body: Main IK Controls Extra Parents'
 		
@@ -227,7 +227,7 @@ class Rig(CloudChainRig):
 				damped_track_target = self.ik_ctr_chain[-1].name
 				head_tail = 0
 				self.mstr_chest.custom_shape_transform = ik_bone
-				if self.params.double_controls:
+				if self.params.CR_double_controls:
 					self.mstr_chest.parent.custom_shape_transform = ik_bone
 
 			ik_bone.add_constraint(self.obj, 'DAMPED_TRACK',
@@ -323,19 +323,19 @@ class Rig(CloudChainRig):
 		"""
 		super().add_parameters(params)
 
-		params.spine_length = IntProperty(
+		params.CR_spine_length = IntProperty(
 			name="Spine Length",
 			description="Number of bones on the chain until the spine ends and the neck begins. The spine and neck can both be made up of an arbitrary number of bones. The final bone of the chain is always treated as the head.",
 			default=3,
 			min=3,
 			max=99
 		)
-		params.create_ik_spine = BoolProperty(
+		params.CR_create_ik_spine = BoolProperty(
 			name="Create IK Setup",
 			description="If disabled, this spine rig will only have FK controls",
 			default=True
 		)
-		params.double_controls = BoolProperty(
+		params.CR_double_controls = BoolProperty(
 			name="Double Controls", 
 			description="Make duplicates of the main spine controls",
 			default=True,
@@ -349,6 +349,6 @@ class Rig(CloudChainRig):
 		layout.label(text="Spine Settings")
 		layout = layout.box()
 
-		layout.prop(params, "spine_length")
-		layout.prop(params, "create_ik_spine")
-		layout.prop(params, "double_controls")
+		layout.prop(params, "CR_spine_length")
+		layout.prop(params, "CR_create_ik_spine")
+		layout.prop(params, "CR_double_controls")

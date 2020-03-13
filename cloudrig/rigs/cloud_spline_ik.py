@@ -59,7 +59,7 @@ class CloudSplineIKRig(CloudBaseRig):
 	@stage.prepare_bones
 	def create_def_chain(self):
 		self.def_bones = []
-		segments = self.params.subdivide_deform
+		segments = self.params.CR_subdivide_deform
 
 		for org_bone in self.org_chain:
 			for i in range(0, segments):
@@ -90,17 +90,17 @@ class CloudSplineIKRig(CloudBaseRig):
 	@stage.prepare_bones
 	def create_hook_controls(self):
 		sum_bone_length = sum([b.length for b in self.org_chain])
-		num_controls = len(self.org_chain)+1 if self.params.match_controls_to_bones else self.params.num_controls
+		num_controls = len(self.org_chain)+1 if self.params.CR_match_hooks_to_bones else self.params.CR_num_hooks
 		length_unit = sum_bone_length / (num_controls-1)
-		handle_length = length_unit / self.params.curve_handle_ratio
+		handle_length = length_unit / self.params.CR_curve_handle_ratio
 
 		self.hook_bones = []
 		next_parent = self.bones.parent
 		for i in range(0, num_controls):
 			point_along_chain = i * length_unit
-			index = i if self.params.match_controls_to_bones else -1
+			index = i if self.params.CR_match_hooks_to_bones else -1
 			loc, direction = self.fit_on_bone_chain(self.org_chain, point_along_chain, index)
-			hook_name = self.params.custom_name if self.params.custom_name!="" else self.base_bone
+			hook_name = self.params.CR_hook_name if self.params.CR_hook_name!="" else self.base_bone
 			hook_ctr = self.bone_infos.bone(
 				name = "Hook_%s_%s" %(hook_name, str(i).zfill(2)),
 				head = loc,
@@ -110,9 +110,9 @@ class CloudSplineIKRig(CloudBaseRig):
 			)
 			hook_ctr.left_handle_control = None
 			hook_ctr.right_handle_control = None
-			if self.params.custom_hook_parent != "":
-				next_parent = self.params.custom_hook_parent
-			if self.params.controls_for_handles:
+			if self.params.CR_hook_parent != "":
+				next_parent = self.params.CR_hook_parent
+			if self.params.CR_controls_for_handles:
 				hook_ctr.custom_shape = self.load_widget("Circle")
 				handles = []
 
@@ -143,7 +143,7 @@ class CloudSplineIKRig(CloudBaseRig):
 				for handle in handles:
 					handle.custom_shape_scale 		  = 1,
 					handle.use_custom_shape_bone_size = True
-					if self.params.rotatable_handles:
+					if self.params.CR_rotatable_handles:
 						dsp_bone = self.create_dsp_bone(handle)
 						dsp_bone.head = handle.tail.copy()
 						dsp_bone.tail = handle.head.copy()
@@ -171,9 +171,9 @@ class CloudSplineIKRig(CloudBaseRig):
 		""" Create and configure the bezier curve that will be used by the rig."""
 
 		sum_bone_length = sum([b.length for b in self.org_chain])
-		num_controls = len(self.org_chain)+1 if self.params.match_controls_to_bones else self.params.num_controls
+		num_controls = len(self.org_chain)+1 if self.params.CR_match_hooks_to_bones else self.params.CR_num_hooks
 		length_unit = sum_bone_length / (num_controls-1)
-		handle_length = length_unit / self.params.curve_handle_ratio
+		handle_length = length_unit / self.params.CR_curve_handle_ratio
 		
 		# Find or create Bezier Curve object for this rig.
 		curve_name = self.obj.name.replace("RIG-", "CUR-")
@@ -206,7 +206,7 @@ class CloudSplineIKRig(CloudBaseRig):
 			# p.handle_right_type = 'ALIGNED'
 
 			# Place control points
-			index = i if self.params.match_controls_to_bones else -1
+			index = i if self.params.CR_match_hooks_to_bones else -1
 			loc, direction = self.fit_on_bone_chain(self.org_chain, point_along_chain, index)
 			p.co = loc
 			p.handle_right = loc + handle_length * direction
@@ -231,7 +231,7 @@ class CloudSplineIKRig(CloudBaseRig):
 				cp.select_right_handle = False
 
 			hook_b = self.hook_bones[i]
-			if not self.params.controls_for_handles:
+			if not self.params.CR_controls_for_handles:
 				add_hook(p, hook_b, main_handle=True, left_handle=True, right_handle=True)
 			else:
 				add_hook(p, hook_b, main_handle=True)
@@ -290,48 +290,48 @@ class CloudSplineIKRig(CloudBaseRig):
 		"""
 		super().add_parameters(params)
 		
-		params.custom_name = StringProperty(
-			name="Custom Name",
-			description="If not empty, use this string for naming the control bones. Otherwise, use the base bone's name.",
-			default=""
+		params.CR_hook_name = StringProperty(
+			 name		 = "Custom Name"
+			,description = "If not empty, use this string for naming the control bones. Otherwise, use the base bone's name"
+			,default	 = ""
 		)
-		params.custom_hook_parent = StringProperty(
-			name="Custom Parent",
-			description="If not empty, parent all hooks except the first one to a bone with this name.",
-			default=""
+		params.CR_hook_parent = StringProperty(
+			 name		 = "Custom Parent"
+			,description = "If not empty, parent all hooks except the first one to a bone with this name"
+			,default	 = ""
 		)
-		params.match_controls_to_bones = BoolProperty(
-			name="Match Controls to Bones",
-			description="Hook controls will be created at each bone, instead of being equally distributed across the length of the chain",
-			default=True
+		params.CR_match_hooks_to_bones = BoolProperty(
+			 name		 = "Match Controls to Bones"
+			,description = "Hook controls will be created at each bone, instead of being equally distributed across the length of the chain"
+			,default	 = True
 		)
-		params.controls_for_handles = BoolProperty(
-			name="Controls for Handles",
-			description="For every curve point control, create two children that control the handles of that curve point.",
-			default=False
+		params.CR_controls_for_handles = BoolProperty(
+			 name		 = "Controls for Handles"
+			,description = "For every curve point control, create two children that control the handles of that curve point"
+			,default	 = False
 		)
-		params.rotatable_handles = BoolProperty(
-			name="Rotatable Handles",
-			description="Use a setup which allows handles to be rotated and scaled - Will behave oddly when rotation is done after translation.",
-			default=False
+		params.CR_rotatable_handles = BoolProperty(
+			 name		 = "Rotatable Handles"
+			,description = "Use a setup which allows handles to be rotated and scaled - Will behave oddly when rotation is done after translation"
+			,default	 = False
 		)
-		params.curve_handle_ratio = FloatProperty(
-			name="Curve Handle Length Ratio",
-			description="Increasing this will result in shorter curve handles, resulting in a sharper curve.",
-			default=3.0,
+		params.CR_curve_handle_ratio = FloatProperty(
+			 name		 = "Curve Handle Length Ratio"
+			,description = "Increasing this will result in shorter curve handles, resulting in a sharper curve"
+			,default	 = 3.0
 		)
-		params.num_controls = IntProperty(
-			name="Number of controls",
-			description="Number of controls that will be spaced out evenly across the entire chain",
-			default=3,
-			min=3,
-			max=99
+		params.CR_num_hooks = IntProperty(
+			 name		 = "Number of Hooks"
+			,description = "Number of controls that will be spaced out evenly across the entire chain"
+			,default	 = 3
+			,min		 = 3
+			,max		 = 99
 		)
-		params.subdivide_deform = IntProperty(
-			name="Subdivide bones",
-			description="For each original bone, create this many deform bones in the spline chain (Bendy Bones do not work well with Spline IK, so we create real bones)",
-			default=3,
-			min=3
+		params.CR_subdivide_deform = IntProperty(
+			 name="Subdivide bones"
+			,description="For each original bone, create this many deform bones in the spline chain (Bendy Bones do not work well with Spline IK, so we create real bones)"
+			,default=3
+			,min=3
 		)
 
 	@classmethod
@@ -340,18 +340,18 @@ class CloudSplineIKRig(CloudBaseRig):
 		"""
 		super().parameters_ui(layout, params)
 
-		layout.prop(params, "custom_name")
-		layout.prop(params, "subdivide_deform")
-		layout.prop(params, "curve_handle_ratio")
+		layout.prop(params, "CR_hook_name")
+		layout.prop(params, "CR_subdivide_deform")
+		layout.prop(params, "CR_curve_handle_ratio")
 
 		layout.prop(params, "custom_parent")
-		layout.prop(params, "controls_for_handles")
-		if params.controls_for_handles:
-			layout.prop(params, "rotatable_handles")
+		layout.prop(params, "CR_controls_for_handles")
+		if params.CR_controls_for_handles:
+			layout.prop(params, "CR_rotatable_handles")
 
-		layout.prop(params, "match_controls_to_bones")	# TODO: When this is false, the directions of the curve points and bones don't match, and both of them are unsatisfactory. It would be nice if we would interpolate between the direction of the two bones, using length_remaining/bone.length as a factor, or something similar to that.
-		if not params.match_controls_to_bones:
-			layout.prop(params, "num_controls")
+		layout.prop(params, "CR_match_hooks_to_bones")	# TODO: When this is false, the directions of the curve points and bones don't match, and both of them are unsatisfactory. It would be nice if we would interpolate between the direction of the two bones, using length_remaining/bone.length as a factor, or something similar to that.
+		if not params.CR_match_hooks_to_bones:
+			layout.prop(params, "CR_num_hooks")
 
 class Rig(CloudSplineIKRig):
 	pass

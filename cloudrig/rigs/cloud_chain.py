@@ -16,10 +16,10 @@ class CloudChainRig(CloudBaseRig):
 
 	def get_segments(self, org_i, chain):
 		"""Calculate how many segments should be in a section of the chain."""
-		segments = self.params.deform_segments
-		bbone_segments = self.params.bbone_segments
+		segments = self.params.CR_deform_segments
+		bbone_segments = self.params.CR_bbone_segments
 		
-		if (org_i == len(chain)-1) and not self.params.cap_control:
+		if (org_i == len(chain)-1) and not self.params.CR_cap_control:
 			return (1, 1)
 		
 		return (segments, bbone_segments)
@@ -105,7 +105,7 @@ class CloudChainRig(CloudBaseRig):
 				)
 				self.def_bones.append(def_bone)
 			
-				if self.params.sharp_sections:
+				if self.params.CR_sharp_sections:
 					# First bone of the segment, but not the first bone of the chain.
 					if i==0 and org_i != 0:
 						def_bone.bbone_easein = 0
@@ -114,7 +114,7 @@ class CloudChainRig(CloudBaseRig):
 						def_bone.bbone_easeout = 0
 				
 				# Last bone of the chain.
-				if (i==segments-1) and (org_i == len(chain)-1) and (not self.params.cap_control):
+				if (i==segments-1) and (org_i == len(chain)-1) and (not self.params.CR_cap_control):
 					def_bone.inherit_scale = 'FULL'	# This is not perfect - when trying to adjust the spline shape by scaling the STR control on local Y axis, it scales the last deform bone in a bad way.
 
 				next_parent = def_bone.name
@@ -153,7 +153,7 @@ class CloudChainRig(CloudBaseRig):
 				str_section.append(str_bone)
 			str_sections.append(str_section)
 		
-		if self.params.cap_control:
+		if self.params.CR_cap_control:
 			# Add final STR control.
 			last_def = def_sections[-1][-1]
 			sliced = slice_name(last_def.name)
@@ -209,9 +209,9 @@ class CloudChainRig(CloudBaseRig):
 					# If this is the first bone in the section, parent it to the STR bone of the same indices.
 					def_bone.parent = str_sections[sec_i][i].name
 					# Create shape key helpers
-					if self.params.shape_key_helpers and sec_i>0:
+					if self.params.CR_shape_key_helpers and sec_i>0:
 						self.create_shape_key_helpers(def_sections[sec_i-1][-1], def_bone)
-					if (i==len(section)-1) and (sec_i==len(def_sections)-1) and (not self.params.cap_control): 
+					if (i==len(section)-1) and (sec_i==len(def_sections)-1) and (not self.params.CR_cap_control): 
 						# If this is also the last bone of the last section(eg. Wrist bone), don't do anything else, unless the Final Control option is enabled.
 						break
 				else:
@@ -241,7 +241,7 @@ class CloudChainRig(CloudBaseRig):
 		# (If the parent rig is a chain rig with cap_control=False, make the last DEF bone stretch to this rig's first STR.)
 		parent_rig = self.rigify_parent
 		if isinstance(parent_rig, CloudChainRig):
-			if not parent_rig.params.cap_control:
+			if not parent_rig.params.CR_cap_control:
 				meta_org_bone = self.generator.metarig.data.bones.get(self.org_chain[0].name.replace("ORG-", ""))
 				if meta_org_bone.use_connect:
 					def_bone = parent_rig.def_bones[-1]
@@ -249,7 +249,7 @@ class CloudChainRig(CloudBaseRig):
 					def_bone.bbone_custom_handle_end = str_bone.name
 					def_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget = str_bone.name)
 					self.make_bbone_scale_drivers(def_bone)
-					if self.params.shape_key_helpers:
+					if self.params.CR_shape_key_helpers:
 						self.create_shape_key_helpers(def_bone, self.def_bones[0])
 
 	##############################
@@ -262,33 +262,33 @@ class CloudChainRig(CloudBaseRig):
 		"""
 		super().add_parameters(params)
 
-		params.deform_segments = IntProperty(
-			name="Deform Segments",
-			description="Number of deform bones per limb piece",
-			default=2,
-			min=1,
-			max=9
+		params.CR_deform_segments = IntProperty(
+			 name		 = "Deform Segments"
+			,description = "Number of deform bones per limb piece"
+			,default	 = 2
+			,min		 = 1
+			,max		 = 9
 		)
-		params.bbone_segments = IntProperty(
-			name="BBone Segments",
-			description="BBone segments of deform bones",
-			default=10,
-			min=1,
-			max=32
+		params.CR_bbone_segments = IntProperty(
+			 name="BBone Segments"
+			,description="BBone segments of deform bones"
+			,default=10
+			,min=1
+			,max=32
 		)
-		params.shape_key_helpers = BoolProperty(
-			name="Shape Key Helpers",
-			description="Create SKH- bones that reliably read the rotation between two deform bones, and can therefore be used to drive shape keys."
+		params.CR_shape_key_helpers = BoolProperty(
+			 name="Shape Key Helpers"
+			,description="Create SKH- bones that reliably read the rotation between two deform bones, and can therefore be used to drive shape keys"
 		)
-		params.sharp_sections = BoolProperty(
-			name="Sharp Sections",
-			description="BBone EaseIn/Out is set to 0 for controls connectiong two chain sections",
-			default=True
+		params.CR_sharp_sections = BoolProperty(
+			 name="Sharp Sections"
+			,description="BBone EaseIn/Out is set to 0 for controls connectiong two chain sections"
+			,default=True
 		)
-		params.cap_control = BoolProperty(
-			name="Final Control",
-			description="Add the final control at the end of the chain (Turn off if you connect another chain to this one)",
-			default=True
+		params.CR_cap_control = BoolProperty(
+			 name		 = "Final Control"
+			,description = "Add the final control at the end of the chain (Turn off if you connect another chain to this one)"
+			,default	 = True
 		)
 
 	@classmethod
@@ -300,11 +300,11 @@ class CloudChainRig(CloudBaseRig):
 		layout.label(text="Stretchy Chain Settings")
 		layout = layout.box()
 
-		layout.prop(params, "deform_segments")
-		layout.prop(params, "bbone_segments")
-		layout.prop(params, "shape_key_helpers")
-		layout.prop(params, "sharp_sections")
-		layout.prop(params, "cap_control")
+		layout.prop(params, "CR_deform_segments")
+		layout.prop(params, "CR_bbone_segments")
+		layout.prop(params, "CR_shape_key_helpers")
+		layout.prop(params, "CR_sharp_sections")
+		layout.prop(params, "CR_cap_control")
 
 class Rig(CloudChainRig):
 	pass

@@ -54,45 +54,45 @@ class CloudBoneRig(BaseRig):
 	@stage.generate_bones
 	def create_copy(self):
 		# Make a copy of the ORG- bone without the ORG- prefix.
-		if not self.params.op_type == "Create": return
+		if not self.params.CR_copy_type == "Create": return
 		mod_bone = self.copy_bone(self.bones.org, self.orgless_name, parent=True)
 		
 		# And then we hack our parameters, so future stages just modify this newly created bone :)
 		# Afaik, we only need to worry about pose bone properties, edit_bone stuff is taken care of by self.copy_bone().
-		self.params.op_type='Tweak'
-		self.params.transform_locks = True
-		self.params.rot_mode = True
-		self.params.bone_shape = True
-		self.params.layers = True
+		self.params.CR_copy_type='Tweak'
+		self.params.CR_transform_locks = True
+		self.params.CR_bone_rot_mode = True
+		self.params.CR_bone_shape = True
+		self.params.CR_layers = True
 
 	@stage.apply_bones
 	def modify_edit_bone(self):
-		if not self.params.op_type=='Tweak': return
+		if not self.params.CR_copy_type=='Tweak': return
 		bone_name = self.base_bone.replace("ORG-", "")
 		mod_bone = self.get_bone(bone_name)
 		org_bone = self.get_bone(self.base_bone)
 		meta_bone = self.generator.metarig.data.bones.get(bone_name)
 
-		if self.params.transforms:
+		if self.params.CR_bone_transforms:
 			mod_bone.head = meta_bone.head_local.copy()
 			mod_bone.tail = meta_bone.tail_local.copy()
 			mod_bone.roll = org_bone.roll
 			mod_bone.bbone_x = meta_bone.bbone_x
 			mod_bone.bbone_z = meta_bone.bbone_z
 		
-		parent = self.obj.data.edit_bones.get(self.params.custom_parent)
+		parent = self.obj.data.edit_bones.get(self.params.CR_custom_bone_parent)
 		
 		if parent:
 			mod_bone.parent = parent
 
 	@stage.configure_bones
 	def modify_bone_group(self):
-		if not self.params.op_type=='Tweak': return
+		if not self.params.CR_copy_type=='Tweak': return
 		mod_bone = self.get_bone(self.orgless_name)
 		meta_bone = self.generator.metarig.pose.bones.get(self.orgless_name)
 
 		meta_bg = meta_bone.bone_group
-		if self.params.bone_group:
+		if self.params.CR_bone_group:
 			if meta_bg:
 				bg_name = meta_bg.name
 				bg = self.obj.pose.bone_groups.get(bg_name)
@@ -108,32 +108,32 @@ class CloudBoneRig(BaseRig):
 
 	@stage.finalize
 	def modify_pose_bone(self):
-		if not self.params.op_type=='Tweak': return
+		if not self.params.CR_copy_type=='Tweak': return
 		bone_name = self.base_bone.replace("ORG-", "")
 		mod_bone = self.get_bone(bone_name)
 		meta_bone = self.generator.metarig.pose.bones.get(bone_name)
 		org_bone = self.get_bone(self.base_bone)
 		
-		if self.params.transform_locks:
+		if self.params.CR_transform_locks:
 			mod_bone.lock_location = meta_bone.lock_location[:]
 			mod_bone.lock_rotation = meta_bone.lock_rotation[:]
 			mod_bone.lock_rotation_w = meta_bone.lock_rotation_w
 			mod_bone.lock_scale = meta_bone.lock_scale[:]
 		
-		if self.params.rot_mode:
+		if self.params.CR_bone_rot_mode:
 			mod_bone.rotation_mode = meta_bone.rotation_mode
 		
-		if self.params.bone_shape:
+		if self.params.CR_bone_shape:
 			mod_bone.custom_shape = meta_bone.custom_shape
 			mod_bone.custom_shape_scale = meta_bone.custom_shape_scale
 			mod_bone.custom_shape_transform = meta_bone.custom_shape_transform
 			mod_bone.use_custom_shape_bone_size = meta_bone.use_custom_shape_bone_size
 			mod_bone.bone.show_wire = meta_bone.bone.show_wire
 		
-		if self.params.layers:
+		if self.params.CR_layers:
 			mod_bone.bone.layers = meta_bone.bone.layers[:]
 		
-		if self.params.ik_settings:
+		if self.params.CR_ik_settings:
 			mod_bone.ik_stretch = meta_bone.ik_stretch
 			mod_bone.lock_ik_x = meta_bone.lock_ik_x
 			mod_bone.lock_ik_y = meta_bone.lock_ik_y
@@ -173,7 +173,7 @@ class CloudBoneRig(BaseRig):
 			new_con.name = split_name[0]
 		
 		# Copy custom properties
-		if '_RNA_UI' in meta_bone.keys():
+		if self.params.CR_custom_props and '_RNA_UI' in meta_bone.keys():
 			keys = [k for k in meta_bone.keys() if k not in ['_RNA_UI', 'rigify_parameters', 'rigify_type']]
 			custom_props.copy_custom_properties(meta_bone, keys, mod_bone)
 
@@ -220,96 +220,87 @@ class CloudBoneRig(BaseRig):
 		super().add_parameters(params)
 
 		params.constraints_additive = BoolProperty(
-			name="Additive Constraints",
-			description="Add the constraints of this bone to the generated bone's constraints. When disabled, we replace the constraints instead (even when there aren't any)",
-			default=True
+			name="Additive Constraints"
+			,description="Add the constraints of this bone to the generated bone's constraints. When disabled, we replace the constraints instead (even when there aren't any)"
+			,default=True
 		)
 
-		# TODO: Behaviour for when this is False. Also more parameters for that, if needed. Also, turn it into an enum.
-		# TODO: Do these two things even need to be in the same rig? Maybe we should just have separate copy and tweak rigs?
-		
-		# I like the way this works for tweaking existing bones, but how should things work when creating a new bone?
-		# Some use cases:
-		# Shoulder rig; This needs a control bone with a shape and group, but also a deform bone, and the ORG- bone really doesn't hurt.
-		# Extra hip bone: This would be just a deform bone with a constraint, and importantly, an arbitrary parent that only exists in the generated rig(which is the first STR bone of the spine). An ORG- bone is really quite useless here. But I guess the idea or being able to extract the metarig by taking ORG- bones and removing the ORG- prefix is a good idea.
-
-
-		params.op_type = EnumProperty(
-			name="Copy Type",
-			items=(
+		params.CR_copy_type = EnumProperty(
+			name="Copy Type"
+			,items=(
 				("Create", "Create", "Create a new bone"),
 				("Tweak", "Tweak", "Tweak an existing bone")
-			),
-			description="Whether this bone should be copied to the generated rig as a new control on its own, or tweak a pre-existing bone that should exist after bone generation phase",
-			default="Create"
+			)
+			,description="Whether this bone should be copied to the generated rig as a new control on its own, or tweak a pre-existing bone that should exist after bone generation phase"
+			,default="Create"
 		)
 
-		# These parameters are valid when op_type==True
+		# These parameters are valid when CR_copy_type==True
 		# TODO: We should do a search for P- bones, and have an option to affect those as well
 		#	Better yet, when we create a P- bone for a bone, that bone should store the name of that P- bone in a custom property, so we don't need to do slow searches like this.
 		#	Another idea is to be able to input a list of names that this bone should affect. But I'm not sure if there's a use case good enough for any of these things to bother implementing.
-		params.custom_parent = StringProperty(
-			name="Parent",
-			description="When this is not an empty string, set the parent to the bone with this name.",
-			default=""
+		params.CR_custom_bone_parent = StringProperty(
+			 name="Parent"
+			,description="When this is not an empty string, set the parent to the bone with this name."
+			,default=""
 		)
-		params.transforms = BoolProperty(
-			name="Transforms",
-			description="Replace the matching generated bone's transforms with this bone's transforms", # TODO: An idea: when this is False, let the generation script affect the metarig - and move this bone, to where it is in the generated rig.
-			default=False
+		params.CR_bone_transforms = BoolProperty(
+			 name="Transforms"
+			,description="Replace the matching generated bone's transforms with this bone's transforms" # An idea: when this is False, let the generation script affect the metarig - and move this bone, to where it is in the generated rig.
+			,default=False
 		)
-		params.transform_locks = BoolProperty(
-			name="Locks",
-			description="Replace the matching generated bone's transform locks with this bone's transform locks",
-			default=False
+		params.CR_transform_locks = BoolProperty(
+			 name="Locks"
+			,description="Replace the matching generated bone's transform locks with this bone's transform locks"
+			,default=False
 		)
-		params.rot_mode = BoolProperty(
-			name="Rotation Mode",
-			description="Set the matching generated bone's rotation mode to this bone's rotation mode",
-			default=False
+		params.CR_bone_rot_mode = BoolProperty(
+			 name="Rotation Mode"
+			,description="Set the matching generated bone's rotation mode to this bone's rotation mode"
+			,default=False
 		)
-		params.bone_shape = BoolProperty(
-			name="Bone Shape",
-			description = "Replace the matching generated bone's shape with this bone's shape",
-			default=False
+		params.CR_bone_shape = BoolProperty(
+			 name="Bone Shape"
+			,description = "Replace the matching generated bone's shape with this bone's shape"
+			,default=False
 		)
-		params.bone_group = BoolProperty(
-			name="Bone Group",
-			description="Replace the matching generated bone's group with this bone's group",
-			default=False
+		params.CR_bone_group = BoolProperty(
+			 name="Bone Group"
+			,description="Replace the matching generated bone's group with this bone's group"
+			,default=False
 		)
-		params.layers = BoolProperty(
-			name="Layers",
-			description="Set the generated bone's layers to this bone's layers",
-			default=False
+		params.CR_layers = BoolProperty(
+			 name="Layers"
+			,description="Set the generated bone's layers to this bone's layers"
+			,default=False
 		)
-		params.custom_props = BoolProperty(
-			name="Custom Properties",
-			description="Copy custom properties from this bone to the generated bone",
-			default=False
+		params.CR_custom_props = BoolProperty(
+			 name="Custom Properties"
+			,description="Copy custom properties from this bone to the generated bone"
+			,default=False
 		)
-		params.ik_settings = BoolProperty(
-			name="IK Settings",
-			description="Copy IK settings from this bone to the generated bone",
-			default=False
+		params.CR_ik_settings = BoolProperty(
+			 name="IK Settings"
+			,description="Copy IK settings from this bone to the generated bone"
+			,default=False
 		)
 
-		# These parameters are valid when op_type==False
+		# These parameters are valid when CR_copy_type==False
 		# TODO.
 		params.control = BoolProperty(
-			name="Create Control Bone",
-			description="Create a copy of the ORG bone with use_deform disabled, with the name, bone group, layers, bone shape and constraints of this bone",
-			default=True
+			 name="Create Control Bone"
+			,description="Create a copy of the ORG bone with use_deform disabled, with the name, bone group, layers, bone shape and constraints of this bone"
+			,default=True
 		)
 		params.unlocker = BoolProperty(	# Is this overkill? Maybe if we want something this complex, we should be expected to have to add two bones to the metarig.
-			name="Create Unlocker Bone",
-			description="In addition to the control bone, create an extra parent to hold the constraints, so the control bone itself can be freely animated",
-			default=False
+			 name="Create Unlocker Bone"
+			,description="In addition to the control bone, create an extra parent to hold the constraints, so the control bone itself can be freely animated"
+			,default=False
 		)
 		params.deform = BoolProperty(
-			name="Create Deform Bone",
-			description="Create a copy of the ORG bone with use_deform enabled, and with the bbone settings of this bone.",
-			default=True
+			 name="Create Deform Bone"
+			,description="Create a copy of the ORG bone with use_deform enabled, and with the bbone settings of this bone."
+			,default=True
 		)
 
 	@classmethod
@@ -320,20 +311,20 @@ class CloudBoneRig(BaseRig):
 		
 		col = layout.column()
 		layout.prop(params, "constraints_additive")
-		layout.prop(params, "custom_parent")
-		layout.row().prop(params, "op_type", expand=True, text="Copy Type")
+		layout.prop(params, "CR_custom_bone_parent")
+		layout.row().prop(params, "CR_copy_type", expand=True, text="Copy Type")
 		row = layout.row()
 		col1 = row.column()	# Empty column for indent
 		col2 = row.column()
-		if params.op_type=='Tweak':
-			col2.prop(params, "transforms")
-			col2.prop(params, "transform_locks")
-			col2.prop(params, "rot_mode")
-			col2.prop(params, "bone_shape")
-			col2.prop(params, "bone_group")
-			col2.prop(params, "layers")
-			col2.prop(params, "custom_props")
-			col2.prop(params, "ik_settings")
+		if params.CR_copy_type=='Tweak':
+			col2.prop(params, "CR_bone_transforms")
+			col2.prop(params, "CR_transform_locks")
+			col2.prop(params, "CR_bone_rot_mode")
+			col2.prop(params, "CR_bone_shape")
+			col2.prop(params, "CR_bone_group")
+			col2.prop(params, "CR_layers")
+			col2.prop(params, "CR_custom_props")
+			col2.prop(params, "CR_ik_settings")
 		else:
 			col2.prop(params, "deform")
 

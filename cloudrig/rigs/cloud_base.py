@@ -40,7 +40,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		self.scale = self.obj.dimensions[2]/10	# TODO: This has bad effect when the generated rig already has scale. Either use metarig for setting self.scale, or reset self.obj scale, or both.
 												# It also works badly for flat rigs. Should grab longest dimension instead of always Z axis.
 		# Slap user-provided multiplier on top.
-		self.display_scale = self.params.display_scale * self.scale
+		self.display_scale = self.params.CR_display_scale * self.scale
 
 		self.mch_disable_select = False	# TODO: In future, this could be exposed as a parameter, but I wish it could be a generator parameter instead of a per-rig parametere.
 	
@@ -89,7 +89,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			custom_shape_scale = 1.5
 		)
 		self.register_parent(self.root_bone, "Root")
-		if self.params.double_root:
+		if self.params.CR_double_root:
 			self.root_parent = self.create_parent_bone(self.root_bone)
 			self.root_parent.bone_group = 'Body: Main IK Controls Extra Parents'
 
@@ -239,17 +239,17 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			RigifyParameters PropertyGroup
 		"""
 		# TODO: This should be generator parameter.
-		params.double_root = BoolProperty(
-			name="Double Root",
-			description="Create two root bones for this rig. Note: If any other rig element on this metarig has this set to True, the second root bone will be created",
-			default=True
+		params.CR_double_root = BoolProperty(
+			 name		 = "Double Root"
+			,description = "Create two root bones for this rig. Note: If any other rig element on this metarig has this set to True, the second root bone will be created"
+			,default	 = True
 		)
-		params.display_scale = FloatProperty(
-			name="Display Scale",
-			description="Scale Bone Display Sizes",
-			default=1,
-			min=0.1,
-			max=100
+		params.CR_display_scale = FloatProperty(
+			 name		 = "Display Scale"
+			,description = "Scale Bone Display Sizes"
+			,default	 = 1
+			,min		 = 0.1
+			,max		 = 100
 		)
 
 	@classmethod
@@ -258,8 +258,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		"""
 		layout.label(text="CloudRig Settings")
 		layout = layout.box()
-		layout.prop(params, "display_scale")
-		layout.prop(params, "double_root")
+		layout.prop(params, "CR_display_scale")
+		layout.prop(params, "CR_double_root")
 
 # For testing purposes
 # class Rig(CloudBaseRig):

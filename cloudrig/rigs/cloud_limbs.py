@@ -24,21 +24,19 @@ class Rig(CloudFKChainRig):
 	def initialize(self):
 		super().initialize()
 		"""Gather and validate data about the rig."""
-		if self.params.cloud_limb_type=='ARM':
+		self.limb_type = self.params.CR_limb_type
+		if self.limb_type=='ARM':
 			assert len(self.bones.org.main) == 3, "Arm chain must be exactly 3 connected bones."
-		if self.params.cloud_limb_type=='LEG':
+		if self.limb_type=='LEG':
 			assert len(self.bones.org.main) == 4, "Leg chain must be exactly 4 connected bones."
 
 		# Properties bone and Custom Properties
-		side = self.side_prefix.lower()
-		limb = self.params.cloud_limb_type.lower()
-
-		self.category = "arms" if self.params.cloud_limb_type == 'ARM' else "legs"
-		if self.params.use_category_name:
-			self.category = self.params.category_name
-		self.limb_name = self.side_prefix + " " + limb.capitalize()
-		if self.params.use_limb_name:
-			self.limb_name = self.params.limb_name
+		self.category = "arms" if self.limb_type == 'ARM' else "legs"
+		if self.params.CR_use_custom_category_name:
+			self.category = self.params.CR_custom_category_name
+		self.limb_name = self.side_prefix + " " + self.limb_type.capitalize()
+		if self.params.CR_use_custom_limb_name:
+			self.limb_name = self.params.CR_custom_limb_name
 
 		self.limb_name_props = self.limb_name.replace(" ", "_").lower()
 		self.ikfk_name = "ik_" + self.limb_name_props
@@ -47,13 +45,13 @@ class Rig(CloudFKChainRig):
 		self.ik_pole_follow_name = "ik_pole_follow_" + self.limb_name_props
 
 	def get_segments(self, org_i, chain):
-		segments = self.params.deform_segments
-		bbone_segments = self.params.bbone_segments
+		segments = self.params.CR_deform_segments
+		bbone_segments = self.params.CR_bbone_segments
 		
-		if self.params.cloud_limb_type=='LEG' and org_i > len(chain)-3:
+		if self.limb_type=='LEG' and org_i > len(chain)-3:
 			# Force strictly 1 segment on the foot and the toe.
-			return (1, self.params.bbone_segments)
-		elif self.params.cloud_limb_type=='ARM' and org_i == len(chain)-1:
+			return (1, self.params.CR_bbone_segments)
+		elif self.limb_type=='ARM' and org_i == len(chain)-1:
 			# Force strictly 1 segment and no BBone on the wrist.
 			return (1, 1)
 		
@@ -72,7 +70,7 @@ class Rig(CloudFKChainRig):
 			custom_shape_scale 	= 0.5,
 			bone_group			= 'Body: IK-MCH - IK Mechanism Bones'
 		)
-		self.register_parent(self.limb_root_bone, self.side_suffix + " " + self.params.cloud_limb_type.capitalize())
+		self.register_parent(self.limb_root_bone, self.side_suffix + " " + self.limb_type.capitalize())
 
 	@stage.prepare_bones
 	def prepare_fk_limb(self):
@@ -80,22 +78,22 @@ class Rig(CloudFKChainRig):
 
 		hng_child = self.fk_chain[0]	# For keeping track of which bone will need to be parented to the Hinge mechanic bone.
 		for i, fk_bone in enumerate(self.fk_chain):
-			if i == 0 and self.params.double_first_control:
+			if i == 0 and self.params.CR_double_first_control:
 				# Make a parent for the first control.
 				fk_parent_bone = self.create_parent_bone(fk_bone)
 				fk_parent_bone.custom_shape = self.load_widget("FK_Limb")
-				if self.params.center_all_fk:
+				if self.params.CR_center_all_fk:
 					self.create_dsp_bone(fk_parent_bone, center=True)
 				hng_child = fk_parent_bone
 			
 			if i == 1:
-				fk_bone.lock_rotation[1] = self.params.lock_yz
-				fk_bone.lock_rotation[2] = self.params.lock_yz
+				fk_bone.lock_rotation[1] = self.params.CR_limb_lock_yz
+				fk_bone.lock_rotation[2] = self.params.CR_limb_lock_yz
 
 			if i == 2:
 				fk_bone.custom_shape_scale = 0.8
 				fk_bone.custom_shape_transform = None
-				if self.params.world_aligned:
+				if self.params.CR_world_aligned_controls:
 					fk_name = fk_bone.name
 					fk_bone.name = fk_bone.name.replace("FK-", "FK-W-")	# W for World.
 					# Make child control for the world-aligned control, that will have the original transforms and name.
@@ -112,7 +110,7 @@ class Rig(CloudFKChainRig):
 					
 					fk_bone.flatten()
 			
-			if i == 3 and self.params.cloud_limb_type=='LEG':
+			if i == 3 and self.limb_type=='LEG':
 				self.fk_toe = fk_bone
 		
 		# Create Hinge helper
@@ -141,19 +139,18 @@ class Rig(CloudFKChainRig):
 
 	@stage.prepare_bones
 	def prepare_ik_limb(self):
-		limb_type = self.params.cloud_limb_type
 		chain = self.bones.org.main
 
 		# Create IK Pole Control
 		first_bn = chain[0]
 		first_bone = self.get_bone(chain[0])
 		elbow = copy.copy(first_bone.tail)
-		direction = 1 if limb_type=='ARM' else -1					# Character is expected to face +Y direction.
-		offset_scale = 3 if limb_type=='ARM' else 5					# Scalar on distance from the body.
-		offset = Vector((0, direction*offset_scale*self.scale, 0)) * self.params.pole_offset
-		limb_name = limb_type.capitalize()
-		if self.params.use_limb_name:
-			limb_name = self.params.limb_name
+		direction = 1 if self.limb_type=='ARM' else -1					# Character is expected to face +Y direction.
+		offset_scale = 3 if self.limb_type=='ARM' else 5					# Scalar on distance from the body.
+		offset = Vector((0, direction*offset_scale*self.scale, 0)) * self.params.CR_ik_limb_pole_offset
+		limb_name = self.limb_type.capitalize()
+		if self.params.CR_use_custom_limb_name:
+			limb_name = self.params.CR_custom_limb_name
 		pole_ctrl = self.pole_ctrl = self.bone_infos.bone(
 			name = make_name(["IK", "POLE"], limb_name, [self.side_suffix]),
 			bbone_width = 0.1,
@@ -192,7 +189,7 @@ class Rig(CloudFKChainRig):
 
 		def foot_dsp(bone):
 			# Create foot DSP helpers
-			if limb_type=='LEG':
+			if self.limb_type=='LEG':
 				dsp_bone = self.create_dsp_bone(bone)
 				direction = 1 if self.side_suffix=='L' else -1
 				projected_head = Vector((bone.head[0], bone.head[1], 0))
@@ -206,24 +203,24 @@ class Rig(CloudFKChainRig):
 		bone_name = chain[2]
 		org_bone = self.get_bone(bone_name)
 		mstr_name = bone_name.replace("ORG", "IK-MSTR")
-		wgt_name = 'Hand_IK' if limb_type=='ARM' else 'Foot_IK'
+		wgt_name = 'Hand_IK' if self.limb_type=='ARM' else 'Foot_IK'
 		self.ik_mstr = self.bone_infos.bone(
 			name = mstr_name, 
 			source = org_bone, 
 			custom_shape = self.load_widget(wgt_name),
-			custom_shape_scale = 0.8 if self.params.cloud_limb_type=='ARM' else 2.8,
+			custom_shape_scale = 0.8 if self.limb_type=='ARM' else 2.8,
 			parent = None,
 			bone_group = 'Body: Main IK Controls'
 		)
 		foot_dsp(self.ik_mstr)
 		# Parent control
 		double_control = None
-		if self.params.double_ik_control:
+		if self.params.CR_double_ik_control:
 			double_control = self.create_parent_bone(self.ik_mstr)
 			double_control.bone_group = 'Body: Main IK Controls Extra Parents'
 			foot_dsp(double_control)
 		
-		if self.params.world_aligned:
+		if self.params.CR_world_aligned_controls:
 			self.ik_mstr.flatten()
 			double_control.flatten()
 		
@@ -250,7 +247,7 @@ class Rig(CloudFKChainRig):
 				ik_bone.parent = ik_chain[-2]
 			
 			if i == 2:
-				if self.params.cloud_limb_type == 'LEG':
+				if self.limb_type == 'LEG':
 					# Create separate IK target bone, for keeping track of where IK should be before IK Roll is applied, whether IK Stretch is on or off.
 					self.ik_tgt_bone = self.bone_infos.bone(
 						name = bn.replace("ORG", "IK-TGT"),
@@ -333,27 +330,27 @@ class Rig(CloudFKChainRig):
 		##### MORE STUFF ######
 		#######################
 
-		if self.params.cloud_limb_type == 'LEG':
+		if self.limb_type == 'LEG':
 			ik_chain[-2].parent = self.ik_mstr
 			self.prepare_ik_foot(self.ik_tgt_bone, ik_chain[-2:], org_chain[-2:])
 		
 		self.ik_chain = ik_chain
 
-		for i in range(0, self.params.deform_segments):
-			factor_unit = 0.9 / self.params.deform_segments
+		for i in range(0, self.params.CR_deform_segments):
+			factor_unit = 0.9 / self.params.CR_deform_segments
 			factor = 0.9 - factor_unit * i
 			self.first_str_counterrotate_setup(self.str_bones[i], self.org_chain[0], factor)
 
 		self.mid_str_transform_setup(self.main_str_bones[1])
 
 		# TODO: Why do we do this? This is bad if we ever want to parent something to the IK control after this, since it will only be parented to the parent IK control.
-		self.ik_ctrl = self.ik_mstr.parent if self.params.double_ik_control else self.ik_mstr
+		self.ik_ctrl = self.ik_mstr.parent if self.params.CR_double_ik_control else self.ik_mstr
 		
 		self.prepare_and_store_ikfk_info(self.fk_chain, self.ik_chain, pole_ctrl)
 
 	def prepare_and_store_ikfk_info(self, fk_chain, ik_chain, ik_pole):
 		""" Prepare the data needed to be stored on the armature object for IK/FK snapping. """
-		if self.params.cloud_limb_type=='LEG':
+		if self.limb_type=='LEG':
 			# Ignore toes on the chains.
 			fk_chain = fk_chain[:-1]
 			ik_chain = ik_chain[:-1]
@@ -365,13 +362,13 @@ class Rig(CloudFKChainRig):
 			"fk_chain" 				: [b.name for b in fk_chain],
 			"ik_chain" 				: [b.name for b in ik_chain],
 			"str_chain"				: [b.name for b in self.main_str_bones],
-			"double_first_control"	: self.params.double_first_control,
-			"double_ik_control"		: self.params.double_ik_control,
+			"double_first_control"	: self.params.CR_double_first_control,
+			"double_ik_control"		: self.params.CR_double_ik_control,
 			"ik_pole" 				: self.pole_ctrl.name,
 			"ik_control"			: self.ik_mstr.name
 		}
 		self.store_ui_data("ik_switches", self.category, self.limb_name, info)
-		default = 1.0 if self.params.cloud_limb_type == 'LEG' else 0.0
+		default = 1.0 if self.limb_type == 'LEG' else 0.0
 		self.prop_bone.custom_props[self.ikfk_name] = CustomProp(self.ikfk_name, default=default)
 
 	def first_str_counterrotate_setup(self, str_bone, org_bone, factor):
@@ -441,7 +438,7 @@ class Rig(CloudFKChainRig):
 		ik_foot = ik_chain[0]
 
 		# Create ROLL control behind the foot (Limit Rotation, lock other transforms)
-		if self.params.use_foot_roll:	# TODO: Don't like this big if block. Maybe toe part should be moved out of this function, and the if check put before calling of this function, and then this function can be renamed to prepare_footroll.
+		if self.params.CR_use_foot_roll:	# TODO: Don't like this big if block. Maybe toe part should be moved out of this function, and the if check put before calling of this function, and then this function can be renamed to prepare_footroll.
 			sliced_name = slice_name(ik_foot.name)
 			roll_name = make_name(["ROLL"], sliced_name[1], sliced_name[2])
 			roll_ctrl = self.bone_infos.bone(
@@ -466,7 +463,7 @@ class Rig(CloudFKChainRig):
 			)
 
 			# Create bone to use as pivot point when rolling back. This is read from the metarig and should be placed at the heel of the shoe, pointing forward.
-			ankle_pivot_name = self.params.ankle_pivot_bone
+			ankle_pivot_name = self.params.CR_ankle_pivot_bone
 			if ankle_pivot_name=="":
 				ankle_pivot_name = "AnklePivot." + self.side_suffix
 			meta_ankle_pivot = self.generator.metarig.data.bones.get(ankle_pivot_name)
@@ -475,7 +472,7 @@ class Rig(CloudFKChainRig):
 			# I want to be able to customize the shape size of the foot controls from the metarig, via ankle pivot bone bbone scale.
 			self.ik_mstr._bbone_x = meta_ankle_pivot.bbone_x
 			self.ik_mstr._bbone_z = meta_ankle_pivot.bbone_z
-			if self.params.double_ik_control:
+			if self.params.CR_double_ik_control:
 				self.ik_mstr.parent._bbone_x = meta_ankle_pivot.bbone_x
 				self.ik_mstr.parent._bbone_z = meta_ankle_pivot.bbone_z
 
@@ -603,7 +600,7 @@ class Rig(CloudFKChainRig):
 
 		for i, org_bone in enumerate(self.org_chain):
 			ik_bone = self.bone_infos.find(org_bone.name.replace("ORG", "IK"))
-			if self.params.cloud_limb_type == 'LEG' and i == len(self.org_chain)-1:
+			if self.limb_type == 'LEG' and i == len(self.org_chain)-1:
 				# Don't add IK constraint to toe bone. It should always use FK control, even in IK mode.
 				continue
 			ik_ct_name = "Copy Transforms IK"
@@ -620,7 +617,7 @@ class Rig(CloudFKChainRig):
 	@stage.prepare_bones
 	def prepare_parent_switch(self):
 		parents = []
-		if self.params.cloud_limb_type=='LEG':
+		if self.limb_type=='LEG':
 			parents = ['Root', 'Torso', 'Hips', self.side_suffix + ' Leg']
 		else:
 			parents = ['Root', 'Torso', 'Chest', self.side_suffix + ' Arm']
@@ -628,8 +625,6 @@ class Rig(CloudFKChainRig):
 		child_bones = [self.pole_ctrl, self.ik_ctrl]
 		child_names = [b.name for b in child_bones]
 
-		side = self.side_prefix.lower()
-		limb = self.params.cloud_limb_type.lower()
 		ik_parents_prop_name = "ik_parents_" + self.limb_name_props
 
 		for cb in child_bones:
@@ -641,7 +636,7 @@ class Rig(CloudFKChainRig):
 
 		### IK Pole Follow option
 		# Create custom property
-		default = 1.0 if self.params.cloud_limb_type=='LEG' else 0.0
+		default = 1.0 if self.limb_type=='LEG' else 0.0
 		pole_follow_prop = self.prop_bone.custom_props[self.ik_pole_follow_name] = CustomProp(self.ik_pole_follow_name, default=default)
 
 		# Get the armature constraint from the IK pole's parent, and add the IK master as a new target.
@@ -689,8 +684,8 @@ class Rig(CloudFKChainRig):
 			"operator" : "pose.rigify_switch_parent",
 			"icon" : "COLLAPSEMENU",
 			
-			"bones" : child_names,		# List of child bone names that will be affected by the parent swapping. Often just one.
-			"parent_names" : parents,		# List of (arbitrary) names, in order, that should be displayed for each parent option in the UI.
+			"bones" : child_names,						# List of child bone names that will be affected by the parent swapping. Often just one.
+			"parent_names" : parents,					# List of (arbitrary) names, in order, that should be displayed for each parent option in the UI.
 		}
 		self.store_ui_data("parents", self.category, self.limb_name, info)
 
@@ -704,55 +699,62 @@ class Rig(CloudFKChainRig):
 		"""
 		super().add_parameters(params)
 
-		params.use_limb_name = BoolProperty(
-			name="Custom Limb Name", 
-			default=False, 
-			description='Specify a name for this limb - There can be exactly two limbs with the same name, a Left and a Right one. This name should NOT include a side indicator such as "Left" or "Right". Limbs with the same name will be displayed on the same row'
+		params.CR_use_custom_limb_name = BoolProperty(
+			 name		 = "Custom Limb Name"
+			,description = 'Specify a name for this limb - There can be exactly two limbs with the same name, a Left and a Right one. This name should NOT include a side indicator such as "Left" or "Right". Limbs with the same name will be displayed on the same row'
+			,default 	 = False
 		)
-		params.limb_name = StringProperty(default="Left Arm")
-		params.cloud_limb_type = EnumProperty(name="Type",
-		items = (
-			("ARM", "Arm", "Arm (Chain of 3)"),
-			("LEG", "Leg", "Leg (Chain of 5, includes foot rig)"),
+		params.CR_custom_limb_name = StringProperty(default="Arm")
+		params.CR_use_custom_category_name = BoolProperty(
+			 name		 = "Custom Category Name"
+			,description = "Specify a category for this limb. Limbs in the same category will have their settings displayed in the same column"
+			,default	 = False,
+		)
+		params.CR_custom_category_name = StringProperty(default="arms")
+
+		params.CR_limb_type = EnumProperty(
+			 name 		 = "Type"
+			,items 		 = (
+				("ARM", "Arm", "Arm (Chain of 3)"),
+				("LEG", "Leg", "Leg (Chain of 5, includes foot rig)"),
 			)
-		)
-		params.use_category_name = BoolProperty(name="Custom Category Name", default=False, description="Specify a category for this limb. Limbs in the same category will have their settings displayed in the same column")
-		params.category_name = StringProperty(default="arms")
-
-		params.lock_yz = BoolProperty(
-			name="Lock Elbow/Shin YZ", 
-			description="Lock Y and Z rotation of the elbow and shin.",
-			default=False
-		)
-		params.pole_offset = FloatProperty(
-			name="Pole Vector Offset", 
-			default=1.0
-		)
-		params.use_foot_roll = BoolProperty(
-			name="Foot Roll",
-			description="Create Foot roll controls", 
-			default=True
-		)
-		params.ankle_pivot_bone = StringProperty(
-			name="Ankle Pivot Bone",
-			description="Bone to use as the ankle pivot. This bone should be placed at the heel of the shoe, pointing forward. If unspecified, default to a bone called AnklePivot.L/.R",
-			default=""
+			,default	 = 'ARM'
 		)
 
-		params.double_first_control = BoolProperty(
-			name="Double FK Control", 
-			description="The first FK control has a parent control. Having two controls for the same thing can help avoid interpolation issues when the common pose in animation is far from the rest pose",
-			default=True,
+		params.CR_limb_lock_yz = BoolProperty(
+			 name		 = "Lock Elbow/Shin YZ"
+			,description = "Lock Y and Z rotation of the elbow and shin"
+			,default 	 = False
 		)
-		params.double_ik_control = BoolProperty(
-			name="Double IK Control", 
-			description="The IK control has a parent control. Having two controls for the same thing can help avoid interpolation issues when the common pose in animation is far from the rest pose",
-			default=True,
+		params.CR_ik_limb_pole_offset = FloatProperty(
+			 name	 	 = "Pole Vector Offset"
+			,default 	 = 1.0
 		)
-		params.world_aligned = BoolProperty(
-			name="World Aligned Control", 
-			description="Ankle/Wrist IK/FK controls are aligned with world axes.", 
-			default=True,
+		params.CR_use_foot_roll = BoolProperty(
+			 name 		 = "Foot Roll"
+			,description = "Create Foot roll controls"
+			,default 	 = True
+		)
+		params.CR_ankle_pivot_bone = StringProperty(
+			 name		 = "Ankle Pivot Bone"
+			,description = "Bone to use as the ankle pivot. This bone should be placed at the heel of the shoe, pointing forward. If unspecified, default to a bone called AnklePivot.L/.R"
+			,default	 = ""
+		)
+
+		params.CR_double_first_control = BoolProperty(
+			 name		 = "Double FK Control"
+			,description = "The first FK control has a parent control. Having two controls for the same thing can help avoid interpolation issues when the common pose in animation is far from the rest pose"
+			,default	 = True
+		)
+		params.CR_double_ik_control = BoolProperty(
+			 name		 = "Double IK Control"
+			,description = "The IK control has a parent control. Having two controls for the same thing can help avoid interpolation issues when the common pose in animation is far from the rest pose"
+			,default	 = True
+		)
+		params.CR_world_aligned_controls = BoolProperty(
+			 name		 = "World Aligned Control"
+			,description = "Ankle/Wrist IK/FK controls are aligned with world axes"
+			,default	 = True
 		)
 
 	@classmethod
@@ -763,26 +765,26 @@ class Rig(CloudFKChainRig):
 		layout.label(text="Limb Settings")
 		layout = layout.box()
 
-		layout.prop(params, "cloud_limb_type")
-		if params.cloud_limb_type=='LEG':
-			layout.prop(params, "use_foot_roll")
-			if params.use_foot_roll:
+		layout.prop(params, "CR_limb_type")
+		if params.CR_limb_type=='LEG':
+			layout.prop(params, "CR_use_foot_roll")
+			if params.CR_use_foot_roll:
 				import bpy
-				layout.prop_search(params, "ankle_pivot_bone", bpy.context.object.data, "bones", text="Ankle Pivot")
+				layout.prop_search(params, "CR_ankle_pivot_bone", bpy.context.object.data, "bones", text="Ankle Pivot")
 
 		name_row = layout.row()
 		limb_column = name_row.column()
-		limb_column.prop(params, "use_limb_name")
-		if params.use_limb_name:
-			limb_column.prop(params, "limb_name", text="")
+		limb_column.prop(params, "CR_use_custom_limb_name")
+		if params.CR_use_custom_limb_name:
+			limb_column.prop(params, "CR_custom_limb_name", text="")
 		category_column = name_row.column()
-		category_column.prop(params, "use_category_name")
-		if params.use_category_name:
-			category_column.prop(params, "category_name", text="")
+		category_column.prop(params, "CR_use_custom_category_name")
+		if params.CR_use_custom_category_name:
+			category_column.prop(params, "CR_custom_category_name", text="")
 		
 		double_row = layout.row()
-		double_row.prop(params, "double_first_control")
-		double_row.prop(params, "double_ik_control")
-		layout.prop(params, "lock_yz")
-		layout.prop(params, "world_aligned")
-		layout.prop(params, "pole_offset")
+		double_row.prop(params, "CR_double_first_control")
+		double_row.prop(params, "CR_double_ik_control")
+		layout.prop(params, "CR_limb_lock_yz")
+		layout.prop(params, "CR_world_aligned_controls")
+		layout.prop(params, "CR_ik_limb_pole_offset")
