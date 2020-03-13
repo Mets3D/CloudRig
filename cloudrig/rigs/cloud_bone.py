@@ -143,6 +143,24 @@ class CloudBoneRig(BaseRig):
 		if self.params.layers:
 			mod_bone.bone.layers = meta_bone.bone.layers[:]
 		
+		if self.params.ik_settings:
+			mod_bone.ik_stretch = meta_bone.ik_stretch
+			mod_bone.lock_ik_x = meta_bone.lock_ik_x
+			mod_bone.lock_ik_y = meta_bone.lock_ik_y
+			mod_bone.lock_ik_z = meta_bone.lock_ik_z
+			mod_bone.ik_stiffness_x = meta_bone.ik_stiffness_x
+			mod_bone.ik_stiffness_y = meta_bone.ik_stiffness_y
+			mod_bone.ik_stiffness_z = meta_bone.ik_stiffness_z
+			mod_bone.use_ik_limit_x = meta_bone.use_ik_limit_x
+			mod_bone.use_ik_limit_y = meta_bone.use_ik_limit_y
+			mod_bone.use_ik_limit_z = meta_bone.use_ik_limit_z
+			mod_bone.ik_min_x = meta_bone.ik_min_x
+			mod_bone.ik_max_x = meta_bone.ik_max_x
+			mod_bone.ik_min_y = meta_bone.ik_min_y
+			mod_bone.ik_max_y = meta_bone.ik_max_y
+			mod_bone.ik_min_z = meta_bone.ik_min_z
+			mod_bone.ik_max_z = meta_bone.ik_max_z
+
 		if not self.params.constraints_additive:
 			mod_bone.constraints.clear()
 		
@@ -275,10 +293,14 @@ class CloudBoneRig(BaseRig):
 			description="Set the generated bone's layers to this bone's layers",
 			default=False
 		)
-		#TODO: implement this.
 		params.custom_props = BoolProperty(
 			name="Custom Properties",
-			description="Copy custom properties from this bone to the the generated bone",
+			description="Copy custom properties from this bone to the generated bone",
+			default=False
+		)
+		params.ik_settings = BoolProperty(
+			name="IK Settings",
+			description="Copy IK settings from this bone to the generated bone",
 			default=False
 		)
 
@@ -321,6 +343,7 @@ class CloudBoneRig(BaseRig):
 			col2.prop(params, "bone_group")
 			col2.prop(params, "layers")
 			col2.prop(params, "custom_props")
+			col2.prop(params, "ik_settings")
 		else:
 			col2.prop(params, "deform")
 
