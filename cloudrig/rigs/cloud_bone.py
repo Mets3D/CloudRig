@@ -80,20 +80,10 @@ class CloudBoneRig(BaseRig):
 			mod_bone.bbone_x = meta_bone.bbone_x
 			mod_bone.bbone_z = meta_bone.bbone_z
 		
-		parent = self.obj.data.edit_bones.get(self.params.parent)
+		parent = self.obj.data.edit_bones.get(self.params.custom_parent)
 		
-		# WHY DOESN'T THIS WORK??? (When does the parent get overwritten after this, to be None?!)
 		if parent:
-			print(mod_bone)
-			print("Trying to set parent for " + mod_bone.name)
-			print("to " + parent.name)
-			print(parent)
 			mod_bone.parent = parent
-			print("did it work? ")
-			print(mod_bone.parent)
-		else:
-			print("Did not find parent for " + mod_bone.name)
-			print("called " + self.params.parent)
 
 	@stage.configure_bones
 	def modify_bone_group(self):
@@ -258,7 +248,7 @@ class CloudBoneRig(BaseRig):
 		# TODO: We should do a search for P- bones, and have an option to affect those as well
 		#	Better yet, when we create a P- bone for a bone, that bone should store the name of that P- bone in a custom property, so we don't need to do slow searches like this.
 		#	Another idea is to be able to input a list of names that this bone should affect. But I'm not sure if there's a use case good enough for any of these things to bother implementing.
-		params.parent = StringProperty(
+		params.custom_parent = StringProperty(
 			name="Parent",
 			description="When this is not an empty string, set the parent to the bone with this name.",
 			default=""
@@ -330,12 +320,12 @@ class CloudBoneRig(BaseRig):
 		
 		col = layout.column()
 		layout.prop(params, "constraints_additive")
+		layout.prop(params, "custom_parent")
 		layout.row().prop(params, "op_type", expand=True, text="Copy Type")
 		row = layout.row()
 		col1 = row.column()	# Empty column for indent
 		col2 = row.column()
 		if params.op_type=='Tweak':
-			col2.prop(params, "parent")
 			col2.prop(params, "transforms")
 			col2.prop(params, "transform_locks")
 			col2.prop(params, "rot_mode")
