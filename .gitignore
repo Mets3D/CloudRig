@@ -1,3 +1,8 @@
+*.pyc
+
+# vscode
+*.code-workspace
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -94,7 +99,10 @@ ipython_config.py
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow
 __pypackages__/
 
-# Celery stuff
+#mypy
+.mypy_cache
+
+# celery beat schedule file
 celerybeat-schedule
 celerybeat.pid
 
@@ -127,3 +135,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+blender_addons.code-workspace
