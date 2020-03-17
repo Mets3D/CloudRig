@@ -21,7 +21,7 @@ class CloudBoneRig(BaseRig):
 		super().initialize()
 		self.defaults={}
 		self.scale=1
-		self.orgless_name = self.bones.org.replace("ORG-", "")
+		self.bone_name = self.base_bone.replace("ORG-", "")
 
 	def copy_constraint(self, from_con, to_bone):
 		new_con = to_bone.constraints.new(from_con.type)
@@ -55,7 +55,8 @@ class CloudBoneRig(BaseRig):
 	def create_copy(self):
 		# Make a copy of the ORG- bone without the ORG- prefix.
 		if not self.params.CR_copy_type == "Create": return
-		mod_bone = self.copy_bone(self.bones.org, self.orgless_name, parent=True)
+		mod_bone_name = self.copy_bone(self.bones.org, self.bone_name, parent=True)
+		self.bone_name = mod_bone_name
 		
 		# And then we hack our parameters, so future stages just modify this newly created bone :)
 		# Afaik, we only need to worry about pose bone properties, edit_bone stuff is taken care of by self.copy_bone().
@@ -64,6 +65,35 @@ class CloudBoneRig(BaseRig):
 		self.params.CR_bone_rot_mode = True
 		self.params.CR_bone_shape = True
 		self.params.CR_layers = True
+
+	@stage.generate_bones
+	def create_deform(self):
+		if not self.params.CR_create_deform_bone: return
+		def_bone_name = self.copy_bone(self.bones.org, self.bone_name)
+		def_bone = self.get_bone(def_bone_name)
+		def_bone.name = "DEF-" + self.bone_name
+		def_bone.parent = self.get_bone(self.bone_name)
+
+	@stage.configure_bones
+	def modify_bone_group(self):
+		if not self.params.CR_copy_type=='Tweak': return
+		mod_bone = self.get_bone(self.bone_name)
+		meta_bone = self.generator.metarig.pose.bones.get(self.bone_name)
+
+		meta_bg = meta_bone.bone_group
+		if self.params.CR_bone_group:
+			if meta_bg:
+				bg_name = meta_bg.name
+				bg = self.obj.pose.bone_groups.get(bg_name)
+				if not bg:
+					bg = self.obj.pose.bone_groups.new(bg_name)
+					bg.color_set = meta_bg.color_set
+					bg.colors.normal = meta_bg.colors.normal[:]
+					bg.colors.active = meta_bg.colors.active[:]
+					bg.colors.select = meta_bg.colors.select[:]
+				mod_bone.bone_group = bg
+			else:
+				mod_bone.bone_group = None
 
 	@stage.apply_bones
 	def modify_edit_bone(self):
@@ -84,27 +114,6 @@ class CloudBoneRig(BaseRig):
 		
 		if parent:
 			mod_bone.parent = parent
-
-	@stage.configure_bones
-	def modify_bone_group(self):
-		if not self.params.CR_copy_type=='Tweak': return
-		mod_bone = self.get_bone(self.orgless_name)
-		meta_bone = self.generator.metarig.pose.bones.get(self.orgless_name)
-
-		meta_bg = meta_bone.bone_group
-		if self.params.CR_bone_group:
-			if meta_bg:
-				bg_name = meta_bg.name
-				bg = self.obj.pose.bone_groups.get(bg_name)
-				if not bg:
-					bg = self.obj.pose.bone_groups.new(bg_name)
-					bg.color_set = meta_bg.color_set
-					bg.colors.normal = meta_bg.colors.normal[:]
-					bg.colors.active = meta_bg.colors.active[:]
-					bg.colors.select = meta_bg.colors.select[:]
-				mod_bone.bone_group = bg
-			else:
-				mod_bone.bone_group = None
 
 	@stage.finalize
 	def modify_pose_bone(self):
@@ -151,7 +160,7 @@ class CloudBoneRig(BaseRig):
 			mod_bone.ik_min_z = meta_bone.ik_min_z
 			mod_bone.ik_max_z = meta_bone.ik_max_z
 
-		if not self.params.constraints_additive:
+		if not self.params.CR_constraints_additive:
 			mod_bone.constraints.clear()
 		
 		# Constraint re-linking is done similarly to Rigify, but without the functionality for hard-coded prefix shorthand.
@@ -219,7 +228,7 @@ class CloudBoneRig(BaseRig):
 		"""
 		super().add_parameters(params)
 
-		params.constraints_additive = BoolProperty(
+		params.CR_constraints_additive = BoolProperty(
 			name="Additive Constraints"
 			,description="Add the constraints of this bone to the generated bone's constraints. When disabled, we replace the constraints instead (even when there aren't any)"
 			,default=True
@@ -286,18 +295,18 @@ class CloudBoneRig(BaseRig):
 		)
 
 		# These parameters are valid when CR_copy_type==False
-		# TODO.
-		params.control = BoolProperty(
+		# TODO: Implement control and unlocker. Or maybe just unlocker.
+		params.CR_create_control_bone = BoolProperty(
 			 name="Create Control Bone"
 			,description="Create a copy of the ORG bone with use_deform disabled, with the name, bone group, layers, bone shape and constraints of this bone"
 			,default=True
 		)
-		params.unlocker = BoolProperty(	# Is this overkill? Maybe if we want something this complex, we should be expected to have to add two bones to the metarig.
+		params.CR_create_unlocker_bone = BoolProperty(	# Is this overkill? Maybe if we want something this complex, we should be expected to have to add two bones to the metarig.
 			 name="Create Unlocker Bone"
 			,description="In addition to the control bone, create an extra parent to hold the constraints, so the control bone itself can be freely animated"
 			,default=False
 		)
-		params.deform = BoolProperty(
+		params.CR_create_deform_bone = BoolProperty(
 			 name="Create Deform Bone"
 			,description="Create a copy of the ORG bone with use_deform enabled, and with the bbone settings of this bone."
 			,default=True
@@ -310,7 +319,7 @@ class CloudBoneRig(BaseRig):
 		layout.use_property_split = True
 		
 		col = layout.column()
-		layout.prop(params, "constraints_additive")
+		layout.prop(params, "CR_constraints_additive")
 		layout.prop(params, "CR_custom_bone_parent")
 		layout.row().prop(params, "CR_copy_type", expand=True, text="Copy Type")
 		row = layout.row()
@@ -326,7 +335,7 @@ class CloudBoneRig(BaseRig):
 			col2.prop(params, "CR_custom_props")
 			col2.prop(params, "CR_ik_settings")
 		else:
-			col2.prop(params, "deform")
+			col2.prop(params, "CR_create_deform_bone")
 
 class Rig(CloudBoneRig):
 	pass

@@ -214,15 +214,15 @@ class Rig(CloudFKChainRig):
 		)
 		foot_dsp(self.ik_mstr)
 		# Parent control
-		double_control = None
 		if self.params.CR_double_ik_control:
 			double_control = self.create_parent_bone(self.ik_mstr)
 			double_control.bone_group = 'Body: Main IK Controls Extra Parents'
 			foot_dsp(double_control)
+			if self.params.CR_world_aligned_controls:
+				double_control.flatten()
 		
 		if self.params.CR_world_aligned_controls:
 			self.ik_mstr.flatten()
-			double_control.flatten()
 		
 		# IK Chain
 		ik_chain = []
