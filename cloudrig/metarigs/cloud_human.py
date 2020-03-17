@@ -134,11 +134,13 @@ def create(obj):
     bone = arm.edit_bones.new('Spine')
     bone.head = 0.0000, 0.0018, 0.8211
     bone.tail = 0.0000, -0.0442, 1.0134
-    bone.roll = -0.0000
+    bone.roll = 0.0000
     bone.use_connect = False
+    bone.bbone_x = 0.0135
+    bone.bbone_z = 0.0135
     bone.head_radius = 0.0114
     bone.tail_radius = 0.0122
-    bone.envelope_distance = 0.0286
+    bone.envelope_distance = 0.1306
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bones['Spine'] = bone.name
@@ -147,6 +149,8 @@ def create(obj):
     bone.tail = 0.0000, 0.2713, 0.1046
     bone.roll = 0.0000
     bone.use_connect = False
+    bone.bbone_x = 0.0052
+    bone.bbone_z = 0.0052
     bone.head_radius = 0.0105
     bone.tail_radius = 0.0052
     bone.envelope_distance = 0.0262
@@ -158,20 +162,37 @@ def create(obj):
     bone.tail = 0.0000, 0.2713, 0.2802
     bone.roll = 0.0000
     bone.use_connect = False
+    bone.bbone_x = 0.0052
+    bone.bbone_z = 0.0052
     bone.head_radius = 0.0105
     bone.tail_radius = 0.0052
     bone.envelope_distance = 0.0262
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bones['Properties_Character_Template'] = bone.name
+    bone = arm.edit_bones.new('Properties_Outfit_Second')
+    bone.head = 0.0000, 0.4286, 0.0000
+    bone.tail = 0.0000, 0.4286, 0.1046
+    bone.roll = 0.0000
+    bone.use_connect = False
+    bone.bbone_x = 0.0052
+    bone.bbone_z = 0.0052
+    bone.head_radius = 0.0105
+    bone.tail_radius = 0.0052
+    bone.envelope_distance = 0.0262
+    bone.envelope_weight = 1.0000
+    bone.use_envelope_multiply = 0.0000
+    bones['Properties_Outfit_Second'] = bone.name
     bone = arm.edit_bones.new('Thigh.L')
     bone.head = 0.0816, -0.0215, 0.8559
     bone.tail = 0.0756, -0.0246, 0.4856
     bone.roll = 0.0164
     bone.use_connect = False
+    bone.bbone_x = 0.0185
+    bone.bbone_z = 0.0185
     bone.head_radius = 0.0279
     bone.tail_radius = 0.0239
-    bone.envelope_distance = 0.0697
+    bone.envelope_distance = 0.0475
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Spine']]
@@ -181,9 +202,11 @@ def create(obj):
     bone.tail = -0.0756, -0.0246, 0.4856
     bone.roll = -0.0164
     bone.use_connect = False
+    bone.bbone_x = 0.0185
+    bone.bbone_z = 0.0185
     bone.head_radius = 0.0279
     bone.tail_radius = 0.0239
-    bone.envelope_distance = 0.0697
+    bone.envelope_distance = 0.0475
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Spine']]
@@ -191,11 +214,13 @@ def create(obj):
     bone = arm.edit_bones.new('RibCage')
     bone.head = 0.0000, -0.0442, 1.0134
     bone.tail = 0.0000, -0.0458, 1.1582
-    bone.roll = -0.0000
+    bone.roll = 0.0000
     bone.use_connect = True
+    bone.bbone_x = 0.0124
+    bone.bbone_z = 0.0124
     bone.head_radius = 0.0122
     bone.tail_radius = 0.0121
-    bone.envelope_distance = 0.0245
+    bone.envelope_distance = 0.1231
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Spine']]
@@ -205,9 +230,11 @@ def create(obj):
     bone.tail = 0.0657, -0.0042, 0.0775
     bone.roll = 0.0241
     bone.use_connect = True
+    bone.bbone_x = 0.0163
+    bone.bbone_z = 0.0163
     bone.head_radius = 0.0239
     bone.tail_radius = 0.0186
-    bone.envelope_distance = 0.0864
+    bone.envelope_distance = 0.0412
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Thigh.L']]
@@ -217,9 +244,11 @@ def create(obj):
     bone.tail = -0.0657, -0.0042, 0.0775
     bone.roll = -0.0241
     bone.use_connect = True
+    bone.bbone_x = 0.0163
+    bone.bbone_z = 0.0163
     bone.head_radius = 0.0239
     bone.tail_radius = 0.0186
-    bone.envelope_distance = 0.0864
+    bone.envelope_distance = 0.0412
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Thigh.R']]
@@ -227,11 +256,13 @@ def create(obj):
     bone = arm.edit_bones.new('Chest')
     bone.head = 0.0000, -0.0458, 1.1582
     bone.tail = 0.0000, -0.0148, 1.2805
-    bone.roll = -0.0000
+    bone.roll = 0.0000
     bone.use_connect = True
+    bone.bbone_x = 0.0108
+    bone.bbone_z = 0.0108
     bone.head_radius = 0.0121
     bone.tail_radius = 0.0118
-    bone.envelope_distance = 0.0223
+    bone.envelope_distance = 0.1000
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['RibCage']]
@@ -241,9 +272,11 @@ def create(obj):
     bone.tail = 0.0689, -0.1086, 0.0249
     bone.roll = -0.0592
     bone.use_connect = True
+    bone.bbone_x = 0.0155
+    bone.bbone_z = 0.0155
     bone.head_radius = 0.0186
     bone.tail_radius = 0.0162
-    bone.envelope_distance = 0.0186
+    bone.envelope_distance = 0.0342
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Knee.L']]
@@ -253,9 +286,11 @@ def create(obj):
     bone.tail = -0.0689, -0.1086, 0.0249
     bone.roll = 0.0592
     bone.use_connect = True
+    bone.bbone_x = 0.0155
+    bone.bbone_z = 0.0155
     bone.head_radius = 0.0186
     bone.tail_radius = 0.0162
-    bone.envelope_distance = 0.0186
+    bone.envelope_distance = 0.0342
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Knee.R']]
@@ -265,9 +300,11 @@ def create(obj):
     bone.tail = 0.0000, -0.0277, 1.3921
     bone.roll = 0.0000
     bone.use_connect = True
+    bone.bbone_x = 0.0056
+    bone.bbone_z = 0.0056
     bone.head_radius = 0.0118
     bone.tail_radius = 0.0138
-    bone.envelope_distance = 0.0146
+    bone.envelope_distance = 0.0739
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Chest']]
@@ -277,9 +314,11 @@ def create(obj):
     bone.tail = 0.0697, -0.1838, 0.0046
     bone.roll = -0.0402
     bone.use_connect = True
+    bone.bbone_x = 0.0103
+    bone.bbone_z = 0.0103
     bone.head_radius = 0.0162
     bone.tail_radius = 0.0083
-    bone.envelope_distance = 0.0096
+    bone.envelope_distance = 0.0332
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Foot.L']]
@@ -289,6 +328,8 @@ def create(obj):
     bone.tail = 0.0672, -0.0040, 0.0213
     bone.roll = 0.0000
     bone.use_connect = False
+    bone.bbone_x = 0.0108
+    bone.bbone_z = 0.0108
     bone.head_radius = 0.0085
     bone.tail_radius = 0.0034
     bone.envelope_distance = 0.0085
@@ -301,9 +342,11 @@ def create(obj):
     bone.tail = -0.0697, -0.1838, 0.0046
     bone.roll = 0.0402
     bone.use_connect = True
+    bone.bbone_x = 0.0103
+    bone.bbone_z = 0.0103
     bone.head_radius = 0.0162
     bone.tail_radius = 0.0083
-    bone.envelope_distance = 0.0096
+    bone.envelope_distance = 0.0332
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Foot.R']]
@@ -313,6 +356,8 @@ def create(obj):
     bone.tail = -0.0672, -0.0040, 0.0213
     bone.roll = -0.0000
     bone.use_connect = False
+    bone.bbone_x = 0.0108
+    bone.bbone_z = 0.0108
     bone.head_radius = 0.0085
     bone.tail_radius = 0.0034
     bone.envelope_distance = 0.0085
@@ -323,11 +368,13 @@ def create(obj):
     bone = arm.edit_bones.new('Head')
     bone.head = 0.0000, -0.0277, 1.3921
     bone.tail = 0.0000, -0.0528, 1.6157
-    bone.roll = -0.0000
+    bone.roll = 0.0000
     bone.use_connect = True
+    bone.bbone_x = 0.0113
+    bone.bbone_z = 0.0113
     bone.head_radius = 0.0138
-    bone.tail_radius = 0.0180
-    bone.envelope_distance = 0.0152
+    bone.tail_radius = 0.0583
+    bone.envelope_distance = 0.0799
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Neck']]
@@ -337,9 +384,11 @@ def create(obj):
     bone.tail = 0.1131, 0.0042, 1.2508
     bone.roll = -0.0235
     bone.use_connect = False
+    bone.bbone_x = 0.0113
+    bone.bbone_z = 0.0113
     bone.head_radius = 0.0111
     bone.tail_radius = 0.0133
-    bone.envelope_distance = 0.0278
+    bone.envelope_distance = 0.0778
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Neck']]
@@ -349,9 +398,11 @@ def create(obj):
     bone.tail = -0.1131, 0.0042, 1.2508
     bone.roll = 0.0235
     bone.use_connect = False
+    bone.bbone_x = 0.0113
+    bone.bbone_z = 0.0113
     bone.head_radius = 0.0111
     bone.tail_radius = 0.0133
-    bone.envelope_distance = 0.0278
+    bone.envelope_distance = 0.0778
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Neck']]
@@ -359,11 +410,13 @@ def create(obj):
     bone = arm.edit_bones.new('Ponytail1')
     bone.head = 0.0000, 0.0860, 1.5697
     bone.tail = 0.0000, 0.1144, 1.5840
-    bone.roll = -0.0000
+    bone.roll = 0.0000
     bone.use_connect = False
+    bone.bbone_x = 0.0016
+    bone.bbone_z = 0.0016
     bone.head_radius = 0.0105
     bone.tail_radius = 0.0107
-    bone.envelope_distance = 0.0021
+    bone.envelope_distance = 0.0045
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Head']]
@@ -373,9 +426,11 @@ def create(obj):
     bone.tail = 0.3176, 0.0138, 1.2407
     bone.roll = -1.5214
     bone.use_connect = True
+    bone.bbone_x = 0.0121
+    bone.bbone_z = 0.0121
     bone.head_radius = 0.0133
     bone.tail_radius = 0.0112
-    bone.envelope_distance = 0.0280
+    bone.envelope_distance = 0.0448
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Shoulder.L']]
@@ -385,9 +440,11 @@ def create(obj):
     bone.tail = -0.3176, 0.0138, 1.2407
     bone.roll = 1.5214
     bone.use_connect = True
+    bone.bbone_x = 0.0121
+    bone.bbone_z = 0.0121
     bone.head_radius = 0.0133
     bone.tail_radius = 0.0112
-    bone.envelope_distance = 0.0280
+    bone.envelope_distance = 0.0448
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Shoulder.R']]
@@ -395,11 +452,13 @@ def create(obj):
     bone = arm.edit_bones.new('Ponytail2')
     bone.head = 0.0000, 0.1144, 1.5840
     bone.tail = 0.0000, 0.2405, 1.5840
-    bone.roll = -0.0000
+    bone.roll = 0.0000
     bone.use_connect = True
+    bone.bbone_x = 0.0063
+    bone.bbone_z = 0.0063
     bone.head_radius = 0.0107
     bone.tail_radius = 0.0150
-    bone.envelope_distance = 0.0315
+    bone.envelope_distance = 0.0672
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Ponytail1']]
@@ -409,9 +468,11 @@ def create(obj):
     bone.tail = 0.5288, -0.0125, 1.2312
     bone.roll = -1.5260
     bone.use_connect = True
+    bone.bbone_x = 0.0107
+    bone.bbone_z = 0.0107
     bone.head_radius = 0.0112
     bone.tail_radius = 0.0132
-    bone.envelope_distance = 0.0329
+    bone.envelope_distance = 0.0526
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['UpperArm.L']]
@@ -421,9 +482,11 @@ def create(obj):
     bone.tail = -0.5288, -0.0125, 1.2312
     bone.roll = 1.5260
     bone.use_connect = True
+    bone.bbone_x = 0.0107
+    bone.bbone_z = 0.0107
     bone.head_radius = 0.0112
     bone.tail_radius = 0.0132
-    bone.envelope_distance = 0.0329
+    bone.envelope_distance = 0.0526
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['UpperArm.R']]
@@ -431,11 +494,13 @@ def create(obj):
     bone = arm.edit_bones.new('Ponytail3')
     bone.head = 0.0000, 0.2405, 1.5840
     bone.tail = 0.0000, 0.3696, 1.5840
-    bone.roll = -0.0000
+    bone.roll = 0.0000
     bone.use_connect = True
+    bone.bbone_x = 0.0065
+    bone.bbone_z = 0.0065
     bone.head_radius = 0.0150
     bone.tail_radius = 0.0160
-    bone.envelope_distance = 0.0323
+    bone.envelope_distance = 0.0689
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Ponytail2']]
@@ -445,9 +510,11 @@ def create(obj):
     bone.tail = 0.5842, -0.0197, 1.2286
     bone.roll = -1.5240
     bone.use_connect = True
+    bone.bbone_x = 0.0139
+    bone.bbone_z = 0.0139
     bone.head_radius = 0.0132
     bone.tail_radius = 0.0056
-    bone.envelope_distance = 0.0139
+    bone.envelope_distance = 0.0222
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Forearm.L']]
@@ -457,9 +524,11 @@ def create(obj):
     bone.tail = -0.5842, -0.0197, 1.2286
     bone.roll = 1.5240
     bone.use_connect = True
+    bone.bbone_x = 0.0139
+    bone.bbone_z = 0.0139
     bone.head_radius = 0.0132
     bone.tail_radius = 0.0056
-    bone.envelope_distance = 0.0139
+    bone.envelope_distance = 0.0222
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Forearm.R']]
@@ -467,11 +536,13 @@ def create(obj):
     bone = arm.edit_bones.new('Ponytail4')
     bone.head = 0.0000, 0.3696, 1.5840
     bone.tail = 0.0000, 0.4935, 1.5840
-    bone.roll = -0.0000
+    bone.roll = 0.0000
     bone.use_connect = True
+    bone.bbone_x = 0.0062
+    bone.bbone_z = 0.0062
     bone.head_radius = 0.0160
     bone.tail_radius = 0.0124
-    bone.envelope_distance = 0.0310
+    bone.envelope_distance = 0.0662
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Ponytail3']]
@@ -481,9 +552,11 @@ def create(obj):
     bone.tail = 0.6007, -0.0463, 1.2230
     bone.roll = -2.8330
     bone.use_connect = False
+    bone.bbone_x = 0.0041
+    bone.bbone_z = 0.0041
     bone.head_radius = 0.0125
     bone.tail_radius = 0.0054
-    bone.envelope_distance = 0.0125
+    bone.envelope_distance = 0.0220
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Wrist.L']]
@@ -493,9 +566,11 @@ def create(obj):
     bone.tail = 0.6071, -0.0271, 1.2246
     bone.roll = -3.0030
     bone.use_connect = False
+    bone.bbone_x = 0.0043
+    bone.bbone_z = 0.0043
     bone.head_radius = 0.0136
     bone.tail_radius = 0.0059
-    bone.envelope_distance = 0.0136
+    bone.envelope_distance = 0.0239
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Wrist.L']]
@@ -505,9 +580,11 @@ def create(obj):
     bone.tail = 0.6029, -0.0077, 1.2239
     bone.roll = -2.9853
     bone.use_connect = False
+    bone.bbone_x = 0.0038
+    bone.bbone_z = 0.0038
     bone.head_radius = 0.0119
     bone.tail_radius = 0.0051
-    bone.envelope_distance = 0.0119
+    bone.envelope_distance = 0.0209
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Wrist.L']]
@@ -517,9 +594,11 @@ def create(obj):
     bone.tail = 0.5999, 0.0107, 1.2222
     bone.roll = -3.0077
     bone.use_connect = False
+    bone.bbone_x = 0.0034
+    bone.bbone_z = 0.0034
     bone.head_radius = 0.0108
     bone.tail_radius = 0.0046
-    bone.envelope_distance = 0.0108
+    bone.envelope_distance = 0.0190
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Wrist.L']]
@@ -529,9 +608,11 @@ def create(obj):
     bone.tail = 0.5652, -0.0578, 1.2124
     bone.roll = -1.0781
     bone.use_connect = False
+    bone.bbone_x = 0.0035
+    bone.bbone_z = 0.0035
     bone.head_radius = 0.0092
     bone.tail_radius = 0.0047
-    bone.envelope_distance = 0.0116
+    bone.envelope_distance = 0.0204
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Wrist.L']]
@@ -541,9 +622,11 @@ def create(obj):
     bone.tail = -0.6007, -0.0463, 1.2230
     bone.roll = 2.8330
     bone.use_connect = False
+    bone.bbone_x = 0.0041
+    bone.bbone_z = 0.0041
     bone.head_radius = 0.0125
     bone.tail_radius = 0.0054
-    bone.envelope_distance = 0.0125
+    bone.envelope_distance = 0.0220
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Wrist.R']]
@@ -553,9 +636,11 @@ def create(obj):
     bone.tail = -0.6071, -0.0271, 1.2246
     bone.roll = 3.0030
     bone.use_connect = False
+    bone.bbone_x = 0.0043
+    bone.bbone_z = 0.0043
     bone.head_radius = 0.0136
     bone.tail_radius = 0.0059
-    bone.envelope_distance = 0.0136
+    bone.envelope_distance = 0.0239
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Wrist.R']]
@@ -565,9 +650,11 @@ def create(obj):
     bone.tail = -0.6029, -0.0077, 1.2239
     bone.roll = 2.9853
     bone.use_connect = False
+    bone.bbone_x = 0.0038
+    bone.bbone_z = 0.0038
     bone.head_radius = 0.0119
     bone.tail_radius = 0.0051
-    bone.envelope_distance = 0.0119
+    bone.envelope_distance = 0.0209
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Wrist.R']]
@@ -577,9 +664,11 @@ def create(obj):
     bone.tail = -0.5999, 0.0107, 1.2222
     bone.roll = 3.0077
     bone.use_connect = False
+    bone.bbone_x = 0.0034
+    bone.bbone_z = 0.0034
     bone.head_radius = 0.0108
     bone.tail_radius = 0.0046
-    bone.envelope_distance = 0.0108
+    bone.envelope_distance = 0.0190
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Wrist.R']]
@@ -589,9 +678,11 @@ def create(obj):
     bone.tail = -0.5652, -0.0578, 1.2124
     bone.roll = 1.0781
     bone.use_connect = False
+    bone.bbone_x = 0.0035
+    bone.bbone_z = 0.0035
     bone.head_radius = 0.0092
     bone.tail_radius = 0.0047
-    bone.envelope_distance = 0.0116
+    bone.envelope_distance = 0.0204
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Wrist.R']]
@@ -601,9 +692,11 @@ def create(obj):
     bone.tail = 0.6368, -0.0525, 1.2153
     bone.roll = -2.9282
     bone.use_connect = True
+    bone.bbone_x = 0.0030
+    bone.bbone_z = 0.0030
     bone.head_radius = 0.0054
     bone.tail_radius = 0.0035
-    bone.envelope_distance = 0.0089
+    bone.envelope_distance = 0.0157
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Index_Carpal.L']]
@@ -613,9 +706,11 @@ def create(obj):
     bone.tail = 0.6475, -0.0321, 1.2149
     bone.roll = -2.9270
     bone.use_connect = True
+    bone.bbone_x = 0.0033
+    bone.bbone_z = 0.0033
     bone.head_radius = 0.0059
     bone.tail_radius = 0.0038
-    bone.envelope_distance = 0.0094
+    bone.envelope_distance = 0.0165
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Middle_Carpal.L']]
@@ -625,9 +720,11 @@ def create(obj):
     bone.tail = 0.6420, -0.0094, 1.2182
     bone.roll = -3.0045
     bone.use_connect = True
+    bone.bbone_x = 0.0031
+    bone.bbone_z = 0.0031
     bone.head_radius = 0.0051
     bone.tail_radius = 0.0041
-    bone.envelope_distance = 0.0102
+    bone.envelope_distance = 0.0180
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Ring_Carpal.L']]
@@ -637,9 +734,11 @@ def create(obj):
     bone.tail = 0.6297, 0.0117, 1.2168
     bone.roll = -2.9675
     bone.use_connect = True
+    bone.bbone_x = 0.0024
+    bone.bbone_z = 0.0024
     bone.head_radius = 0.0046
     bone.tail_radius = 0.0032
-    bone.envelope_distance = 0.0079
+    bone.envelope_distance = 0.0139
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Pinky_Carpal.L']]
@@ -649,9 +748,11 @@ def create(obj):
     bone.tail = 0.5915, -0.0743, 1.1997
     bone.roll = -1.3263
     bone.use_connect = True
+    bone.bbone_x = 0.0027
+    bone.bbone_z = 0.0027
     bone.head_radius = 0.0047
     bone.tail_radius = 0.0025
-    bone.envelope_distance = 0.0063
+    bone.envelope_distance = 0.0111
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Thumb1.L']]
@@ -661,9 +762,11 @@ def create(obj):
     bone.tail = -0.6368, -0.0525, 1.2153
     bone.roll = 2.9282
     bone.use_connect = True
+    bone.bbone_x = 0.0030
+    bone.bbone_z = 0.0030
     bone.head_radius = 0.0054
     bone.tail_radius = 0.0035
-    bone.envelope_distance = 0.0089
+    bone.envelope_distance = 0.0157
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Index_Carpal.R']]
@@ -673,9 +776,11 @@ def create(obj):
     bone.tail = -0.6475, -0.0321, 1.2149
     bone.roll = 2.9270
     bone.use_connect = True
+    bone.bbone_x = 0.0033
+    bone.bbone_z = 0.0033
     bone.head_radius = 0.0059
     bone.tail_radius = 0.0038
-    bone.envelope_distance = 0.0094
+    bone.envelope_distance = 0.0165
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Middle_Carpal.R']]
@@ -685,9 +790,11 @@ def create(obj):
     bone.tail = -0.6420, -0.0094, 1.2182
     bone.roll = 3.0045
     bone.use_connect = True
+    bone.bbone_x = 0.0031
+    bone.bbone_z = 0.0031
     bone.head_radius = 0.0051
     bone.tail_radius = 0.0041
-    bone.envelope_distance = 0.0102
+    bone.envelope_distance = 0.0180
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Ring_Carpal.R']]
@@ -697,9 +804,11 @@ def create(obj):
     bone.tail = -0.6297, 0.0117, 1.2168
     bone.roll = 2.9675
     bone.use_connect = True
+    bone.bbone_x = 0.0024
+    bone.bbone_z = 0.0024
     bone.head_radius = 0.0046
     bone.tail_radius = 0.0032
-    bone.envelope_distance = 0.0079
+    bone.envelope_distance = 0.0139
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Pinky_Carpal.R']]
@@ -709,9 +818,11 @@ def create(obj):
     bone.tail = -0.5915, -0.0743, 1.1997
     bone.roll = 1.3263
     bone.use_connect = True
+    bone.bbone_x = 0.0027
+    bone.bbone_z = 0.0027
     bone.head_radius = 0.0047
     bone.tail_radius = 0.0025
-    bone.envelope_distance = 0.0063
+    bone.envelope_distance = 0.0111
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Thumb1.R']]
@@ -721,9 +832,11 @@ def create(obj):
     bone.tail = 0.6578, -0.0565, 1.2068
     bone.roll = -2.6468
     bone.use_connect = True
+    bone.bbone_x = 0.0018
+    bone.bbone_z = 0.0018
     bone.head_radius = 0.0035
     bone.tail_radius = 0.0023
-    bone.envelope_distance = 0.0059
+    bone.envelope_distance = 0.0104
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Index1.L']]
@@ -733,9 +846,11 @@ def create(obj):
     bone.tail = 0.6681, -0.0349, 1.2072
     bone.roll = -2.7470
     bone.use_connect = True
+    bone.bbone_x = 0.0018
+    bone.bbone_z = 0.0018
     bone.head_radius = 0.0038
     bone.tail_radius = 0.0024
-    bone.envelope_distance = 0.0060
+    bone.envelope_distance = 0.0106
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Middle1.L']]
@@ -745,9 +860,11 @@ def create(obj):
     bone.tail = 0.6648, -0.0108, 1.2108
     bone.roll = -2.7904
     bone.use_connect = True
+    bone.bbone_x = 0.0019
+    bone.bbone_z = 0.0019
     bone.head_radius = 0.0041
     bone.tail_radius = 0.0024
-    bone.envelope_distance = 0.0060
+    bone.envelope_distance = 0.0106
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Ring1.L']]
@@ -757,9 +874,11 @@ def create(obj):
     bone.tail = 0.6454, 0.0117, 1.2115
     bone.roll = -2.7966
     bone.use_connect = True
+    bone.bbone_x = 0.0013
+    bone.bbone_z = 0.0013
     bone.head_radius = 0.0032
     bone.tail_radius = 0.0017
-    bone.envelope_distance = 0.0044
+    bone.envelope_distance = 0.0077
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Pinky1.L']]
@@ -769,9 +888,11 @@ def create(obj):
     bone.tail = 0.6113, -0.0857, 1.1906
     bone.roll = -1.2803
     bone.use_connect = True
+    bone.bbone_x = 0.0020
+    bone.bbone_z = 0.0020
     bone.head_radius = 0.0025
     bone.tail_radius = 0.0034
-    bone.envelope_distance = 0.0084
+    bone.envelope_distance = 0.0148
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Thumb2.L']]
@@ -781,9 +902,11 @@ def create(obj):
     bone.tail = -0.6578, -0.0565, 1.2068
     bone.roll = 2.6468
     bone.use_connect = True
+    bone.bbone_x = 0.0018
+    bone.bbone_z = 0.0018
     bone.head_radius = 0.0035
     bone.tail_radius = 0.0023
-    bone.envelope_distance = 0.0059
+    bone.envelope_distance = 0.0104
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Index1.R']]
@@ -793,9 +916,11 @@ def create(obj):
     bone.tail = -0.6681, -0.0349, 1.2072
     bone.roll = 2.7470
     bone.use_connect = True
+    bone.bbone_x = 0.0018
+    bone.bbone_z = 0.0018
     bone.head_radius = 0.0038
     bone.tail_radius = 0.0024
-    bone.envelope_distance = 0.0060
+    bone.envelope_distance = 0.0106
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Middle1.R']]
@@ -805,9 +930,11 @@ def create(obj):
     bone.tail = -0.6648, -0.0108, 1.2108
     bone.roll = 2.7904
     bone.use_connect = True
+    bone.bbone_x = 0.0019
+    bone.bbone_z = 0.0019
     bone.head_radius = 0.0041
     bone.tail_radius = 0.0024
-    bone.envelope_distance = 0.0060
+    bone.envelope_distance = 0.0106
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Ring1.R']]
@@ -817,9 +944,11 @@ def create(obj):
     bone.tail = -0.6454, 0.0117, 1.2115
     bone.roll = 2.7966
     bone.use_connect = True
+    bone.bbone_x = 0.0013
+    bone.bbone_z = 0.0013
     bone.head_radius = 0.0032
     bone.tail_radius = 0.0017
-    bone.envelope_distance = 0.0044
+    bone.envelope_distance = 0.0077
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Pinky1.R']]
@@ -829,9 +958,11 @@ def create(obj):
     bone.tail = -0.6113, -0.0857, 1.1906
     bone.roll = 1.2803
     bone.use_connect = True
+    bone.bbone_x = 0.0020
+    bone.bbone_z = 0.0020
     bone.head_radius = 0.0025
     bone.tail_radius = 0.0034
-    bone.envelope_distance = 0.0084
+    bone.envelope_distance = 0.0148
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Thumb2.R']]
@@ -841,9 +972,11 @@ def create(obj):
     bone.tail = 0.6810, -0.0605, 1.1971
     bone.roll = -2.5972
     bone.use_connect = True
+    bone.bbone_x = 0.0020
+    bone.bbone_z = 0.0020
     bone.head_radius = 0.0023
     bone.tail_radius = 0.0027
-    bone.envelope_distance = 0.0067
+    bone.envelope_distance = 0.0118
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Index2.L']]
@@ -853,9 +986,11 @@ def create(obj):
     bone.tail = 0.6950, -0.0385, 1.1977
     bone.roll = -2.7355
     bone.use_connect = True
+    bone.bbone_x = 0.0023
+    bone.bbone_z = 0.0023
     bone.head_radius = 0.0024
     bone.tail_radius = 0.0030
-    bone.envelope_distance = 0.0076
+    bone.envelope_distance = 0.0134
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Middle2.L']]
@@ -865,9 +1000,11 @@ def create(obj):
     bone.tail = 0.6908, -0.0126, 1.2003
     bone.roll = -2.7701
     bone.use_connect = True
+    bone.bbone_x = 0.0022
+    bone.bbone_z = 0.0022
     bone.head_radius = 0.0024
     bone.tail_radius = 0.0027
-    bone.envelope_distance = 0.0068
+    bone.envelope_distance = 0.0120
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Ring2.L']]
@@ -877,9 +1014,11 @@ def create(obj):
     bone.tail = 0.6663, 0.0114, 1.2037
     bone.roll = -2.9399
     bone.use_connect = True
+    bone.bbone_x = 0.0018
+    bone.bbone_z = 0.0018
     bone.head_radius = 0.0017
     bone.tail_radius = 0.0020
-    bone.envelope_distance = 0.0051
+    bone.envelope_distance = 0.0090
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Pinky2.L']]
@@ -889,9 +1028,11 @@ def create(obj):
     bone.tail = -0.6810, -0.0605, 1.1971
     bone.roll = 2.5972
     bone.use_connect = True
+    bone.bbone_x = 0.0020
+    bone.bbone_z = 0.0020
     bone.head_radius = 0.0023
     bone.tail_radius = 0.0027
-    bone.envelope_distance = 0.0067
+    bone.envelope_distance = 0.0118
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Index2.R']]
@@ -901,9 +1042,11 @@ def create(obj):
     bone.tail = -0.6950, -0.0385, 1.1977
     bone.roll = 2.7355
     bone.use_connect = True
+    bone.bbone_x = 0.0023
+    bone.bbone_z = 0.0023
     bone.head_radius = 0.0024
     bone.tail_radius = 0.0030
-    bone.envelope_distance = 0.0076
+    bone.envelope_distance = 0.0134
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Middle2.R']]
@@ -913,9 +1056,11 @@ def create(obj):
     bone.tail = -0.6908, -0.0126, 1.2003
     bone.roll = 2.7701
     bone.use_connect = True
+    bone.bbone_x = 0.0022
+    bone.bbone_z = 0.0022
     bone.head_radius = 0.0024
     bone.tail_radius = 0.0027
-    bone.envelope_distance = 0.0068
+    bone.envelope_distance = 0.0120
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Ring2.R']]
@@ -925,9 +1070,11 @@ def create(obj):
     bone.tail = -0.6663, 0.0114, 1.2037
     bone.roll = 2.9399
     bone.use_connect = True
+    bone.bbone_x = 0.0018
+    bone.bbone_z = 0.0018
     bone.head_radius = 0.0017
     bone.tail_radius = 0.0020
-    bone.envelope_distance = 0.0051
+    bone.envelope_distance = 0.0090
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Finger_Pinky2.R']]
@@ -942,30 +1089,6 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'XYZ'
     pbone.bone.layers = [True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.deform_segments = 1
-    except AttributeError:
-        pass
-    try:
-        pbone.rigify_parameters.bbone_segments = 6
-    except AttributeError:
-        pass
-    try:
-        pbone.rigify_parameters.sharp_sections = False
-    except AttributeError:
-        pass
-    try:
-        pbone.rigify_parameters.display_scale = 1.0
-    except AttributeError:
-        pass
-    try:
-        pbone.rigify_parameters.cap_control = True
-    except AttributeError:
-        pass
-    try:
-        pbone.rigify_parameters.shape_key_helpers = True
-    except AttributeError:
-        pass
     pbone = obj.pose.bones[bones['Properties_Outfit_Default']]
     pbone.rigify_type = 'basic.raw_copy'
     pbone.lock_location = (False, False, False)
@@ -1006,6 +1129,26 @@ def create(obj):
         pbone.rigify_parameters.relink_constraints = False
     except AttributeError:
         pass
+    pbone = obj.pose.bones[bones['Properties_Outfit_Second']]
+    pbone.rigify_type = 'basic.raw_copy'
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    pbone.bone.layers = [False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, True]
+    try:
+        pbone.rigify_parameters.make_control = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.make_deform = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.relink_constraints = False
+    except AttributeError:
+        pass
     pbone = obj.pose.bones[bones['Thigh.L']]
     pbone.rigify_type = 'cloud_limbs'
     pbone.lock_location = (False, False, False)
@@ -1015,23 +1158,43 @@ def create(obj):
     pbone.rotation_mode = 'QUATERNION'
     pbone.bone.layers = [True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
     try:
-        pbone.rigify_parameters.type = "LEG"
-    except AttributeError:
-        pass
-    try:
         pbone.rigify_parameters.rotation_axis = "automatic"
     except AttributeError:
         pass
     try:
-        pbone.rigify_parameters.cap_control = True
+        pbone.rigify_parameters.CR_limb_type = "LEG"
     except AttributeError:
         pass
     try:
-        pbone.rigify_parameters.display_scale = 1.2000000476837158
+        pbone.rigify_parameters.CR_center_all_fk = True
     except AttributeError:
         pass
     try:
-        pbone.rigify_parameters.lock_yz = True
+        pbone.rigify_parameters.CR_use_custom_limb_name = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_limb_lock_yz = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_custom_limb_name = "Leg"
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_use_custom_category_name = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_double_first_control = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_world_aligned_controls = True
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_double_ik_control = False
     except AttributeError:
         pass
     pbone = obj.pose.bones[bones['Thigh.R']]
@@ -1043,19 +1206,27 @@ def create(obj):
     pbone.rotation_mode = 'QUATERNION'
     pbone.bone.layers = [True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
     try:
-        pbone.rigify_parameters.type = "LEG"
+        pbone.rigify_parameters.CR_center_all_fk = True
     except AttributeError:
         pass
     try:
-        pbone.rigify_parameters.cap_control = True
+        pbone.rigify_parameters.CR_counter_rotate_str = False
     except AttributeError:
         pass
     try:
-        pbone.rigify_parameters.display_scale = 1.2000000476837158
+        pbone.rigify_parameters.CR_limb_type = "LEG"
     except AttributeError:
         pass
     try:
-        pbone.rigify_parameters.lock_yz = True
+        pbone.rigify_parameters.CR_limb_lock_yz = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_double_first_control = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_double_ik_control = False
     except AttributeError:
         pass
     pbone = obj.pose.bones[bones['RibCage']]
@@ -1162,22 +1333,6 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'QUATERNION'
     pbone.bone.layers = [True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.display_scale = 1.5
-    except AttributeError:
-        pass
-    try:
-        pbone.rigify_parameters.deform_segments = 1
-    except AttributeError:
-        pass
-    try:
-        pbone.rigify_parameters.cap_control = False
-    except AttributeError:
-        pass
-    try:
-        pbone.rigify_parameters.sharp_sections = False
-    except AttributeError:
-        pass
     pbone = obj.pose.bones[bones['Shoulder.R']]
     pbone.rigify_type = 'cloud_shoulder'
     pbone.lock_location = (False, False, False)
@@ -1186,22 +1341,6 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'QUATERNION'
     pbone.bone.layers = [True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.display_scale = 1.5
-    except AttributeError:
-        pass
-    try:
-        pbone.rigify_parameters.cap_control = False
-    except AttributeError:
-        pass
-    try:
-        pbone.rigify_parameters.sharp_sections = False
-    except AttributeError:
-        pass
-    try:
-        pbone.rigify_parameters.deform_segments = 1
-    except AttributeError:
-        pass
     pbone = obj.pose.bones[bones['Ponytail1']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1211,11 +1350,15 @@ def create(obj):
     pbone.rotation_mode = 'QUATERNION'
     pbone.bone.layers = [True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
     try:
-        pbone.rigify_parameters.deform_segments = 1
+        pbone.rigify_parameters.CR_sharp_sections = False
     except AttributeError:
         pass
     try:
-        pbone.rigify_parameters.sharp_sections = False
+        pbone.rigify_parameters.CR_counter_rotate_str = True
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_center_all_fk = True
     except AttributeError:
         pass
     pbone = obj.pose.bones[bones['UpperArm.L']]
@@ -1227,27 +1370,31 @@ def create(obj):
     pbone.rotation_mode = 'QUATERNION'
     pbone.bone.layers = [True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
     try:
-        pbone.rigify_parameters.cap_control = False
+        pbone.rigify_parameters.CR_world_aligned_controls = False
     except AttributeError:
         pass
     try:
-        pbone.rigify_parameters.bbone_segments = 10
+        pbone.rigify_parameters.CR_double_first_control = False
     except AttributeError:
         pass
     try:
-        pbone.rigify_parameters.world_aligned = False
+        pbone.rigify_parameters.CR_double_ik_control = False
     except AttributeError:
         pass
     try:
-        pbone.rigify_parameters.display_scale = 1.0
+        pbone.rigify_parameters.CR_use_custom_category_name = False
     except AttributeError:
         pass
     try:
-        pbone.rigify_parameters.lock_yz = True
+        pbone.rigify_parameters.CR_use_custom_limb_name = False
     except AttributeError:
         pass
     try:
-        pbone.rigify_parameters.shape_key_helpers = False
+        pbone.rigify_parameters.CR_cap_control = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_center_all_fk = True
     except AttributeError:
         pass
     pbone = obj.pose.bones[bones['UpperArm.R']]
@@ -1259,19 +1406,31 @@ def create(obj):
     pbone.rotation_mode = 'QUATERNION'
     pbone.bone.layers = [True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
     try:
-        pbone.rigify_parameters.cap_control = False
+        pbone.rigify_parameters.CR_world_aligned_controls = False
     except AttributeError:
         pass
     try:
-        pbone.rigify_parameters.bbone_segments = 10
+        pbone.rigify_parameters.CR_limb_lock_yz = False
     except AttributeError:
         pass
     try:
-        pbone.rigify_parameters.world_aligned = False
+        pbone.rigify_parameters.CR_double_first_control = False
     except AttributeError:
         pass
     try:
-        pbone.rigify_parameters.lock_yz = True
+        pbone.rigify_parameters.CR_double_ik_control = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_use_custom_limb_name = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_cap_control = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_center_all_fk = True
     except AttributeError:
         pass
     pbone = obj.pose.bones[bones['Ponytail2']]
@@ -1338,10 +1497,6 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'YZX'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.deform_segments = 1
-    except AttributeError:
-        pass
     pbone = obj.pose.bones[bones['Finger_Middle_Carpal.L']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1350,10 +1505,6 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'YZX'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.deform_segments = 1
-    except AttributeError:
-        pass
     pbone = obj.pose.bones[bones['Finger_Ring_Carpal.L']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1362,10 +1513,6 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'YZX'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.deform_segments = 1
-    except AttributeError:
-        pass
     pbone = obj.pose.bones[bones['Finger_Pinky_Carpal.L']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1374,10 +1521,6 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'YZX'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.deform_segments = 1
-    except AttributeError:
-        pass
     pbone = obj.pose.bones[bones['Finger_Thumb1.L']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1386,14 +1529,6 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'ZXY'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.shape_key_helpers = False
-    except AttributeError:
-        pass
-    try:
-        pbone.rigify_parameters.deform_segments = 1
-    except AttributeError:
-        pass
     pbone = obj.pose.bones[bones['Finger_Index_Carpal.R']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1402,10 +1537,6 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'YZX'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.deform_segments = 1
-    except AttributeError:
-        pass
     pbone = obj.pose.bones[bones['Finger_Middle_Carpal.R']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1414,10 +1545,6 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'YZX'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.deform_segments = 1
-    except AttributeError:
-        pass
     pbone = obj.pose.bones[bones['Finger_Ring_Carpal.R']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1426,10 +1553,6 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'YZX'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.deform_segments = 1
-    except AttributeError:
-        pass
     pbone = obj.pose.bones[bones['Finger_Pinky_Carpal.R']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1438,10 +1561,6 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'YZX'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.deform_segments = 1
-    except AttributeError:
-        pass
     pbone = obj.pose.bones[bones['Finger_Thumb1.R']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1450,14 +1569,6 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'ZXY'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.shape_key_helpers = False
-    except AttributeError:
-        pass
-    try:
-        pbone.rigify_parameters.deform_segments = 1
-    except AttributeError:
-        pass
     pbone = obj.pose.bones[bones['Finger_Index1.L']]
     pbone.rigify_type = ''
     pbone.lock_location = (False, False, False)
@@ -1693,8 +1804,9 @@ def create(obj):
         bone.select = True
         bone.select_head = True
         bone.select_tail = True
-        bone.bbone_x = bone.bbone_z = bone.length * 0.05
         arm.edit_bones.active = bone
+        obj.name = 'META-Cloud_Human'
+        obj.data.name = 'Data_META-Cloud_Human'
 
     arm.layers = [(x in [0, 5, 31]) for x in range(32)]
 
