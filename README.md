@@ -4,12 +4,11 @@ That is to say, you should always keep a backup before updating, so in case your
 # What is CloudRig?
 CloudRig or CloudRigify is a custom featureset package for the Rigify Blender addon, developed for the Blender Animation Studio in-house, with the help of professional animators.
 
-# Wait, what is Rigify?
-Rigify is a Blender addon which allows you to generate rigs from smaller building blocks. 
-For example, if you have a character with six arms and a leg, you can create a rig for them with Rigify by simply placing a few bones to your character's joints, assigning 6 arm rigs and a leg rig to the right bones, and pressing the Generate button.
+#### Wait, what is Rigify?
+Rigify is a Blender addon which allows you to generate rigs from smaller building blocks (rig elements).
 It is somewhat of a step between rigging a character from scratch, bone by bone(easy to customize, lots of effort) versus adjusting a completely pre-built rig to your character's proportions (hard to customize, low time investment).
 
-So, CloudRig is a collection of such building blocks, which you can add to the Rigify addon. Just to be safe, this page will assume that you never used Rigify before.
+So, CloudRig is a collection of such building blocks, which you can use with the Rigify addon. This page will assume that you never used Rigify before.
 
 # Installing CloudRigify
 Download this repository as a .zip, or grab the latest release from the Releases page.
@@ -19,8 +18,11 @@ While you're there in the Rigify addon preferences, open the "Rigify: External f
 
 # Using CloudRigify
 The easiest way to get started is to add the pre-built human metarig by simply doing Shift+A->Armature->Cloud Human (Metarig).
+![](cloudrig/docs/armature_add.png)
 Next, you can generate this rig via Properties->Object Data->Rigify Buttons->Generate Rig.
+![](cloudrig/docs/armature_generate.png)
 And bam, you have a rig!
+![](cloudrig/docs/armature_generated.png)
 
 You can try moving around the bones in the Metarig in edit mode, and then generating again, to see the rig re-generated to the new proportions.
 
