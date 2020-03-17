@@ -54,20 +54,23 @@ class CloudBoneRig(BaseRig):
 	@stage.generate_bones
 	def create_copy(self):
 		# Make a copy of the ORG- bone without the ORG- prefix.
-		if not self.params.CR_copy_type == "Create": return
+		if self.params.CR_copy_type != "Create": return
 		mod_bone_name = self.copy_bone(self.bones.org, self.bone_name, parent=True)
 		self.bone_name = mod_bone_name
 		
 		# And then we hack our parameters, so future stages just modify this newly created bone :)
 		# Afaik, we only need to worry about pose bone properties, edit_bone stuff is taken care of by self.copy_bone().
-		self.params.CR_copy_type='Tweak'
+		self.params.CR_copy_type = 'Tweak'
 		self.params.CR_transform_locks = True
 		self.params.CR_bone_rot_mode = True
 		self.params.CR_bone_shape = True
 		self.params.CR_layers = True
+		self.params.CR_custom_props = True
+		self.params.CR_ik_settings = True
 
 	@stage.generate_bones
 	def create_deform(self):
+		if self.params.CR_copy_type != 'Create': return
 		if not self.params.CR_create_deform_bone: return
 		def_bone_name = self.copy_bone(self.bones.org, self.bone_name)
 		def_bone = self.get_bone(def_bone_name)
@@ -76,7 +79,7 @@ class CloudBoneRig(BaseRig):
 
 	@stage.configure_bones
 	def modify_bone_group(self):
-		if not self.params.CR_copy_type=='Tweak': return
+		if self.params.CR_copy_type != 'Tweak': return
 		mod_bone = self.get_bone(self.bone_name)
 		meta_bone = self.generator.metarig.pose.bones.get(self.bone_name)
 
@@ -97,7 +100,7 @@ class CloudBoneRig(BaseRig):
 
 	@stage.apply_bones
 	def modify_edit_bone(self):
-		if not self.params.CR_copy_type=='Tweak': return
+		if self.params.CR_copy_type != 'Tweak': return
 		bone_name = self.base_bone.replace("ORG-", "")
 		mod_bone = self.get_bone(bone_name)
 		org_bone = self.get_bone(self.base_bone)
@@ -117,10 +120,9 @@ class CloudBoneRig(BaseRig):
 
 	@stage.finalize
 	def modify_pose_bone(self):
-		if not self.params.CR_copy_type=='Tweak': return
-		bone_name = self.base_bone.replace("ORG-", "")
-		mod_bone = self.get_bone(bone_name)
-		meta_bone = self.generator.metarig.pose.bones.get(bone_name)
+		if self.params.CR_copy_type != 'Tweak': return
+		mod_bone = self.get_bone(self.bone_name)
+		meta_bone = self.generator.metarig.pose.bones.get(self.bone_name)
 		org_bone = self.get_bone(self.base_bone)
 		
 		if self.params.CR_transform_locks:
