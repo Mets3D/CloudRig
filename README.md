@@ -18,11 +18,9 @@ While you're there in the Rigify addon preferences, open the "Rigify: External f
 
 # Using CloudRigify
 The easiest way to get started is to add the pre-built human metarig by simply doing Shift+A->Armature->Cloud Human (Metarig).
-![](cloudrig/docs/armature_add.png)
 Next, you can generate this rig via Properties->Object Data->Rigify Buttons->Generate Rig.
-![](cloudrig/docs/armature_generate.png)
-And bam, you have a rig!
-![](cloudrig/docs/armature_generated.png)
+And bam, you have a rig!  
+![](cloudrig/docs/armature_generate.gif)  
 
 You can try moving around the bones in the Metarig in edit mode, and then generating again, to see the rig re-generated to the new proportions.
 
