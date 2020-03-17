@@ -14,7 +14,7 @@ So, CloudRig is a collection of such building blocks, which you can use with the
 Download this repository as a .zip, or grab the latest release from the Releases page.
 Open Blender 2.8 or higher. In the Preferences, enable the Rigify addon. Rigify comes with Blender, so you don't need to download it.
 While you're there in the Rigify addon preferences, open the "Rigify: External feature sets" sub-panel, and then click "Install Feature Set from File..."
-<put screenshot here>
+![](cloudrig/docs/featureset_load.gif)  
 
 # Using CloudRigify
 The easiest way to get started is to add the pre-built human metarig by simply doing Shift+A->Armature->Cloud Human (Metarig).
