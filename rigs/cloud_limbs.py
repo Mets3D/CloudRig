@@ -1057,7 +1057,5 @@ def create_sample(obj):
         bone.select_head = True
         bone.select_tail = True
         arm.edit_bones.active = bone
-        obj.name = 'META-Cloud_Human'
-        obj.data.name = 'Data_META-Cloud_Human'
 
     return bones
