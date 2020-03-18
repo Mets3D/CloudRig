@@ -3,11 +3,11 @@ from .driver import DriverVariable
 import bpy
 
 class CustomProp:
-	def __init__(self, name, *, default, min=0.0, max=1.0, soft_min=None, soft_max=None, description=None, overridable=True, subtype=True):
+	def __init__(self, name, *, default, _min=0.0, _max=1.0, soft_min=None, soft_max=None, description=None, overridable=True, subtype=True):
 		self.name = name
 		self.default = default
-		self.min = min
-		self.max = max
+		self.min = _min
+		self.max = _max
 		self.soft_min = soft_min
 		self.soft_max = soft_max
 		self.description = description
@@ -52,8 +52,8 @@ def copy_custom_properties(from_obj, keys, to_obj, safe=True):
 		custom_prop = CustomProp(
 			key,
 			default = from_obj[key],
-			min = data['min'],
-			max = data['max'],
+			_min = data['min'],
+			_max = data['max'],
 			soft_min = data['soft_min'],
 			soft_max = data['soft_max'],
 		)

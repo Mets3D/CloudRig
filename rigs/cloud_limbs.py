@@ -1,14 +1,12 @@
+import bpy
 from bpy.props import *
 from mathutils import *
-from math import pi
+from math import radians as rad
 
 from rigify.base_rig import stage
-from rigify.utils.bones import BoneDict
-from rigify.utils.rig import connected_children_names
 
 from ..definitions.driver import *
 from ..definitions.custom_props import CustomProp
-from .cloud_utils import make_name, slice_name
 from .cloud_fk_chain import CloudFKChainRig
 
 class Rig(CloudFKChainRig):
@@ -17,6 +15,9 @@ class Rig(CloudFKChainRig):
 	def find_org_bones(self, bone):
 		"""Populate self.bones.org."""
 		# For limbs, we only care about the first three bones in the chain.
+		from rigify.utils.bones import BoneDict
+		from rigify.utils.rig import connected_children_names
+
 		return BoneDict(
 			main=[bone.name] + connected_children_names(self.obj, bone.name),
 		)
@@ -42,7 +43,6 @@ class Rig(CloudFKChainRig):
 		self.ikfk_name = "ik_" + self.limb_name_props
 		self.ik_stretch_name = "ik_stretch_" + self.limb_name_props
 		self.fk_hinge_name = "fk_hinge_" + self.limb_name_props
-		self.ik_pole_follow_name = "ik_pole_follow_" + self.limb_name_props
 
 	def get_segments(self, org_i, chain):
 		segments = self.params.CR_deform_segments
@@ -152,7 +152,7 @@ class Rig(CloudFKChainRig):
 		if self.params.CR_use_custom_limb_name:
 			limb_name = self.params.CR_custom_limb_name
 		pole_ctrl = self.pole_ctrl = self.bone_infos.bone(
-			name = make_name(["IK", "POLE"], limb_name, [self.side_suffix]),
+			name = self.make_name(["IK", "POLE"], limb_name, [self.side_suffix]),
 			bbone_width = 0.1,
 			head = elbow + offset,
 			tail = elbow + offset*1.1,
@@ -162,7 +162,7 @@ class Rig(CloudFKChainRig):
 			bone_group = 'Body: Main IK Controls',
 		)
 		pole_line = self.bone_infos.bone(
-			name = make_name(["IK", "POLE", "LINE"], limb_name, [self.side_suffix]),
+			name = self.make_name(["IK", "POLE", "LINE"], limb_name, [self.side_suffix]),
 			source = pole_ctrl,
 			tail = elbow,
 			custom_shape = self.load_widget('Pole_Line'),
@@ -197,7 +197,7 @@ class Rig(CloudFKChainRig):
 				projected_center = projected_head + (projected_tail-projected_head) / 2
 				dsp_bone.head = projected_center
 				dsp_bone.tail = projected_center + Vector((0, -self.scale/10, 0))
-				dsp_bone.roll = pi/2 * direction
+				dsp_bone.roll = rad(90) * direction
 
 		# Create IK control(s) (Hand/Foot)
 		bone_name = chain[2]
@@ -262,7 +262,7 @@ class Rig(CloudFKChainRig):
 				# Add the IK constraint to the previous bone, targetting this one.
 				ik_chain[-2].add_constraint(self.obj, 'IK', 
 					pole_subtarget = pole_ctrl.name,
-					pole_angle = direction * pi/2,
+					pole_angle = direction * rad(90),
 					subtarget = ik_bone.name
 				)
 		
@@ -439,14 +439,14 @@ class Rig(CloudFKChainRig):
 
 		# Create ROLL control behind the foot (Limit Rotation, lock other transforms)
 		if self.params.CR_use_foot_roll:	# TODO: Don't like this big if block. Maybe toe part should be moved out of this function, and the if check put before calling of this function, and then this function can be renamed to prepare_footroll.
-			sliced_name = slice_name(ik_foot.name)
-			roll_name = make_name(["ROLL"], sliced_name[1], sliced_name[2])
+			sliced_name = self.slice_name(ik_foot.name)
+			roll_name = self.make_name(["ROLL"], sliced_name[1], sliced_name[2])
 			roll_ctrl = self.bone_infos.bone(
 				name = roll_name,
 				bbone_width = 1/18,
 				head = ik_foot.head + Vector((0, self.scale, self.scale/4)),
 				tail = ik_foot.head + Vector((0, self.scale/2, self.scale/4)),
-				roll = pi,
+				roll = rad(180),
 				custom_shape = self.load_widget('FootRoll'),
 				bone_group = 'Body: Main IK Controls',
 				parent = ik_tgt
@@ -454,12 +454,12 @@ class Rig(CloudFKChainRig):
 
 			roll_ctrl.add_constraint(self.obj, 'LIMIT_ROTATION', 
 				use_limit_x=True,
-				min_x = -90 * pi/180,
-				max_x = 130 * pi/180,
+				min_x = rad(-90),
+				max_x = rad(130),
 				use_limit_y=True,
 				use_limit_z=True,
-				min_z = -pi/2,
-				max_z = pi/2,
+				min_z = rad(-90),
+				max_z = rad(90),
 			)
 
 			# Create bone to use as pivot point when rolling back. This is read from the metarig and should be placed at the heel of the shoe, pointing forward.
@@ -481,7 +481,7 @@ class Rig(CloudFKChainRig):
 				bbone_width = self.org_chain[-1].bbone_width,
 				head = meta_ankle_pivot.head_local,
 				tail = meta_ankle_pivot.tail_local,
-				roll = pi,
+				roll = rad(180),
 				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
 				parent = ik_tgt,
 				hide_select = self.mch_disable_select
@@ -491,8 +491,8 @@ class Rig(CloudFKChainRig):
 				subtarget = roll_ctrl.name,
 				map_from = 'ROTATION',
 				map_to = 'ROTATION',
-				from_min_x_rot = -90 * pi/180,
-				to_min_x_rot = -60 * pi/180,
+				from_min_x_rot = rad(-90),
+				to_min_x_rot = rad(-60),
 			)
 			
 			# Create reverse bones
@@ -517,14 +517,14 @@ class Rig(CloudFKChainRig):
 						subtarget = roll_ctrl.name,
 						map_from = 'ROTATION',
 						map_to = 'ROTATION',
-						from_min_x_rot = 90 * pi/180,
-						from_max_x_rot = 166 * pi/180,
-						to_min_x_rot = 0 * pi/180,
-						to_max_x_rot = 169 * pi/180,
-						from_min_z_rot = -60 * pi/180,
-						from_max_z_rot = 60 * pi/180,
-						to_min_z_rot = 10 * pi/180,
-						to_max_z_rot = -10 * pi/180
+						from_min_x_rot = rad(90),
+						from_max_x_rot = rad(166),
+						to_min_x_rot   = rad(0),
+						to_max_x_rot   = rad(169),
+						from_min_z_rot = rad(-60),
+						from_max_z_rot = rad(60),
+						to_min_z_rot   = rad(10),
+						to_max_z_rot   = rad(-10)
 					)
 				
 				if i == 0:
@@ -540,24 +540,24 @@ class Rig(CloudFKChainRig):
 						subtarget = roll_ctrl.name,
 						map_from = 'ROTATION',
 						map_to = 'ROTATION',
-						from_min_x_rot = 0 * pi/180,
-						from_max_x_rot = 135 * pi/180,
-						to_min_x_rot = 0 * pi/180,
-						to_max_x_rot = 118 * pi/180,
-						from_min_z_rot = -45 * pi/180,
-						from_max_z_rot = 45 * pi/180,
-						to_min_z_rot = 25 * pi/180,
-						to_max_z_rot = -25 * pi/180
+						from_min_x_rot = rad(0),
+						from_max_x_rot = rad(135),
+						to_min_x_rot   = rad(0),
+						to_max_x_rot   = rad(118),
+						from_min_z_rot = rad(-45),
+						from_max_z_rot = rad(45),
+						to_min_z_rot   = rad(25),
+						to_max_z_rot   = rad(-25)
 					)
 					rik_bone.add_constraint(self.obj, 'TRANSFORM',
 						name = "Transformation CounterRoll",
 						subtarget = roll_ctrl.name,
 						map_from = 'ROTATION',
 						map_to = 'ROTATION',
-						from_min_x_rot = 90 * pi/180,
-						from_max_x_rot = 135 * pi/180,
-						to_min_x_rot = 0 * pi/180,
-						to_max_x_rot = -31.8 * pi/180
+						from_min_x_rot = rad(90),
+						from_max_x_rot = rad(135),
+						to_min_x_rot   = rad(0),
+						to_max_x_rot   = rad(-31.8)
 					)
 			
 		# FK Toe bone should be parented between FK Foot and IK Toe.
@@ -616,28 +616,31 @@ class Rig(CloudFKChainRig):
 
 	@stage.prepare_bones
 	def prepare_parent_switch(self):
+		if len(self.get_parent_candidates()) == 0:
+			# If this rig has no parent candidates, there's nothing to be done here.
+			return
+		
+		# List of parent candidate identifiers that this rig is looking for among its registered parent candidates
 		parents = []
-		if self.limb_type=='LEG':
+		if self.limb_type == 'LEG':
 			parents = ['Root', 'Torso', 'Hips', self.side_suffix + ' Leg']
-		else:
+		elif self.limb_type == 'ARM':
 			parents = ['Root', 'Torso', 'Chest', self.side_suffix + ' Arm']
-		
-		child_bones = [self.pole_ctrl, self.ik_ctrl]
-		child_names = [b.name for b in child_bones]
 
+		# Try to rig the IK control's parent switcher, searching for these parent candidates.
 		ik_parents_prop_name = "ik_parents_" + self.limb_name_props
-
-		for cb in child_bones:
-			self.rig_child(cb, parents, self.prop_bone, ik_parents_prop_name)
+		parent_names = self.rig_child(self.ik_ctrl, parents, self.prop_bone, ik_parents_prop_name)
+		if len(parent_names) == 0:
+			# If none of the parent candidates we were looking for exists, there's nothing to be done here.
+			return
 		
-
-
-
-
-		### IK Pole Follow option
+		# Rig the IK Pole control's parent switcher.
+		self.rig_child(self.pole_ctrl, parents, self.prop_bone, ik_parents_prop_name)		
+		### IK Pole Follow
+		ik_pole_follow_name = "ik_pole_follow_" + self.limb_name_props
 		# Create custom property
 		default = 1.0 if self.limb_type=='LEG' else 0.0
-		pole_follow_prop = self.prop_bone.custom_props[self.ik_pole_follow_name] = CustomProp(self.ik_pole_follow_name, default=default)
+		pole_follow_prop = self.prop_bone.custom_props[ik_pole_follow_name] = CustomProp(ik_pole_follow_name, default=default)
 
 		# Get the armature constraint from the IK pole's parent, and add the IK master as a new target.
 		arm_con_bone = self.pole_ctrl.parent
@@ -660,34 +663,32 @@ class Rig(CloudFKChainRig):
 			follow_var.type = 'SINGLE_PROP'
 			follow_var.targets[0].id_type = 'OBJECT'
 			follow_var.targets[0].id = self.obj
-			follow_var.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ik_pole_follow_name)
+			follow_var.targets[0].data_path = f'pose.bones["{self.prop_bone.name}"]["{ik_pole_follow_name}"]'
 
 		# Add option to the UI.
 		info = {
 			"prop_bone" : self.prop_bone.name,
-			"prop_id"	: self.ik_pole_follow_name,
+			"prop_id"	: ik_pole_follow_name,
 
 			"operator" : "pose.snap_simple",
 			"bones" : [self.pole_ctrl.name],
 			"select_bones" : True
 		}
 		self.store_ui_data("ik_pole_follows", self.category, self.limb_name, info)
-
-
-
-
+		
 		info = {
-			"prop_bone" : self.prop_bone.name,			# Name of the properties bone that contains the property that should be changed by the parent switch operator.
-			"prop_id" : ik_parents_prop_name, 			# Name of the property
-			"texts" : parents,
+			"prop_bone" : self.prop_bone.name,							# Name of the properties bone that contains the property that should be changed by the parent switch operator.
+			"prop_id" : ik_parents_prop_name, 							# Name of the property
+			"texts" : parent_names,	# TODO: Is this no longer used?
 			
 			"operator" : "pose.rigify_switch_parent",
 			"icon" : "COLLAPSEMENU",
 			
-			"bones" : child_names,						# List of child bone names that will be affected by the parent swapping. Often just one.
-			"parent_names" : parents,					# List of (arbitrary) names, in order, that should be displayed for each parent option in the UI.
+			"bones" : [b.name for b in [self.ik_ctrl, self.pole_ctrl]],	# List of child bone names that will be affected by the parent swapping. Often just one.
+			"parent_names" : parent_names,								# List of (arbitrary) names, in order, that should be displayed for each parent option in the UI.
 		}
 		self.store_ui_data("parents", self.category, self.limb_name, info)
+
 
 	##############################
 	# Parameters
@@ -788,3 +789,275 @@ class Rig(CloudFKChainRig):
 		layout.prop(params, "CR_limb_lock_yz")
 		layout.prop(params, "CR_world_aligned_controls")
 		layout.prop(params, "CR_ik_limb_pole_offset")
+
+def create_sample(obj):
+    # generated by rigify.utils.write_metarig
+    bpy.ops.object.mode_set(mode='EDIT')
+    arm = obj.data
+
+    bones = {}
+
+    bone = arm.edit_bones.new('Thigh.L')
+    bone.head = 0.0816, -0.0215, 0.8559
+    bone.tail = 0.0756, -0.0246, 0.4856
+    bone.roll = 0.0164
+    bone.use_connect = False
+    bone.bbone_x = 0.0185
+    bone.bbone_z = 0.0185
+    bone.head_radius = 0.0279
+    bone.tail_radius = 0.0239
+    bone.envelope_distance = 0.0475
+    bone.envelope_weight = 1.0000
+    bone.use_envelope_multiply = 0.0000
+    bones['Thigh.L'] = bone.name
+    bone = arm.edit_bones.new('UpperArm.L')
+    bone.head = 0.1131, 0.0042, 1.2508
+    bone.tail = 0.3176, 0.0138, 1.2407
+    bone.roll = -1.5214
+    bone.use_connect = False
+    bone.bbone_x = 0.0121
+    bone.bbone_z = 0.0121
+    bone.head_radius = 0.0133
+    bone.tail_radius = 0.0112
+    bone.envelope_distance = 0.0448
+    bone.envelope_weight = 1.0000
+    bone.use_envelope_multiply = 0.0000
+    bones['UpperArm.L'] = bone.name
+    bone = arm.edit_bones.new('Knee.L')
+    bone.head = 0.0756, -0.0246, 0.4856
+    bone.tail = 0.0657, -0.0042, 0.0775
+    bone.roll = 0.0241
+    bone.use_connect = True
+    bone.bbone_x = 0.0163
+    bone.bbone_z = 0.0163
+    bone.head_radius = 0.0239
+    bone.tail_radius = 0.0186
+    bone.envelope_distance = 0.0412
+    bone.envelope_weight = 1.0000
+    bone.use_envelope_multiply = 0.0000
+    bone.parent = arm.edit_bones[bones['Thigh.L']]
+    bones['Knee.L'] = bone.name
+    bone = arm.edit_bones.new('Forearm.L')
+    bone.head = 0.3176, 0.0138, 1.2407
+    bone.tail = 0.5288, -0.0125, 1.2312
+    bone.roll = -1.5260
+    bone.use_connect = True
+    bone.bbone_x = 0.0107
+    bone.bbone_z = 0.0107
+    bone.head_radius = 0.0112
+    bone.tail_radius = 0.0132
+    bone.envelope_distance = 0.0526
+    bone.envelope_weight = 1.0000
+    bone.use_envelope_multiply = 0.0000
+    bone.parent = arm.edit_bones[bones['UpperArm.L']]
+    bones['Forearm.L'] = bone.name
+    bone = arm.edit_bones.new('Foot.L')
+    bone.head = 0.0657, -0.0042, 0.0775
+    bone.tail = 0.0689, -0.1086, 0.0249
+    bone.roll = -0.0592
+    bone.use_connect = True
+    bone.bbone_x = 0.0155
+    bone.bbone_z = 0.0155
+    bone.head_radius = 0.0186
+    bone.tail_radius = 0.0162
+    bone.envelope_distance = 0.0342
+    bone.envelope_weight = 1.0000
+    bone.use_envelope_multiply = 0.0000
+    bone.parent = arm.edit_bones[bones['Knee.L']]
+    bones['Foot.L'] = bone.name
+    bone = arm.edit_bones.new('Wrist.L')
+    bone.head = 0.5288, -0.0125, 1.2312
+    bone.tail = 0.5842, -0.0197, 1.2286
+    bone.roll = -1.5240
+    bone.use_connect = True
+    bone.bbone_x = 0.0139
+    bone.bbone_z = 0.0139
+    bone.head_radius = 0.0132
+    bone.tail_radius = 0.0056
+    bone.envelope_distance = 0.0222
+    bone.envelope_weight = 1.0000
+    bone.use_envelope_multiply = 0.0000
+    bone.parent = arm.edit_bones[bones['Forearm.L']]
+    bones['Wrist.L'] = bone.name
+    bone = arm.edit_bones.new('Toes.L')
+    bone.head = 0.0689, -0.1086, 0.0249
+    bone.tail = 0.0697, -0.1838, 0.0046
+    bone.roll = -0.0402
+    bone.use_connect = True
+    bone.bbone_x = 0.0103
+    bone.bbone_z = 0.0103
+    bone.head_radius = 0.0162
+    bone.tail_radius = 0.0083
+    bone.envelope_distance = 0.0332
+    bone.envelope_weight = 1.0000
+    bone.use_envelope_multiply = 0.0000
+    bone.parent = arm.edit_bones[bones['Foot.L']]
+    bones['Toes.L'] = bone.name
+    bone = arm.edit_bones.new('AnklePivot.L')
+    bone.head = 0.0657, 0.0495, 0.0213
+    bone.tail = 0.0672, -0.0040, 0.0213
+    bone.roll = 0.0000
+    bone.use_connect = False
+    bone.bbone_x = 0.0108
+    bone.bbone_z = 0.0108
+    bone.head_radius = 0.0085
+    bone.tail_radius = 0.0034
+    bone.envelope_distance = 0.0085
+    bone.envelope_weight = 1.0000
+    bone.use_envelope_multiply = 0.0000
+    bone.parent = arm.edit_bones[bones['Foot.L']]
+    bones['AnklePivot.L'] = bone.name
+
+    bpy.ops.object.mode_set(mode='OBJECT')
+    pbone = obj.pose.bones[bones['Thigh.L']]
+    pbone.rigify_type = 'cloud_limbs'
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    try:
+        pbone.rigify_parameters.rotation_axis = "automatic"
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_limb_type = "LEG"
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_center_all_fk = True
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_use_custom_limb_name = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_limb_lock_yz = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_custom_limb_name = "Leg"
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_use_custom_category_name = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_double_first_control = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_world_aligned_controls = True
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_double_ik_control = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_double_root = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_custom_category_name = "legs"
+    except AttributeError:
+        pass
+    pbone = obj.pose.bones[bones['UpperArm.L']]
+    pbone.rigify_type = 'cloud_limbs'
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    try:
+        pbone.rigify_parameters.CR_world_aligned_controls = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_double_first_control = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_double_ik_control = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_use_custom_category_name = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_use_custom_limb_name = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_cap_control = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_center_all_fk = True
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_double_root = False
+    except AttributeError:
+        pass
+    pbone = obj.pose.bones[bones['Knee.L']]
+    pbone.rigify_type = ''
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    pbone = obj.pose.bones[bones['Forearm.L']]
+    pbone.rigify_type = ''
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    pbone = obj.pose.bones[bones['Foot.L']]
+    pbone.rigify_type = ''
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    pbone = obj.pose.bones[bones['Wrist.L']]
+    pbone.rigify_type = ''
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    pbone = obj.pose.bones[bones['Toes.L']]
+    pbone.rigify_type = ''
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    pbone = obj.pose.bones[bones['AnklePivot.L']]
+    pbone.rigify_type = ''
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+
+    bpy.ops.object.mode_set(mode='EDIT')
+    for bone in arm.edit_bones:
+        bone.select = False
+        bone.select_head = False
+        bone.select_tail = False
+    for b in bones:
+        bone = arm.edit_bones[bones[b]]
+        bone.select = True
+        bone.select_head = True
+        bone.select_tail = True
+        arm.edit_bones.active = bone
+        obj.name = 'META-Cloud_Human'
+        obj.data.name = 'Data_META-Cloud_Human'
+
+    return bones

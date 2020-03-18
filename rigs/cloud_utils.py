@@ -50,7 +50,7 @@ class CloudUtilities:
 		self.store_ui_data("fk_hinges", category, limb_name, info)
 
 		# Create custom property
-		prop_bone.custom_props[prop_name] = CustomProp(prop_name, default=default_value, min=0.0, max=1.0)
+		prop_bone.custom_props[prop_name] = CustomProp(prop_name, default=default_value, _min=0.0, _max=1.0)
 
 		# Create Hinge helper bone
 		hng_bone = self.bone_infos.bone(
@@ -102,7 +102,7 @@ class CloudUtilities:
 
 	def register_parent(self, bone, name):
 		if name in self.parent_candidates:
-			print("WARNING: OVERWRITING REGISTERED PARENT: %s, %s" %(bone.name, name))	# We're gonna have to deal with this when we have characters with more than 4 limbs. (Will probably need to supply a limb name as a rig parameter)
+			print("WARNING: OVERWRITING REGISTERED PARENT: %s, %s" %(bone.name, name))
 		self.parent_candidates[name] = bone
 
 	def get_parent_candidates(self, candidates={}):
@@ -194,34 +194,47 @@ class CloudUtilities:
 
 	def rig_child(self, child_bone, parent_names, prop_bone, prop_name, default_value=0):
 		""" Rig a child with multiple switchable parents, using Armature constraint and drivers. Also creates a custom property to drive those drivers.
+		Return list of parent names for which a registered parent candidate was found and rigged.
 		"""
 
-		# Create custom property
-		parents_prop = prop_bone.custom_props[prop_name] = CustomProp(prop_name, default=default_value, min=0, max=len(parent_names)-1)
+		# Test that at least one of the parents exists.
+		parent_candidates = self.get_parent_candidates()
+		found_parents = []
+		for pn in parent_names:
+			if pn in list(parent_candidates.keys()):
+				found_parents.append(pn)
+		if len(found_parents) == 0: 
+			print("No parents to be rigged for %s." %child_bone.name)
+			return found_parents
 
-		# Create parent bone for the bone that stores the Armature constraint - Without this, we cannot figure out the corrected pose-space matrix for the child bone after the property is switched.
+		# Create custom property.
+		parents_prop = prop_bone.custom_props[prop_name] = CustomProp(prop_name, default=default_value, _min=0, _max=len(found_parents)-1)
+
+		# Create parent bone for the bone that stores the Armature constraint.
+		# NOTE: Bones with Armature constraints should never be exposed to the animator directly because it breaks snapping functionality!
 		arm_con_bone = self.create_parent_bone(child_bone)
 		arm_con_bone.name = "Parents_" + child_bone.name
 		arm_con_bone.custom_shape = None
 		arm_con_bone.bone_group = "Body: IK-MCH - IK Mechanism Bones"
 
 		targets = []
-		for i, pn in enumerate(parent_names):
-			parent_candidates = self.get_parent_candidates()
+		for pn in parent_names:
+			if pn not in parent_candidates.keys():
+				continue
 			pb = parent_candidates[pn]
 			targets.append({
 				"subtarget" : pb.name
 			})
 
 			drv = Driver()
-			drv.expression = "parent==%d" %i
+			drv.expression = "parent==%d" %(len(targets)-1)
 			var = drv.make_var("parent")
 			var.type = 'SINGLE_PROP'
 			var.targets[0].id_type = 'OBJECT'
 			var.targets[0].id = self.obj
 			var.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (prop_bone.name, prop_name)
 
-			data_path = 'constraints["Armature"].targets[%d].weight' %i
+			data_path = 'constraints["Armature"].targets[%d].weight' %(len(targets)-1)
 			
 			arm_con_bone.drivers[data_path] = drv
 
@@ -229,6 +242,8 @@ class CloudUtilities:
 		arm_con_bone.add_constraint(self.obj, 'ARMATURE', 
 			targets = targets
 		)
+
+		return found_parents
 
 	def create_parent_bone(self, child):
 		"""Copy a bone, prefix it with "P", make the bone shape a bit bigger and parent the bone to this copy."""
@@ -375,8 +390,8 @@ class CloudUtilities:
 		return lock_transforms(obj, loc, rot, scale)
 
 	@staticmethod
-	def make_name(prefixes=[], base="", suffixed=[]):
-		return make_name(prefixed, base, suffixes)
+	def make_name(prefixes=[], base="", suffixes=[]):
+		return make_name(prefixes, base, suffixes)
 	
 	@staticmethod
 	def slice_name(name):

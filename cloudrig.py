@@ -71,7 +71,7 @@ class Snap_Simple(bpy.types.Operator):
 	def save_frame_state(self, context, rig, bone):
 		return self.get_transform_matrix(rig, bone, with_constraints=False)
 
-	def apply_frame_state(self, context, rig, old_matrices, bones):
+	def apply_frame_state(self, context, rig, old_matrices, bone_names):
 		# Change the parent
 		# TODO: Instead of relying on scene settings(auto-keying, keyingset, etc) maybe it would be better to have a custom boolean to decide whether to insert keyframes or not. Ask animators.
 		value = self.get_custom_property_value(rig, self.prop_bone, self.prop_id)
