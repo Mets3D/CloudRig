@@ -51,13 +51,20 @@ class CloudBoneRig(BaseRig):
 	def copy_pose_bone(self, from_bone, to_bone):
 		pass
 
-	@stage.generate_bones
-	def create_copy(self):
-		# Make a copy of the ORG- bone without the ORG- prefix.
+	def generate_bones(self):
 		if self.params.CR_copy_type != "Create": return
+		
+		# Make a copy of the ORG- bone without the ORG- prefix. This is our control bone.
 		mod_bone_name = self.copy_bone(self.bones.org, self.bone_name, parent=True)
 		self.bone_name = mod_bone_name
 		
+		# Make a copy with DEF- prefix, as our deform bone.
+		if self.params.CR_create_deform_bone: 
+			def_bone_name = self.copy_bone(self.bones.org, self.bone_name)
+			def_bone = self.get_bone(def_bone_name)
+			def_bone.name = "DEF-" + self.bone_name
+			def_bone.parent = self.get_bone(self.bone_name)
+
 		# And then we hack our parameters, so future stages just modify this newly created bone :)
 		# Afaik, we only need to worry about pose bone properties, edit_bone stuff is taken care of by self.copy_bone().
 		self.params.CR_copy_type = 'Tweak'
@@ -67,15 +74,6 @@ class CloudBoneRig(BaseRig):
 		self.params.CR_layers = True
 		self.params.CR_custom_props = True
 		self.params.CR_ik_settings = True
-
-	@stage.generate_bones
-	def create_deform(self):
-		if self.params.CR_copy_type != 'Create': return
-		if not self.params.CR_create_deform_bone: return
-		def_bone_name = self.copy_bone(self.bones.org, self.bone_name)
-		def_bone = self.get_bone(def_bone_name)
-		def_bone.name = "DEF-" + self.bone_name
-		def_bone.parent = self.get_bone(self.bone_name)
 
 	@stage.configure_bones
 	def modify_bone_group(self):
@@ -191,6 +189,12 @@ class CloudBoneRig(BaseRig):
 		# Copy and retarget drivers
 		self.copy_and_retarget_drivers(mod_bone)
 
+	@stage.finalize
+	def rig_org_bone(self):
+		# Constrain the ORG- bone to the control bone.
+		org_bone = self.get_bone(self.base_bone)
+		self.make_constraint(self.base_bone, 'COPY_TRANSFORMS', self.bone_name)
+	
 	def copy_and_retarget_driver(self, BPY_driver, obj, data_path, index=-1):
 		"""Copy a driver to some other data path, while accounting for any constraint retargetting."""
 		driver = Driver(BPY_driver)
