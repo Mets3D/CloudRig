@@ -163,13 +163,14 @@ class CloudBoneRig(BaseRig):
 		if not self.params.CR_constraints_additive:
 			mod_bone.constraints.clear()
 		
-		# Constraint re-linking is done similarly to Rigify, but without the functionality for hard-coded prefix shorthand.
+		# Constraint re-linking is done similarly to Rigify, but without the prefix-only shorthand.
 		# Constraint names can contain an @ character which separates the constraint name from the desired target to set when all bones have been generated.
-		# Eg. "Transformation@FK-Spine" on meta_bone will create a constraint called "Transformation" with "FK-Spine" as its subtarget.
-		# Armature constraints can have multiple @ targets. (Running into the constraint name character limit is a concern here though)
+		# Eg. "Transformation@FK-Spine" on meta_bone will result in a constraint on mod_bone called "Transformation" with "FK-Spine" as its subtarget.
+		# Armature constraints can have multiple @ targets.
 		for org_c in org_bone.constraints:
 			# Create a copy of this constraint on mod_bone
 			new_con = self.copy_constraint(org_c, mod_bone)
+			new_con.target = self.obj
 			split_name = new_con.name.split("@")
 			subtargets = split_name[1:]
 			if new_con.type=='ARMATURE':
@@ -177,9 +178,12 @@ class CloudBoneRig(BaseRig):
 					t.target = self.obj
 					t.subtarget = subtargets[i]	# IndexError is possible and allowed here.
 				continue
-			new_con.target = self.obj
-			new_con.subtarget = subtargets[0]
-			new_con.name = split_name[0]
+			if len(subtargets) > 0:
+				new_con.subtarget = subtargets[0]
+				new_con.name = split_name[0]
+			else:
+				# This is allowed to happen with targetless constraints like Limit Location.
+				pass
 		
 		# Copy custom properties
 		if self.params.CR_custom_props and '_RNA_UI' in meta_bone.keys():
