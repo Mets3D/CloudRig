@@ -1,6 +1,3 @@
-# Credit for keyframing and IK pole snapping code to Rigify.
-"2020-02-24"
-
 import bpy
 from bpy.props import *
 from mathutils import Vector, Matrix
@@ -852,7 +849,7 @@ class RigUI_Settings(RigUI):
 		if 'render_modifiers' in rig.data:
 			layout.row().prop(rig.data, 'render_modifiers', text='Enable Modifiers', toggle=True)
 
-def draw_rig_settings(layout, rig, settings_name, label=""):
+def draw_rig_settings(layout, rig, ui_area, label=""):
 	""" Draw UI settings in the layout, if info for those settings can be found in the rig's data. 
 	Parameters read from the rig data:
 	
@@ -866,44 +863,44 @@ def draw_rig_settings(layout, rig, settings_name, label=""):
 	Arbitrary arguments will be passed on to the operator.
 	"""
 	
-	if settings_name not in rig.data: return
+	if ui_area not in rig.data: return
 	
 	if label!="":
 		layout.label(text=label)
 
-	settings = rig.data[settings_name].to_dict()
-	for cat_name in settings.keys():
-		category = settings[cat_name]
+	settings = rig.data[ui_area].to_dict()
+	for row_name in settings.keys():
+		col_name = settings[row_name]
 		row = layout.row()
-		for limb_name in category.keys():
-			limb = category[limb_name]
-			assert 'prop_bone' in limb and 'prop_id' in limb, "ERROR: Limb definition lacks properties bone or ID: %s, %s" %(cat_name, limb)
-			prop_bone = rig.pose.bones.get(limb['prop_bone'])
-			prop_id = limb['prop_id']
-			assert prop_bone and prop_id in prop_bone, "ERROR: Properties bone or property does not exist: %s" %limb
+		for entry_name in col_name.keys():
+			info = col_name[entry_name]
+			assert 'prop_bone' in info and 'prop_id' in info, "ERROR: Limb definition lacks properties bone or ID: %s, %s" %(row_name, info)
+			prop_bone = rig.pose.bones.get(info['prop_bone'])
+			prop_id = info['prop_id']
+			assert prop_bone and prop_id in prop_bone, "ERROR: Properties bone or property does not exist: %s" %info
 
 			col = row.column()
 			sub_row = col.row(align=True)
 			
-			text = limb_name
-			if 'texts' in limb:
+			text = entry_name
+			if 'texts' in info:
 				prop_value = prop_bone[prop_id]
-				cur_text = limb['texts'][int(prop_value)]
-				text = limb_name + ": " + cur_text
+				cur_text = info['texts'][int(prop_value)]
+				text = entry_name + ": " + cur_text
 
 			sub_row.prop(prop_bone, '["' + prop_id + '"]', slider=True, text=text)
 			
 			# Draw an operator if provided.
-			if 'operator' in limb:
+			if 'operator' in info:
 				icon = 'FILE_REFRESH'
-				if 'icon' in limb:
-					icon = limb['icon']
+				if 'icon' in info:
+					icon = info['icon']
 				
-				switch = sub_row.operator(limb['operator'], text="", icon=icon)
+				switch = sub_row.operator(info['operator'], text="", icon=icon)
 				# Fill the operator's parameters where provided.
-				for param in limb.keys():
+				for param in info.keys():
 					if hasattr(switch, param):
-						value = limb[param]
+						value = info[param]
 						if type(value) in [list, dict]:
 							value = json.dumps(value)
 						setattr(switch, param, value)

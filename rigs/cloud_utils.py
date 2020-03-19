@@ -8,20 +8,31 @@ class CloudUtilities:
 	# Utility functions that probably won't be overriden by a sub-class because they perform a very specific task.
 	# If a class inherits this class, it's also expected to inherit CloudBaseRig - These are only split up for organizational purposes.
 
-	def store_ui_data(self, switch_type, category, bodypart, info):
-		""" Store some data in the rig, to be used by the UI script.
-		switch_type: One of a list of pre-defined strings that the UI script recognizes, that describes a panel or area in the UI. Eg, "fk_hinges", "ik_switches".
-		category: A row in the UI area.
-		bodypart: A column within the row.
-		info: The info to store, usually a dictionary. At minimum, this is {prop_bone : "Name of Properties Bone", prop_name : "Name of Property that controls this setting"}
+	def store_ui_data(self, ui_area, row_name, col_name, info, default=0.0, _min=0.0, _max=1.0):
+		""" Store some data in the rig, organized in a way which the UI script expects. 
+		ui_area: One of a list of pre-defined strings that the UI script recognizes, that describes a panel or area in the UI. Eg, "fk_hinges", "ik_switches".
+		row_name: A row in the UI area.
+		col_name: A column within the row.
+		info: The info to store, usually a dictionary. At minimum, this is {prop_bone : "Name of Properties Bone", prop_id : "Name of Property that controls this setting"}
+		The values from info param are used to create a custom property on prop_bone, named prop_id.
 		"""
-		if switch_type not in self.obj.data:
-			self.obj.data[switch_type] = {}
+		if ui_area not in self.obj.data:
+			self.obj.data[ui_area] = {}
 
-		if category not in self.obj.data[switch_type]:
-			self.obj.data[switch_type][category] = {}
+		if row_name not in self.obj.data[ui_area]:
+			self.obj.data[ui_area][row_name] = {}
 
-		self.obj.data[switch_type][category][bodypart] = info
+		self.obj.data[ui_area][row_name][col_name] = info
+		
+		# Create custom property.
+		prop_bone = self.bone_infos.find(info['prop_bone'])
+		prop_id = info['prop_id']
+		prop_bone.custom_props[prop_id] = CustomProp(
+			prop_id, 
+			default=default, 
+			_min=_min,
+			_max=_max
+		)
 
 	def hinge_setup(self, bone, category, *, 
 		prop_bone, prop_name, default_value=0.0, 
@@ -47,10 +58,7 @@ class CloudUtilities:
 		}
 
 		# Store UI info
-		self.store_ui_data("fk_hinges", category, limb_name, info)
-
-		# Create custom property
-		prop_bone.custom_props[prop_name] = CustomProp(prop_name, default=default_value, _min=0.0, _max=1.0)
+		self.store_ui_data("fk_hinges", category, limb_name, info, default=default_value)
 
 		# Create Hinge helper bone
 		hng_bone = self.bone_infos.bone(
@@ -192,8 +200,13 @@ class CloudUtilities:
 
 		return text
 
-	def rig_child(self, child_bone, parent_names, prop_bone, prop_name, default_value=0):
-		""" Rig a child with multiple switchable parents, using Armature constraint and drivers. Also creates a custom property to drive those drivers.
+	def rig_child(self, child_bone, parent_names, prop_bone, prop_name):
+		""" Rig a child with multiple switchable parents, using Armature constraint and drivers.
+		This requires:
+			child_bone: The child bone.
+			parent_names: Parent identifiers(NOT BONE NAMES!) to search for among registered parent identifiers (These are hard-coded identifiers such as 'Hips', 'Torso', etc.)
+			prop_bone: Bone which stores the property that controls the parent switching.
+			prop_name: Name of said property on the prop_bone.
 		Return list of parent names for which a registered parent candidate was found and rigged.
 		"""
 
@@ -206,9 +219,6 @@ class CloudUtilities:
 		if len(found_parents) == 0: 
 			print("No parents to be rigged for %s." %child_bone.name)
 			return found_parents
-
-		# Create custom property.
-		parents_prop = prop_bone.custom_props[prop_name] = CustomProp(prop_name, default=default_value, _min=0, _max=len(found_parents)-1)
 
 		# Create parent bone for the bone that stores the Armature constraint.
 		# NOTE: Bones with Armature constraints should never be exposed to the animator directly because it breaks snapping functionality!

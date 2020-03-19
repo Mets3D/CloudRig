@@ -321,10 +321,7 @@ class Rig(CloudFKChainRig):
 			"prop_bone"			: self.prop_bone.name,
 			"prop_id" 			: self.ik_stretch_name,
 		}
-		self.store_ui_data("ik_stretches", self.category, self.limb_name, info)
-
-		# Create custom property
-		self.prop_bone.custom_props[self.ik_stretch_name] = CustomProp(self.ik_stretch_name, default=1.0)
+		self.store_ui_data("ik_stretches", self.category, self.limb_name, info, default=1.0)
 
 		#######################
 		##### MORE STUFF ######
@@ -367,9 +364,8 @@ class Rig(CloudFKChainRig):
 			"ik_pole" 				: self.pole_ctrl.name,
 			"ik_control"			: self.ik_mstr.name
 		}
-		self.store_ui_data("ik_switches", self.category, self.limb_name, info)
 		default = 1.0 if self.limb_type == 'LEG' else 0.0
-		self.prop_bone.custom_props[self.ikfk_name] = CustomProp(self.ikfk_name, default=default)
+		self.store_ui_data("ik_switches", self.category, self.limb_name, info, default=default)
 
 	def first_str_counterrotate_setup(self, str_bone, org_bone, factor):
 		str_bone.add_constraint(self.obj, 'TRANSFORM',
@@ -629,18 +625,37 @@ class Rig(CloudFKChainRig):
 
 		# Try to rig the IK control's parent switcher, searching for these parent candidates.
 		ik_parents_prop_name = "ik_parents_" + self.limb_name_props
+		
 		parent_names = self.rig_child(self.ik_ctrl, parents, self.prop_bone, ik_parents_prop_name)
-		if len(parent_names) == 0:
-			# If none of the parent candidates we were looking for exists, there's nothing to be done here.
-			return
+		if len(parent_names) > 0:
+			info = {
+				"prop_bone" : self.prop_bone.name,
+				"prop_id" : ik_parents_prop_name,
+				"texts" : parent_names,
+				
+				"operator" : "pose.rigify_switch_parent",
+				"icon" : "COLLAPSEMENU",
+				"parent_names" : parent_names,
+				"bones" : [b.name for b in [self.ik_ctrl, self.pole_ctrl]],
+				}
+			self.store_ui_data("parents", self.category, self.limb_name, info, default=0, _max=len(parent_names))
 		
 		# Rig the IK Pole control's parent switcher.
-		self.rig_child(self.pole_ctrl, parents, self.prop_bone, ik_parents_prop_name)		
+		self.rig_child(self.pole_ctrl, parents, self.prop_bone, ik_parents_prop_name)
+
 		### IK Pole Follow
+		# Add option to the UI.
 		ik_pole_follow_name = "ik_pole_follow_" + self.limb_name_props
-		# Create custom property
+		info = {
+			"prop_bone" : self.prop_bone.name,
+			"prop_id"	: ik_pole_follow_name,
+
+			"operator" : "pose.snap_simple",
+			"bones" : [self.pole_ctrl.name],
+			"select_bones" : True
+		}
 		default = 1.0 if self.limb_type=='LEG' else 0.0
-		pole_follow_prop = self.prop_bone.custom_props[ik_pole_follow_name] = CustomProp(ik_pole_follow_name, default=default)
+		self.store_ui_data("ik_pole_follows", self.category, self.limb_name, info, default=default)
 
 		# Get the armature constraint from the IK pole's parent, and add the IK master as a new target.
 		arm_con_bone = self.pole_ctrl.parent
@@ -664,31 +679,6 @@ class Rig(CloudFKChainRig):
 			follow_var.targets[0].id_type = 'OBJECT'
 			follow_var.targets[0].id = self.obj
 			follow_var.targets[0].data_path = f'pose.bones["{self.prop_bone.name}"]["{ik_pole_follow_name}"]'
-
-		# Add option to the UI.
-		info = {
-			"prop_bone" : self.prop_bone.name,
-			"prop_id"	: ik_pole_follow_name,
-
-			"operator" : "pose.snap_simple",
-			"bones" : [self.pole_ctrl.name],
-			"select_bones" : True
-		}
-		self.store_ui_data("ik_pole_follows", self.category, self.limb_name, info)
-		
-		info = {
-			"prop_bone" : self.prop_bone.name,							# Name of the properties bone that contains the property that should be changed by the parent switch operator.
-			"prop_id" : ik_parents_prop_name, 							# Name of the property
-			"texts" : parent_names,	# TODO: Is this no longer used?
-			
-			"operator" : "pose.rigify_switch_parent",
-			"icon" : "COLLAPSEMENU",
-			
-			"bones" : [b.name for b in [self.ik_ctrl, self.pole_ctrl]],	# List of child bone names that will be affected by the parent swapping. Often just one.
-			"parent_names" : parent_names,								# List of (arbitrary) names, in order, that should be displayed for each parent option in the UI.
-		}
-		self.store_ui_data("parents", self.category, self.limb_name, info)
-
 
 	##############################
 	# Parameters

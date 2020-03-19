@@ -260,17 +260,13 @@ class CloudSpineRig(CloudChainRig):
 			"prop_bone"		: self.prop_bone.name,
 			"prop_id" 		: self.ik_stretch_name,
 		}
-		self.store_ui_data("ik_stretches", "spine", "Spine", info)
+		self.store_ui_data("ik_stretches", "spine", "Spine", info, default=1.0)
 
 		info = {
 			"prop_bone"		: self.prop_bone.name,
 			"prop_id"		: self.ik_prop_name,
 		}
-		self.store_ui_data("ik_switches", "spine", "Spine", info)
-
-		# Create custom properties
-		self.prop_bone.custom_props[self.ik_prop_name] = CustomProp(self.ik_prop_name, default=0.0)
-		self.prop_bone.custom_props[self.ik_stretch_name] = CustomProp(self.ik_stretch_name, default=1.0)
+		self.store_ui_data("ik_switches", "spine", "Spine", info, default=1.0)
 
 	@stage.prepare_bones
 	def prepare_def_str_spine(self):
