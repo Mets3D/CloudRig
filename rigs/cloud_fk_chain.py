@@ -58,15 +58,22 @@ class CloudFKChainRig(CloudChainRig):
 	# Parameters
 
 	@classmethod
+	def parameters_ui_display(cls, layout, params):
+		""" A separate category for display-related parameters."""
+		super().parameters_ui_display(layout, params)
+		layout.prop(params, "CR_center_all_fk", text="FK in Center")
+	
+	@classmethod
 	def add_parameters(cls, params):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
 		"""
 		super().add_parameters(params)
 
+		params.CR_show_fk_settings = BoolProperty(name="FK Rig")
 		params.CR_counter_rotate_str = BoolProperty(
 			 name		 = "Counter-Rotate STR"
-			,description = "Main STR- bones will counter half the rotation of their parent FK bones. This is only recommended when Deform Segments is 1, and will result in easier to pose smooth curves"
+			,description = "Main STR- bones will counter half the rotation of their parent FK bones. This forces Deform Segments parameter to be 1. Will result in easier to pose smooth curves"
 			,default	 = False
 		)
 		params.CR_center_all_fk = BoolProperty(
@@ -81,11 +88,12 @@ class CloudFKChainRig(CloudChainRig):
 		"""
 		super().parameters_ui(layout, params)
 
-		layout.label(text="FK Chain Settings")
+		icon = 'TRIA_DOWN' if params.CR_show_fk_settings else 'TRIA_RIGHT'
+		layout.prop(params, "CR_show_fk_settings", toggle=True, icon=icon)
+		if not params.CR_show_fk_settings: return
+		
 		layout = layout.box()
-
 		layout.prop(params, "CR_counter_rotate_str")
-		layout.prop(params, "CR_center_all_fk")
 
 class Rig(CloudFKChainRig):
 	pass

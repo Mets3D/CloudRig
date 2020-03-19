@@ -262,6 +262,7 @@ class CloudChainRig(CloudBaseRig):
 		"""
 		super().add_parameters(params)
 
+		params.CR_show_chain_settings = BoolProperty(name="Chain Rig")
 		params.CR_deform_segments = IntProperty(
 			 name		 = "Deform Segments"
 			,description = "Number of deform bones per limb piece"
@@ -297,7 +298,10 @@ class CloudChainRig(CloudBaseRig):
 		"""
 		super().parameters_ui(layout, params)
 
-		layout.label(text="Stretchy Chain Settings")
+		icon = 'TRIA_DOWN' if params.CR_show_chain_settings else 'TRIA_RIGHT'
+		layout.prop(params, "CR_show_chain_settings", toggle=True, icon=icon)
+		if not params.CR_show_chain_settings: return
+
 		layout = layout.box()
 
 		layout.prop(params, "CR_deform_segments")

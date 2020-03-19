@@ -233,10 +233,16 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	# Parameters
 
 	@classmethod
+	def parameters_ui_display(cls, layout, params):
+		""" A separate category for display-related parameters."""
+		layout.prop(params, "CR_display_scale", text='Bone Shape Scale')
+
+	@classmethod
 	def add_parameters(cls, params):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
 		"""
+		params.CR_show_display_settings = BoolProperty(name="Display")
 		params.CR_display_scale = FloatProperty(
 			 name		 = "Display Scale"
 			,description = "Scale Bone Display Sizes"
@@ -249,9 +255,11 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	def parameters_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
-		layout.label(text="CloudRig Settings")
-		layout = layout.box()
-		layout.prop(params, "CR_display_scale")
+		icon = 'TRIA_DOWN' if params.CR_show_display_settings else 'TRIA_RIGHT'
+		layout.prop(params, "CR_show_display_settings", toggle=True, icon=icon)
+
+		if params.CR_show_display_settings:
+			cls.parameters_ui_display(layout.box(), params	)
 
 # For testing purposes
 # class Rig(CloudBaseRig):

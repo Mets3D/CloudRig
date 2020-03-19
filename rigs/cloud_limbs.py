@@ -690,6 +690,7 @@ class Rig(CloudFKChainRig):
 		"""
 		super().add_parameters(params)
 
+		params.CR_show_limb_settings = BoolProperty(name="Limb Rig")
 		params.CR_use_custom_limb_name = BoolProperty(
 			 name		 = "Custom Limb Name"
 			,description = 'Specify a name for this limb - There can be exactly two limbs with the same name, a Left and a Right one. This name should NOT include a side indicator such as "Left" or "Right". Limbs with the same name will be displayed on the same row'
@@ -753,14 +754,16 @@ class Rig(CloudFKChainRig):
 		"""Create the ui for the rig parameters."""
 		super().parameters_ui(layout, params)
 
-		layout.label(text="Limb Settings")
+		icon = 'TRIA_DOWN' if params.CR_show_limb_settings else 'TRIA_RIGHT'
+		layout.prop(params, "CR_show_limb_settings", toggle=True, icon=icon)
+		if not params.CR_show_limb_settings: return
+
 		layout = layout.box()
 
 		layout.prop(params, "CR_limb_type")
 		if params.CR_limb_type=='LEG':
 			layout.prop(params, "CR_use_foot_roll")
 			if params.CR_use_foot_roll:
-				import bpy
 				layout.prop_search(params, "CR_ankle_pivot_bone", bpy.context.object.data, "bones", text="Ankle Pivot")
 
 		name_row = layout.row()
