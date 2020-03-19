@@ -321,7 +321,7 @@ class Rig(CloudFKChainRig):
 			"prop_bone"			: self.prop_bone.name,
 			"prop_id" 			: self.ik_stretch_name,
 		}
-		self.store_ui_data("ik_stretches", self.category, self.limb_name, info, default=1.0)
+		self.add_ui_data("ik_stretches", self.category, self.limb_name, info, default=1.0)
 
 		#######################
 		##### MORE STUFF ######
@@ -365,7 +365,7 @@ class Rig(CloudFKChainRig):
 			"ik_control"			: self.ik_mstr.name
 		}
 		default = 1.0 if self.limb_type == 'LEG' else 0.0
-		self.store_ui_data("ik_switches", self.category, self.limb_name, info, default=default)
+		self.add_ui_data("ik_switches", self.category, self.limb_name, info, default=default)
 
 	def first_str_counterrotate_setup(self, str_bone, org_bone, factor):
 		str_bone.add_constraint(self.obj, 'TRANSFORM',
@@ -638,7 +638,7 @@ class Rig(CloudFKChainRig):
 				"parent_names" : parent_names,
 				"bones" : [b.name for b in [self.ik_ctrl, self.pole_ctrl]],
 				}
-			self.store_ui_data("parents", self.category, self.limb_name, info, default=0, _max=len(parent_names))
+			self.add_ui_data("parents", self.category, self.limb_name, info, default=0, _max=len(parent_names))
 		
 		# Rig the IK Pole control's parent switcher.
 		self.rig_child(self.pole_ctrl, parents, self.prop_bone, ik_parents_prop_name)
@@ -655,7 +655,7 @@ class Rig(CloudFKChainRig):
 			"select_bones" : True
 		}
 		default = 1.0 if self.limb_type=='LEG' else 0.0
-		self.store_ui_data("ik_pole_follows", self.category, self.limb_name, info, default=default)
+		self.add_ui_data("ik_pole_follows", self.category, self.limb_name, info, default=default)
 
 		# Get the armature constraint from the IK pole's parent, and add the IK master as a new target.
 		arm_con_bone = self.pole_ctrl.parent

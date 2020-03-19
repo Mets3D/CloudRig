@@ -8,7 +8,7 @@ class CloudUtilities:
 	# Utility functions that probably won't be overriden by a sub-class because they perform a very specific task.
 	# If a class inherits this class, it's also expected to inherit CloudBaseRig - These are only split up for organizational purposes.
 
-	def store_ui_data(self, ui_area, row_name, col_name, info, default=0.0, _min=0.0, _max=1.0):
+	def add_ui_data(self, ui_area, row_name, col_name, info, default=0.0, _min=0.0, _max=1.0):
 		""" Store some data in the rig, organized in a way which the UI script expects. 
 		ui_area: One of a list of pre-defined strings that the UI script recognizes, that describes a panel or area in the UI. Eg, "fk_hinges", "ik_switches".
 		row_name: A row in the UI area.
@@ -58,7 +58,7 @@ class CloudUtilities:
 		}
 
 		# Store UI info
-		self.store_ui_data("fk_hinges", category, limb_name, info, default=default_value)
+		self.add_ui_data("fk_hinges", category, limb_name, info, default=default_value)
 
 		# Create Hinge helper bone
 		hng_bone = self.bone_infos.bone(
