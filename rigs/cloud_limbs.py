@@ -946,10 +946,7 @@ def create_sample(obj):
         pbone.rigify_parameters.CR_double_ik_control = False
     except AttributeError:
         pass
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     try:
         pbone.rigify_parameters.CR_custom_category_name = "legs"
     except AttributeError:
@@ -989,10 +986,7 @@ def create_sample(obj):
         pbone.rigify_parameters.CR_center_all_fk = True
     except AttributeError:
         pass
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     pbone = obj.pose.bones[bones['Knee.L']]
     pbone.rigify_type = ''
     pbone.lock_location = (False, False, False)

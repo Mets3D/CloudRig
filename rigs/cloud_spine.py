@@ -438,10 +438,7 @@ def create_sample(obj):
     pbone.lock_rotation_w = False
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'XYZ'
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     try:
         pbone.rigify_parameters.CR_double_controls = False
     except AttributeError:

@@ -122,10 +122,7 @@ def create_sample(obj):
     pbone.lock_rotation_w = False
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'QUATERNION'
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     try:
         pbone.rigify_parameters.CR_deform_segments = 1
     except AttributeError:
@@ -173,10 +170,7 @@ def create_sample(obj):
         pbone.rigify_parameters.CR_center_all_fk = True
     except AttributeError:
         pass
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     pbone = obj.pose.bones[bones['Forearm.L']]
     pbone.rigify_type = ''
     pbone.lock_location = (False, False, False)

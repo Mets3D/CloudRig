@@ -11,8 +11,6 @@ from ..definitions.bone import BoneInfoContainer
 from .. import layers
 from .cloud_utils import *
 
-version = 1.5
-
 class CloudBaseRig(BaseRig, CloudUtilities):
 	"""Base for all CloudRig rigs."""
 
@@ -26,6 +24,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	def initialize(self):
 		super().initialize()
 		"""Gather and validate data about the rig."""
+		self.generator_params = self.generator.metarig.data
 		self.parent_candidates = {}
 		
 		# Wipe any existing bone groups from the generated rig.
@@ -89,7 +88,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			custom_shape_scale = 1.5
 		)
 		self.register_parent(self.root_bone, "Root")
-		if self.params.CR_double_root:
+		if self.generator_params.cloudrigify_double_root:
 			self.root_parent = self.create_parent_bone(self.root_bone)
 			self.root_parent.bone_group = 'Body: Main IK Controls Extra Parents'
 
@@ -238,12 +237,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
 		"""
-		# TODO: This should be generator parameter.
-		params.CR_double_root = BoolProperty(
-			 name		 = "Double Root"
-			,description = "Create two root bones for this rig. Note: If any other rig element on this metarig has this set to True, the second root bone will be created"
-			,default	 = True
-		)
 		params.CR_display_scale = FloatProperty(
 			 name		 = "Display Scale"
 			,description = "Scale Bone Display Sizes"
@@ -259,7 +252,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		layout.label(text="CloudRig Settings")
 		layout = layout.box()
 		layout.prop(params, "CR_display_scale")
-		layout.prop(params, "CR_double_root")
 
 # For testing purposes
 # class Rig(CloudBaseRig):

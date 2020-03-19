@@ -1064,10 +1064,7 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'XYZ'
     pbone.bone.layers = [True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     try:
         pbone.rigify_parameters.CR_double_controls = False
     except AttributeError:
@@ -1132,10 +1129,7 @@ def create(obj):
         pbone.rigify_parameters.CR_double_ik_control = False
     except AttributeError:
         pass
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     try:
         pbone.rigify_parameters.CR_custom_category_name = "legs"
     except AttributeError:
@@ -1172,10 +1166,7 @@ def create(obj):
         pbone.rigify_parameters.CR_double_ik_control = False
     except AttributeError:
         pass
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     try:
         pbone.rigify_parameters.CR_use_custom_limb_name = False
     except AttributeError:
@@ -1208,10 +1199,7 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'XYZ'
     pbone.bone.layers = [True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     try:
         pbone.rigify_parameters.CR_double_controls = False
     except AttributeError:
@@ -1332,10 +1320,7 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'QUATERNION'
     pbone.bone.layers = [True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     try:
         pbone.rigify_parameters.CR_deform_segments = 1
     except AttributeError:
@@ -1356,10 +1341,7 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'QUATERNION'
     pbone.bone.layers = [True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     try:
         pbone.rigify_parameters.CR_deform_segments = 1
     except AttributeError:
@@ -1392,10 +1374,7 @@ def create(obj):
         pbone.rigify_parameters.CR_center_all_fk = True
     except AttributeError:
         pass
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     pbone = obj.pose.bones[bones['UpperArm.L']]
     pbone.rigify_type = 'cloud_limbs'
     pbone.lock_location = (False, False, False)
@@ -1432,10 +1411,7 @@ def create(obj):
         pbone.rigify_parameters.CR_center_all_fk = True
     except AttributeError:
         pass
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     pbone = obj.pose.bones[bones['UpperArm.R']]
     pbone.rigify_type = 'cloud_limbs'
     pbone.lock_location = (False, False, False)
@@ -1472,10 +1448,7 @@ def create(obj):
         pbone.rigify_parameters.CR_center_all_fk = True
     except AttributeError:
         pass
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     pbone = obj.pose.bones[bones['Ponytail2']]
     pbone.rigify_type = ''
     pbone.lock_location = (False, False, False)
@@ -1540,10 +1513,7 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'YZX'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     pbone = obj.pose.bones[bones['Finger_Middle_Carpal.L']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1552,10 +1522,7 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'YZX'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     pbone = obj.pose.bones[bones['Finger_Ring_Carpal.L']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1564,10 +1531,7 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'YZX'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     pbone = obj.pose.bones[bones['Finger_Pinky_Carpal.L']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1576,10 +1540,7 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'YZX'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     pbone = obj.pose.bones[bones['Finger_Thumb1.L']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1588,10 +1549,7 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'ZXY'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     pbone = obj.pose.bones[bones['Finger_Index_Carpal.R']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1600,10 +1558,7 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'YZX'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     pbone = obj.pose.bones[bones['Finger_Middle_Carpal.R']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1612,10 +1567,7 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'YZX'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     pbone = obj.pose.bones[bones['Finger_Ring_Carpal.R']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1624,10 +1576,7 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'YZX'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     pbone = obj.pose.bones[bones['Finger_Pinky_Carpal.R']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1636,10 +1585,7 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'YZX'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
+
     pbone = obj.pose.bones[bones['Finger_Thumb1.R']]
     pbone.rigify_type = 'cloud_fk_chain'
     pbone.lock_location = (False, False, False)
@@ -1648,10 +1594,6 @@ def create(obj):
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'ZXY'
     pbone.bone.layers = [False, False, False, False, False, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False]
-    try:
-        pbone.rigify_parameters.CR_double_root = False
-    except AttributeError:
-        pass
     pbone = obj.pose.bones[bones['Finger_Index1.L']]
     pbone.rigify_type = ''
     pbone.lock_location = (False, False, False)
