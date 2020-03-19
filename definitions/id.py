@@ -1,5 +1,5 @@
 import bpy
-from mets_tools import utils
+from .. import utils
 
 class ID:
 	def __init__(self):

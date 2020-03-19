@@ -3,7 +3,6 @@
 import bpy
 from .id import *
 from mathutils import *
-from mets_tools.utils import *
 import copy
 from ..layers import group_defs, set_layers
 
