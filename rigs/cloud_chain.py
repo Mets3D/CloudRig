@@ -302,8 +302,6 @@ class CloudChainRig(CloudBaseRig):
 		layout.prop(params, "CR_show_chain_settings", toggle=True, icon=icon)
 		if not params.CR_show_chain_settings: return
 
-		layout = layout.box()
-
 		layout.prop(params, "CR_deform_segments")
 		layout.prop(params, "CR_bbone_segments")
 		layout.prop(params, "CR_shape_key_helpers")

@@ -91,8 +91,7 @@ class CloudFKChainRig(CloudChainRig):
 		icon = 'TRIA_DOWN' if params.CR_show_fk_settings else 'TRIA_RIGHT'
 		layout.prop(params, "CR_show_fk_settings", toggle=True, icon=icon)
 		if not params.CR_show_fk_settings: return
-		
-		layout = layout.box()
+
 		layout.prop(params, "CR_counter_rotate_str")
 
 class Rig(CloudFKChainRig):

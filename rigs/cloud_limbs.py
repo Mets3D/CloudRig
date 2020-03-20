@@ -758,8 +758,6 @@ class Rig(CloudFKChainRig):
 		layout.prop(params, "CR_show_limb_settings", toggle=True, icon=icon)
 		if not params.CR_show_limb_settings: return
 
-		layout = layout.box()
-
 		layout.prop(params, "CR_limb_type")
 		if params.CR_limb_type=='LEG':
 			layout.prop(params, "CR_use_foot_roll")
