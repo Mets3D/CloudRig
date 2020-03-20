@@ -1,14 +1,12 @@
-from bpy.props import *
+import bpy
+from bpy.props import BoolProperty, StringProperty, EnumProperty
 from rigify.base_rig import BaseRig, stage
 from rigify.utils.bones import BoneDict
 from ..definitions.bone import BoneInfoContainer, BoneInfo
 from ..definitions.driver import Driver
 from ..definitions import custom_props
 
-# TODO: Implement more parameters.
-# TODO: Implement constraint re-targetting(take code and conventions from Rigify where ideal)
-# TODO: When Transforms param is unchecked, move the metabone to the generated bone's transforms during generation.
-# It would be ideal to be able to delete the ORG bone, but life will be a lot easier if we just don't do that.
+# TODO: When Transforms param is unchecked, move the metabone to the generated bone's transforms during generation?
 
 class CloudBoneRig(BaseRig):
 	""" A rig type to add or modify a single bone in the generated rig. 
@@ -54,6 +52,7 @@ class CloudBoneRig(BaseRig):
 	def generate_bones(self):
 		if self.params.CR_copy_type != "Create": return
 		
+		# TODO: If the bone already exists, delete it.
 		# Make a copy of the ORG- bone without the ORG- prefix. This is our control bone.
 		mod_bone_name = self.copy_bone(self.bones.org, self.bone_name, parent=True)
 		self.bone_name = mod_bone_name
@@ -240,7 +239,7 @@ class CloudBoneRig(BaseRig):
 
 		params.CR_constraints_additive = BoolProperty(
 			name="Additive Constraints"
-			,description="Add the constraints of this bone to the generated bone's constraints. When disabled, we replace the constraints instead (even when there aren't any)"
+			,description="Add the constraints of this bone to the generated bone's constraints. When disabled, we replace the constraints instead"
 			,default=True
 		)
 
@@ -250,17 +249,14 @@ class CloudBoneRig(BaseRig):
 				("Create", "Create", "Create a new bone"),
 				("Tweak", "Tweak", "Tweak an existing bone")
 			)
-			,description="Whether this bone should be copied to the generated rig as a new control on its own, or tweak a pre-existing bone that should exist after bone generation phase"
+			,description="Create: Create a standalone control (If one exists, overwrite it completely). Tweak: Find a control with the name of this bone, and overwrite it only partially"
 			,default="Create"
 		)
 
-		# These parameters are valid when CR_copy_type==True
-		# TODO: We should do a search for P- bones, and have an option to affect those as well
-		#	Better yet, when we create a P- bone for a bone, that bone should store the name of that P- bone in a custom property, so we don't need to do slow searches like this.
-		#	Another idea is to be able to input a list of names that this bone should affect. But I'm not sure if there's a use case good enough for any of these things to bother implementing.
+		# Parameters for tweaking existing bone
 		params.CR_custom_bone_parent = StringProperty(
 			 name="Parent"
-			,description="When this is not an empty string, set the parent to the bone with this name."
+			,description="When this is not an empty string, set the parent to the bone with this name"
 			,default=""
 		)
 		params.CR_bone_transforms = BoolProperty(
@@ -304,48 +300,224 @@ class CloudBoneRig(BaseRig):
 			,default=False
 		)
 
-		# These parameters are valid when CR_copy_type==False
-		# TODO: Implement control and unlocker. Or maybe just unlocker.
-		params.CR_create_control_bone = BoolProperty(
-			 name="Create Control Bone"
-			,description="Create a copy of the ORG bone with use_deform disabled, with the name, bone group, layers, bone shape and constraints of this bone"
-			,default=True
-		)
-		params.CR_create_unlocker_bone = BoolProperty(	# Is this overkill? Maybe if we want something this complex, we should be expected to have to add two bones to the metarig.
-			 name="Create Unlocker Bone"
-			,description="In addition to the control bone, create an extra parent to hold the constraints, so the control bone itself can be freely animated"
-			,default=False
-		)
+
+		# Parameters for copying the bone
 		params.CR_create_deform_bone = BoolProperty(
 			 name="Create Deform Bone"
-			,description="Create a copy of the ORG bone with use_deform enabled, and with the bbone settings of this bone."
+			,description="Create a copy of the ORG bone with use_deform enabled, and with the bbone settings of this bone"
 			,default=True
 		)
 
 	@classmethod
 	def parameters_ui(cls, layout, params):
 		"""Create the ui for the rig parameters."""
-		super().parameters_ui(layout, params)
 		layout.use_property_split = True
 		
-		col = layout.column()
-		layout.prop(params, "CR_constraints_additive")
 		layout.prop(params, "CR_custom_bone_parent")
 		layout.row().prop(params, "CR_copy_type", expand=True, text="Copy Type")
 		row = layout.row()
-		col1 = row.column()	# Empty column for indent
-		col2 = row.column()
+		col1 = row.column()
+		col2 = row.column()	# Empty column for indent
 		if params.CR_copy_type=='Tweak':
-			col2.prop(params, "CR_bone_transforms")
-			col2.prop(params, "CR_transform_locks")
-			col2.prop(params, "CR_bone_rot_mode")
-			col2.prop(params, "CR_bone_shape")
-			col2.prop(params, "CR_bone_group")
-			col2.prop(params, "CR_layers")
-			col2.prop(params, "CR_custom_props")
-			col2.prop(params, "CR_ik_settings")
+			col1.prop(params, "CR_constraints_additive")
+			col1.prop(params, "CR_bone_transforms")
+			col1.prop(params, "CR_transform_locks")
+			col1.prop(params, "CR_bone_rot_mode")
+			col1.prop(params, "CR_bone_shape")
+			col1.prop(params, "CR_bone_group")
+			col1.prop(params, "CR_layers")
+			col1.prop(params, "CR_custom_props")
+			col1.prop(params, "CR_ik_settings")
 		else:
-			col2.prop(params, "CR_create_deform_bone")
+			col1.prop(params, "CR_create_deform_bone")
 
 class Rig(CloudBoneRig):
 	pass
+
+def create_sample(obj):
+    # generated by rigify.utils.write_metarig
+    bpy.ops.object.mode_set(mode='EDIT')
+    arm = obj.data
+
+    bones = {}
+
+    bone = arm.edit_bones.new('Spine')
+    bone.head = 0.0000, 0.0027, 0.8214
+    bone.tail = 0.0000, -0.0433, 1.0137
+    bone.roll = 0.0000
+    bone.use_connect = False
+    bone.bbone_x = 0.0135
+    bone.bbone_z = 0.0135
+    bone.head_radius = 0.0114
+    bone.tail_radius = 0.0122
+    bone.envelope_distance = 0.1306
+    bone.envelope_weight = 1.0000
+    bone.use_envelope_multiply = 0.0000
+    bones['Spine'] = bone.name
+    bone = arm.edit_bones.new('MSTR-P-Torso')
+    bone.head = 0.0000, -0.0758, 1.3939
+    bone.tail = 0.0000, -0.0758, 1.6091
+    bone.roll = 1.5708
+    bone.use_connect = False
+    bone.bbone_x = 0.0135
+    bone.bbone_z = 0.0135
+    bone.head_radius = 0.0124
+    bone.tail_radius = 0.0133
+    bone.envelope_distance = 0.1422
+    bone.envelope_weight = 1.0000
+    bone.use_envelope_multiply = 0.0000
+    bones['MSTR-P-Torso'] = bone.name
+    bone = arm.edit_bones.new('RibCage')
+    bone.head = 0.0000, -0.0433, 1.0137
+    bone.tail = 0.0000, -0.0449, 1.1585
+    bone.roll = 0.0000
+    bone.use_connect = True
+    bone.bbone_x = 0.0124
+    bone.bbone_z = 0.0124
+    bone.head_radius = 0.0122
+    bone.tail_radius = 0.0121
+    bone.envelope_distance = 0.1231
+    bone.envelope_weight = 1.0000
+    bone.use_envelope_multiply = 0.0000
+    bone.parent = arm.edit_bones[bones['Spine']]
+    bones['RibCage'] = bone.name
+    bone = arm.edit_bones.new('Chest')
+    bone.head = 0.0000, -0.0449, 1.1585
+    bone.tail = 0.0000, -0.0139, 1.2808
+    bone.roll = 0.0000
+    bone.use_connect = True
+    bone.bbone_x = 0.0108
+    bone.bbone_z = 0.0108
+    bone.head_radius = 0.0121
+    bone.tail_radius = 0.0118
+    bone.envelope_distance = 0.1000
+    bone.envelope_weight = 1.0000
+    bone.use_envelope_multiply = 0.0000
+    bone.parent = arm.edit_bones[bones['RibCage']]
+    bones['Chest'] = bone.name
+    bone = arm.edit_bones.new('Neck')
+    bone.head = 0.0000, -0.0139, 1.2808
+    bone.tail = 0.0000, -0.0268, 1.3924
+    bone.roll = 0.0000
+    bone.use_connect = True
+    bone.bbone_x = 0.0056
+    bone.bbone_z = 0.0056
+    bone.head_radius = 0.0118
+    bone.tail_radius = 0.0138
+    bone.envelope_distance = 0.0739
+    bone.envelope_weight = 1.0000
+    bone.use_envelope_multiply = 0.0000
+    bone.parent = arm.edit_bones[bones['Chest']]
+    bones['Neck'] = bone.name
+    bone = arm.edit_bones.new('Head')
+    bone.head = 0.0000, -0.0268, 1.3924
+    bone.tail = 0.0000, -0.0519, 1.6160
+    bone.roll = 0.0000
+    bone.use_connect = True
+    bone.bbone_x = 0.0113
+    bone.bbone_z = 0.0113
+    bone.head_radius = 0.0138
+    bone.tail_radius = 0.0583
+    bone.envelope_distance = 0.0799
+    bone.envelope_weight = 1.0000
+    bone.use_envelope_multiply = 0.0000
+    bone.parent = arm.edit_bones[bones['Neck']]
+    bones['Head'] = bone.name
+
+    bpy.ops.object.mode_set(mode='OBJECT')
+    pbone = obj.pose.bones[bones['Spine']]
+    pbone.rigify_type = 'cloud_spine'
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'XYZ'
+    try:
+        pbone.rigify_parameters.CR_sharp_sections = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_deform_segments = 1
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_bbone_segments = 6
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_show_display_settings = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_show_spine_settings = True
+    except AttributeError:
+        pass
+    pbone = obj.pose.bones[bones['MSTR-P-Torso']]
+    pbone.rigify_type = 'cloud_bone'
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'XYZ'
+    try:
+        pbone.rigify_parameters.CR_sharp_sections = False
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_deform_segments = 1
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_bbone_segments = 6
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_copy_type = "Tweak"
+    except AttributeError:
+        pass
+    try:
+        pbone.rigify_parameters.CR_bone_transforms = True
+    except AttributeError:
+        pass
+    pbone = obj.pose.bones[bones['RibCage']]
+    pbone.rigify_type = ''
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    pbone = obj.pose.bones[bones['Chest']]
+    pbone.rigify_type = ''
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    pbone = obj.pose.bones[bones['Neck']]
+    pbone.rigify_type = ''
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+    pbone = obj.pose.bones[bones['Head']]
+    pbone.rigify_type = ''
+    pbone.lock_location = (False, False, False)
+    pbone.lock_rotation = (False, False, False)
+    pbone.lock_rotation_w = False
+    pbone.lock_scale = (False, False, False)
+    pbone.rotation_mode = 'QUATERNION'
+
+    bpy.ops.object.mode_set(mode='EDIT')
+    for bone in arm.edit_bones:
+        bone.select = False
+        bone.select_head = False
+        bone.select_tail = False
+    for b in bones:
+        bone = arm.edit_bones[bones[b]]
+        bone.select = True
+        bone.select_head = True
+        bone.select_tail = True
+        arm.edit_bones.active = bone
+
+    return bones

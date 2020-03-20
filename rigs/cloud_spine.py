@@ -1,10 +1,10 @@
 import bpy
-from bpy.props import *
-from mathutils import *
+from bpy.props import BoolProperty, IntProperty
+from mathutils import Vector
 
 from rigify.base_rig import stage
 
-from ..definitions.driver import *
+from ..definitions.driver import Driver
 from ..definitions.custom_props import CustomProp
 from .cloud_fk_chain import CloudChainRig
 
@@ -183,7 +183,7 @@ class CloudSpineRig(CloudChainRig):
 			ik_bone = self.bone_infos.bone(
 				name = ik_name,
 				source = fk_bone,
-				head = copy.copy(self.fk_chain[i-1].head) if i>0 else copy.copy(self.def_bones[0].head),
+				head = self.fk_chain[i-1].head.copy() if i>0 else self.def_bones[0].head.copy(),
 				tail = fk_bone.head,
 				parent = next_parent,
 				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
@@ -319,22 +319,23 @@ class CloudSpineRig(CloudChainRig):
 		"""
 		super().add_parameters(params)
 
+		params.CR_show_spine_settings = BoolProperty(name="Spine Rig")
 		params.CR_spine_length = IntProperty(
-			name="Spine Length",
-			description="Number of bones on the chain until the spine ends and the neck begins. The spine and neck can both be made up of an arbitrary number of bones. The final bone of the chain is always treated as the head.",
-			default=3,
-			min=3,
-			max=99
+			name		 = "Spine Length"
+			,description = "Number of bones on the chain until the spine ends and the neck begins. The spine and neck can both be made up of an arbitrary number of bones. The final bone of the chain is always treated as the head."
+			,default	 = 3
+			,min		 = 3
+			,max		 = 99
 		)
 		params.CR_create_ik_spine = BoolProperty(
-			name="Create IK Setup",
-			description="If disabled, this spine rig will only have FK controls",
-			default=True
+			name		 = "Create IK Setup"
+			,description = "If disabled, this spine rig will only have FK controls"
+			,default	 = True
 		)
 		params.CR_double_controls = BoolProperty(
-			name="Double Controls", 
-			description="Make duplicates of the main spine controls",
-			default=True,
+			name		 = "Double Controls"
+			,description = "Make duplicates of the main spine controls"
+			,default	 = True
 		)
 
 	@classmethod
@@ -342,9 +343,10 @@ class CloudSpineRig(CloudChainRig):
 		"""Create the ui for the rig parameters."""
 		super().parameters_ui(layout, params)
 
-		layout.label(text="Spine Settings")
-		layout = layout.box()
-
+		icon = 'TRIA_DOWN' if params.CR_show_spine_settings else 'TRIA_RIGHT'
+		layout.prop(params, "CR_show_spine_settings", toggle=True, icon=icon)
+		if not params.CR_show_spine_settings: return
+		
 		layout.prop(params, "CR_spine_length")
 		layout.prop(params, "CR_create_ik_spine")
 		layout.prop(params, "CR_double_controls")
