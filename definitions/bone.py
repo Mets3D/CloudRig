@@ -1,8 +1,8 @@
 # Data Container and utilities for de-coupling bone creation and setup from BPY.
 # Lets us easily create bones without having to worry about edit/pose mode.
 import bpy
-from .id import *
-from mathutils import *
+from .id import ID
+from mathutils import Vector
 import copy
 from ..layers import group_defs, set_layers
 
@@ -55,6 +55,7 @@ def setattr_safe(thing, key, value):
 		setattr(thing, key, value)
 	except:
 		print("ERROR: Wrong type assignment: key:%s, type:%s, expected:%s"%(key, type(key), type(getattr(thing, key)) ) )
+		print(thing)
 
 class BoneInfoContainer(ID):
 	# TODO: implement __iter__ and such.

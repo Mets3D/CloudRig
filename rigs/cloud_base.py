@@ -1,15 +1,15 @@
 import bpy, os
-from bpy.props import *
-from mathutils import *
+from bpy.props import BoolProperty, FloatProperty
+from mathutils import Vector
 
 from rigify.base_rig import BaseRig, stage
 from rigify.utils.bones import BoneDict
 from rigify.utils.rig import connected_children_names
 
-from ..definitions.driver import *
+from ..definitions.driver import Driver
 from ..definitions.bone import BoneInfoContainer
 from .. import layers
-from .cloud_utils import *
+from .cloud_utils import CloudUtilities
 
 class CloudBaseRig(BaseRig, CloudUtilities):
 	"""Base for all CloudRig rigs."""
@@ -36,8 +36,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			assert False, "Error: Save your file before generating."
 
 		# Determine rig scale by armature height.
-		self.scale = self.obj.dimensions[2]/10	# TODO: This has bad effect when the generated rig already has scale. Either use metarig for setting self.scale, or reset self.obj scale, or both.
-												# It also works badly for flat rigs. Should grab longest dimension instead of always Z axis.
+		self.scale = max(self.generator.metarig.dimensions)/10
+		
 		# Slap user-provided multiplier on top.
 		self.display_scale = self.params.CR_display_scale * self.scale
 
@@ -145,8 +145,12 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	def configure_bones(self):
 		self.init_bone_groups()
 		for bd in self.bone_infos.bones:
-			pose_bone = self.get_bone(bd.name)
-			
+			pose_bone = None
+			try:
+				pose_bone = self.get_bone(bd.name)
+			except:
+				print(f"WARNING: BoneInfo wasn't created for some reason: {bd.name}")
+				continue
 			# Apply scaling
 			if not bd.use_custom_shape_bone_size:
 				bd.custom_shape_scale *= self.display_scale * bd.bbone_width * 10
