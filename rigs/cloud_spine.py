@@ -31,7 +31,8 @@ class CloudSpineRig(CloudChainRig):
 
 
 		assert len(self.bones.org.main) >= self.params.CR_spine_length, f"Spine Length parameter value({self.params.CR_spine_length}) cannot exceed length of bone chain connected to {self.base_bone} ({len(self.bones.org.main)})"
-		
+		assert len(self.bones.org.main) > 2, "Spine must consist of at least 3 connected bones."
+
 		self.display_scale *= 3
 
 		self.ik_prop_name = "ik_spine"
@@ -143,9 +144,9 @@ class CloudSpineRig(CloudChainRig):
 		# Create master chest control
 		self.mstr_chest = self.bone_infos.bone(
 				name				= "MSTR-Chest", 
-				source 				= self.org_chain[-4],
-				head				= self.org_chain[-4].center,
-				tail 				= self.org_chain[-4].center + Vector((0, 0, self.scale)),
+				source 				= self.org_spines[-2],
+				head				= self.org_spines[-2].center,
+				tail 				= self.org_spines[-2].center + Vector((0, 0, self.scale)),
 				custom_shape 		= self.load_widget("Chest_Master"),
 				custom_shape_scale 	= 0.7,
 				parent				= self.mstr_torso,
@@ -161,7 +162,8 @@ class CloudSpineRig(CloudChainRig):
 		self.register_parent(self.mstr_hips, "Hips")
 
 		self.ik_ctr_chain = []
-		for i, fk_bone in enumerate(self.fk_chain[:-2]):
+		for i, org_spine in enumerate(self.org_spines):
+			fk_bone = org_spine.fk_bone
 			ik_ctr_name = fk_bone.name.replace("FK", "IK-CTR")	# Equivalent of IK-CTR bones in Rain (Technically animator-facing, but rarely used)
 			ik_ctr_bone = self.bone_infos.bone(
 				name				= ik_ctr_name, 
@@ -169,21 +171,25 @@ class CloudSpineRig(CloudChainRig):
 				custom_shape 		= self.load_widget("Oval"),
 				bone_group 			= "Body: IK - Secondary IK Controls"
 			)
-			if i > len(self.fk_chain)-5:
+			if i >= len(self.org_spines)-2:	
+				# Last two spine controls should be parented to the chest control.
 				ik_ctr_bone.parent = self.mstr_chest
 			else:
+				# The rest to the torso root.
 				ik_ctr_bone.parent = self.mstr_torso
 			self.ik_ctr_chain.append(ik_ctr_bone)
 		
-		# Reverse IK (IK-R) chain - root parented to MSTR-Chest. Damped track to IK-CTR of one lower index.
+		# Reverse IK (IK-R) chain. Damped track to IK-CTR of one lower index.
 		next_parent = self.mstr_chest
 		self.ik_r_chain = []
-		for i, fk_bone in enumerate(reversed(self.fk_chain[1:-2])):	# We skip the first spine, the neck and the head.
+		for i, org_bone in enumerate(reversed(self.org_spines[1:])):	# We skip the first spine.
+			fk_bone = org_bone.fk_bone
+			index = len(self.org_spines)-i-2
 			ik_r_name = fk_bone.name.replace("FK", "IK-R")
-			ik_r_bone = self.bone_infos.bone(
+			org_bone.ik_r_bone = ik_r_bone = self.bone_infos.bone(
 				name		= ik_r_name,
 				source 		= fk_bone,
-				tail 		= self.fk_chain[-i+1].head,
+				tail 		= self.fk_chain[index].head.copy(),
 				parent		= next_parent,
 				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
 				hide_select	= self.mch_disable_select
@@ -191,15 +197,16 @@ class CloudSpineRig(CloudChainRig):
 			next_parent = ik_r_bone
 			self.ik_r_chain.append(ik_r_bone)
 			ik_r_bone.add_constraint(self.obj, 'DAMPED_TRACK',
-				subtarget = self.ik_ctr_chain[-i+1].name
+				subtarget = self.ik_ctr_chain[index].name
 			)
 		
 		# IK chain
-		next_parent = self.mstr_hips
+		next_parent = self.mstr_hips # First IK bone is parented to MSTR-Chest.
 		self.ik_chain = []
-		for i, fk_bone in enumerate(self.fk_chain[:-2]):
+		for i, org_bone in enumerate(self.org_spines):
+			fk_bone = org_bone.fk_bone
 			ik_name = fk_bone.name.replace("FK", "IK")
-			ik_bone = self.bone_infos.bone(
+			org_bone.ik_bone = ik_bone = self.bone_infos.bone(
 				name = ik_name,
 				source = fk_bone,
 				head = self.fk_chain[i-1].head.copy() if i>0 else self.def_bones[0].head.copy(),
@@ -211,15 +218,18 @@ class CloudSpineRig(CloudChainRig):
 			self.ik_chain.append(ik_bone)
 			next_parent = ik_bone
 			
+			damped_track_target = self.ik_r_chain[0].name
 			if i > 0:
-				influence_unit = 0.5   #1 / (len(self.fk_chain) - 3)	# Minus three because there are no IK bones for the head and neck, and no stretchy constraint on the first IK spine bone. TODO: Allow arbitrary spine length.
+				if i != len(self.org_spines)-1:
+					damped_track_target = self.org_spines[i+1].ik_r_bone.name
+				influence_unit = 1 / (len(self.org_spines)-1)	# Minus three because there are no IK bones for the head and neck, and no stretchy constraint on the first IK spine bone. TODO: Allow arbitrary spine length.
 				influence = influence_unit * i
 				# IK Stretch Copy Location
 				con_name = "Copy Location (Stretchy Spine)"
 				ik_bone.add_constraint(self.obj, 'COPY_LOCATION', true_defaults=True,
 					name = con_name,
 					target = self.obj,
-					subtarget = self.ik_r_chain[i-2].name,
+					subtarget = org_bone.ik_r_bone.name,
 					head_tail = 1,
 				)
 				drv = Driver()
@@ -228,7 +238,7 @@ class CloudSpineRig(CloudChainRig):
 				var.type = 'SINGLE_PROP'
 				var.targets[0].id_type='OBJECT'
 				var.targets[0].id = self.obj
-				var.targets[0].data_path = 'pose.bones["%s"]["%s"]' %(self.prop_bone.name, self.ik_stretch_name)
+				var.targets[0].data_path = f'pose.bones["{self.prop_bone.name}"]["{self.ik_stretch_name}"]'
 
 				data_path = f'constraints["{con_name}"].influence'
 				ik_bone.drivers[data_path] = drv
@@ -239,9 +249,9 @@ class CloudSpineRig(CloudChainRig):
 				)
 				self.ik_ctr_chain[i-1].custom_shape_transform = ik_bone
 			
-			damped_track_target = self.ik_r_chain[-i+1].name
+			print(f"damped track target for {ik_bone.name}: {damped_track_target}")
 			head_tail = 1
-			if i == len(self.fk_chain)-3:
+			if i == len(self.org_spines)-1:
 				# Special treatment for last IK bone...
 				damped_track_target = self.ik_ctr_chain[-1].name
 				head_tail = 0
