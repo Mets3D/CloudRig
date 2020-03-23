@@ -60,7 +60,6 @@ class CloudChainRig(CloudBaseRig):
 
 	@stage.prepare_bones
 	def prepare_def_str_chains(self):
-		chain = self.bones.org.main[:]
 		# We refer to a full limb as a limb. (eg. Arm)
 		# Each part of that limb is a section. (eg. Forearm)
 		# And that section contains the bones. (eg. DEF-Forearm1)
@@ -75,11 +74,12 @@ class CloudChainRig(CloudBaseRig):
 		self.def_bones = []
 
 		def_sections = []
-		for org_i, org_name in enumerate(chain):
+		for org_i, org_bone in enumerate(self.org_chain):
+			org_name = org_bone.name
 			def_section = []
 
 			# Last bone shouldn't get segmented.
-			segments, bbone_segments = self.get_segments(org_i, chain)
+			segments, bbone_segments = self.get_segments(org_i, self.org_chain)
 			
 			for i in range(0, segments):
 				## Create Deform bones
@@ -88,16 +88,16 @@ class CloudChainRig(CloudBaseRig):
 				number = str(i+1) if segments > 1 else ""
 				def_name = make_name(sliced[0], sliced[1] + number, sliced[2])
 
-				org_bone = self.get_bone(org_name)
-				org_vec = org_bone.tail-org_bone.head
+				org_eb = self.get_bone(org_name)	# TODO: Why doesn't this work with BoneInfo instead of EditBone?
+				org_vec = org_eb.tail-org_eb.head
 				unit = org_vec / segments
 
-				def_bone = self.bone_infos.bone(
+				org_bone.def_bone = def_bone = self.bone_infos.bone(
 					name = def_name,
-					source = org_bone,
-					head = org_bone.head + (unit * i),
-					tail = org_bone.head + (unit * (i+1)),
-					roll = org_bone.roll,
+					source = org_eb,
+					head = org_eb.head + (unit * i),
+					tail = org_eb.head + (unit * (i+1)),
+					roll = org_eb.roll,
 					bbone_handle_type_start = 'TANGENT',
 					bbone_handle_type_end = 'TANGENT',
 					bbone_segments = bbone_segments,
@@ -111,11 +111,11 @@ class CloudChainRig(CloudBaseRig):
 					if i==0 and org_i != 0:
 						def_bone.bbone_easein = 0
 					# Last bone of the segment, but not the last bone of the chain.
-					if i==segments-1 and org_i != len(chain)-1:
+					if i==segments-1 and org_i != len(self.org_chain)-1:
 						def_bone.bbone_easeout = 0
 				
 				# Last bone of the chain.
-				if (i==segments-1) and (org_i == len(chain)-1) and (not self.params.CR_cap_control):
+				if (i==segments-1) and (org_i == len(self.org_chain)-1) and (not self.params.CR_cap_control):
 					def_bone.inherit_scale = 'FULL'	# This is not perfect - when trying to adjust the spline shape by scaling the STR control on local Y axis, it scales the last deform bone in a bad way.
 
 				next_parent = def_bone.name
@@ -135,7 +135,7 @@ class CloudChainRig(CloudBaseRig):
 				#use_custom_shape_bone_size = True,
 				custom_shape_scale = 0.3,
 				bone_group = 'Body: STR - Stretch Controls',
-				parent = chain[sec_i],
+				parent = self.org_chain[sec_i],
 			)
 			str_bone.scale_length(0.3)
 			self.str_bones.append(str_bone)

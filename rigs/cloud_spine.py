@@ -3,17 +3,34 @@ from bpy.props import BoolProperty, IntProperty
 from mathutils import Vector
 
 from rigify.base_rig import stage
+from rigify.utils.bones import BoneDict
+from rigify.utils.rig import connected_children_names
 
 from ..definitions.driver import Driver
 from ..definitions.custom_props import CustomProp
 from .cloud_fk_chain import CloudChainRig
 
+# Arbitrary spine length behaviour:
+# spine_length must be lower than or equal to the number of bones in the chain.
+# If it's equal, there's no neck or head, just a spine.
+# If it's lower, the last bone is always the head.
+# Anything in between is neck bones.
+
 class CloudSpineRig(CloudChainRig):
 	"""CloudRig spine"""
+
+	def find_org_bones(self, bone):
+		"""Populate self.bones.org."""
+		return BoneDict(
+			main=[bone.name] + connected_children_names(self.obj, bone.name),
+		)
 
 	def initialize(self):
 		"""Gather and validate data about the rig."""
 		super().initialize()
+
+
+		assert len(self.bones.org.main) >= self.params.CR_spine_length, f"Spine Length parameter value({self.params.CR_spine_length}) cannot exceed length of bone chain connected to {self.base_bone} ({len(self.bones.org.main)})"
 		
 		self.display_scale *= 3
 
@@ -59,14 +76,20 @@ class CloudSpineRig(CloudChainRig):
 			double_mstr_pelvis = self.create_parent_bone(self.mstr_torso)
 			double_mstr_pelvis.bone_group = 'Body: Main IK Controls Extra Parents'
 
+		self.org_spines = self.org_chain[:self.params.CR_spine_length]
+		self.org_necks = []
+		self.org_head = None
+		if len(self.org_chain) > self.params.CR_spine_length:	
+			self.org_necks = self.org_chain[self.params.CR_spine_length:-1]
+			self.org_head = self.org_chain[-1]
+
 		# Create FK bones
-		# This should work with an arbitrary spine length. We assume that the chain ends in a neck and head.
 		self.fk_chain = []
 		fk_name = ""
 		next_parent = self.mstr_torso
 		for i, org_bone in enumerate(self.org_chain):
 			fk_name = org_bone.name.replace("ORG", "FK")
-			fk_bone = self.bone_infos.bone(
+			org_bone.fk_bone = fk_bone = self.bone_infos.bone(
 				name				= fk_name,
 				source				= org_bone,
 				custom_shape 		= self.load_widget("FK_Limb"),
@@ -78,11 +101,12 @@ class CloudSpineRig(CloudChainRig):
 
 			self.fk_chain.append(fk_bone)
 
-			if i < len(self.org_chain)-2:	# Spine but not head and neck
+			if org_bone in self.org_spines:	# Spine section
 				# Shift FK controls up to the center of their ORG bone
 				org_bone = self.org_chain[i]
 				fk_bone.put(org_bone.center)
-				fk_bone.tail = self.org_chain[i+1].center
+				if i < len(self.org_spines)-1:
+					fk_bone.tail = self.org_chain[i+1].center
 				#fk_bone.flatten()
 
 				# Create a child corrective - Everything that would normally be parented to this FK bone should actually be parented to this child bone.
@@ -94,28 +118,23 @@ class CloudSpineRig(CloudChainRig):
 					bone_group = 'Body: FK Helper Bones',
 					parent = fk_bone
 				)
-				# Ideally, we would populate these bones' constraints from the metarig, because I think it will need tweaks for each character. But maybe I'm wrong.
 				# TODO: Add FK-C constraints (4 Transformation Constraints).
-				# I'm not sure if that should be done through the rig or customizable from the meta-rig. Maybe have defaults in here, but let the metarig overwrite?
-				# But then we could just have defaults in the metarig as well...
-				# But then reproportioning the rig becomes complicated, unless we store the constraint on the original bone, and somehow tell that constraint to go on the FK-C bone and target the FK bone...
-				# It would be doable though... let's say a constraint is named FK-C:Transf_Fwd@FK - It would go on the FK-C-BoneName bone and its target would be FK-BoneName.
-				# Could run into issues with armature constraint since it has multiple targets.
 				next_parent = fk_child_bone
 				fk_bone.fk_child = fk_child_bone
 		
 		# Head Hinge
-		self.hinge_setup(
-			bone = self.fk_chain[-1], 
-			category = "Head",
-			parent_bone = self.fk_chain[-2],
-			hng_name = self.fk_chain[-1].name.replace("FK", "FK-HNG"),
-			prop_bone = self.prop_bone,
-			prop_name = "fk_hinge_head",
-			limb_name = "Head",
-			default_value = 1.0,
-			head_tail = 1
-		)
+		if self.org_head:
+			self.hinge_setup(
+				bone = self.fk_chain[-1], 
+				category = "Head",
+				parent_bone = self.fk_chain[-2],
+				hng_name = self.fk_chain[-1].name.replace("FK", "FK-HNG"),
+				prop_bone = self.prop_bone,
+				prop_name = "fk_hinge_head",
+				limb_name = "Head",
+				default_value = 1.0,
+				head_tail = 1
+			)
 
 	@stage.prepare_bones
 	def prepare_ik_spine(self):
@@ -275,14 +294,12 @@ class CloudSpineRig(CloudChainRig):
 			str_bone.use_custom_shape_bone_size = False
 			str_bone.custom_shape_scale = 0.15
 		
-		for i, def_bone in enumerate(self.def_bones):
-			if i == len(self.def_bones)-2:
-				# Neck DEF bone
-				def_bone.bbone_easeout = 0	# TODO: this doesn't work?
-		
+		if len(self.org_necks) > 0:
+			# If there are any neck bones, set the last one's easeout to 0.
+			self.org_necks[-1].def_bone.bbone_easeout = 0
+
 		# The last DEF bone should copy the scale of the FK bone. (Or maybe each of them should? And maybe all FK chains, not just the spine? TODO)
 		last_def = self.def_bones[-1]
-		# last_def.add_constraint(self.obj, 'COPY_SCALE', prepend=True, true_defaults=True, target=self.obj, subtarget=self.fk_chain[-1].name)
 		# Nevermind, just inherit scale for now, it works nice when the neck STR scales the head in this case.
 		last_def.inherit_scale = 'FULL'
 
