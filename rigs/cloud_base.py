@@ -88,7 +88,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			custom_shape_scale = 1.5
 		)
 		self.register_parent(self.root_bone, "Root")
-		if self.generator_params.cloudrigify_double_root:
+		if self.generator_params.cloudrig_double_root:
 			self.root_parent = self.create_parent_bone(self.root_bone)
 			self.root_parent.bone_group = 'Body: Main IK Controls Extra Parents'
 
