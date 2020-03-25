@@ -10,11 +10,10 @@ from ..definitions.driver import Driver
 from ..definitions.custom_props import CustomProp
 from .cloud_fk_chain import CloudChainRig
 
-# Arbitrary spine length behaviour:
-# spine_length must be lower than or equal to the number of bones in the chain.
-# If it's equal, there's no neck or head, just a spine.
-# If it's lower, the last bone is always the head.
-# Anything in between is neck bones.
+#TODO: Allow multiple spine rigs in the same rig.
+# Currently there can be only one spine in the rig, or at least only one that will be displayed in the UI, since the spine rig's IK property is always simply "ik_spine".
+#     head hinge also has some hardcoded name strings.
+#     When registering bones as a parent, the parent identifiers are also non-unique.
 
 class CloudSpineRig(CloudChainRig):
 	"""CloudRig spine"""
@@ -249,7 +248,6 @@ class CloudSpineRig(CloudChainRig):
 				)
 				self.ik_ctr_chain[i-1].custom_shape_transform = ik_bone
 			
-			print(f"damped track target for {ik_bone.name}: {damped_track_target}")
 			head_tail = 1
 			if i == len(self.org_spines)-1:
 				# Special treatment for last IK bone...
@@ -315,26 +313,30 @@ class CloudSpineRig(CloudChainRig):
 
 	@stage.prepare_bones
 	def prepare_org_spine(self):
-		#	FK Follows IK with Copy Transforms (same as Rain)
-		#	(We can drive shape keys with FK rotation)
-
-		# Parent ORG to FK
+		# Parent ORG to FK. This is only important because STR- bones are owned by ORG- bones.
+		# We want each FK bone to control the STR- bone of one higher index, eg. FK-Spine0 would control STR-Spine1.
 		for i, org_bone in enumerate(self.org_chain):
 			if i == 0:
+				# First STR bone should by owned by the hips.
 				org_bone.parent = self.mstr_hips
 			elif i > len(self.org_chain)-2:
-				# Last two STR bones should both be parented to last FK bone(the head)
+				# Last two STR bones should both be owned by the last FK bone (usually the head)
 				org_bone.parent = self.fk_chain[-1]
 			elif hasattr(self.fk_chain[i-1], 'fk_child'):
+				# Every other STR bone should be owned by the FK bone of one lower index.
 				org_bone.parent = self.fk_chain[i-1].fk_child
 			else:
-				print("This shouldn't happen?")
+				print("This shouldn't happen?")	# TODO This does happen
 				org_bone.parent = self.fk_chain[i-1]
 		
-		# Change any ORG- children of the final spine bone to be owned by the neck bone instead. This is needed because the responsibility of all ORG- bones is shifted down by one, because of the "FK-controls-in-the-center" setup.
-		for b in self.bone_infos.bones:
-			if b.parent==self.org_chain[-3] and b.name.startswith("ORG-"):
-				b.parent = self.org_chain[-2]
+		# Change any ORG- children of the final spine bone to be owned by the neck bone instead. This is needed because of the index shift described above.
+		new_parent = self.org_head
+		if len(self.org_necks) > 0:
+			new_parent = self.org_necks[0]
+		if new_parent:
+			for b in self.bone_infos.bones:
+				if b.parent==self.org_spines[-1] and b.name.startswith("ORG-"):
+					b.parent = new_parent
 
 	##############################
 	# Parameters
