@@ -464,27 +464,12 @@ class Rig(CloudIKChainRig):
 		fk_toe.drivers[data_path2] = drv2
 
 	@stage.prepare_bones
-	def prepare_org_limb(self):
-		# Note: Runs after prepare_org_chain().
-		
-		# Add Copy Transforms constraints targetting both FK and IK bones.
-		# Put driver on only the second constraint.
-
-		for i, org_bone in enumerate(self.org_chain):
-			ik_bone = self.bone_infos.find(org_bone.name.replace("ORG", "IK"))
-			if self.limb_type == 'LEG' and i == len(self.org_chain)-1:
-				# Don't add IK constraint to toe bone. It should always use FK control, even in IK mode.
-				continue
-			ik_ct_name = "Copy Transforms IK"
-			ik_con = org_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=ik_bone.name, name=ik_ct_name)
-
-			drv = Driver()
-			var = drv.make_var()
-			var.targets[0].id = self.obj
-			var.targets[0].data_path = 'pose.bones["%s"]["%s"]' %(self.prop_bone.name, self.ikfk_name)
-
-			data_path = 'constraints["%s"].influence' %(ik_ct_name)
-			org_bone.drivers[data_path] = drv
+	def foot_org_tweak(self):
+		# Delete IK constraint and driver from toe bone. It should always use FK.
+		if self.limb_type == 'LEG':
+			org_toe = self.org_chain[-1]
+			org_toe.constraints.pop()
+			org_toe.drivers = {}
 
 	@stage.prepare_bones
 	def prepare_parent_switch(self):

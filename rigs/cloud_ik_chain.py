@@ -186,6 +186,31 @@ class CloudIKChainRig(CloudFKChainRig):
 
 		self.prepare_and_store_ikfk_info(self.fk_chain, self.ik_chain, self.pole_ctrl)
 	
+	@stage.prepare_bones
+	def prepare_org_limb(self):
+		# Note: Runs after prepare_org_chain().
+		
+		# Add Copy Transforms constraints to the ORG bones to copy the IK bones.
+		# Put driver on the influence to be able to disable IK.
+
+		for i, org_bone in enumerate(self.org_chain):
+			ik_bone = self.bone_infos.find(org_bone.name.replace("ORG", "IK"))
+			ik_ct_name = "Copy Transforms IK"
+			ik_con = org_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', 
+				true_defaults = True,
+				target		  = self.obj,
+				subtarget	  = ik_bone.name,
+				name		  = ik_ct_name
+			)
+
+			drv = Driver()
+			var = drv.make_var()
+			var.targets[0].id = self.obj
+			var.targets[0].data_path = 'pose.bones["%s"]["%s"]' %(self.prop_bone.name, self.ikfk_name)
+
+			data_path = 'constraints["%s"].influence' %(ik_ct_name)
+			org_bone.drivers[data_path] = drv
+
 	##############################
 	# Parameters
 	
