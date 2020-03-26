@@ -15,6 +15,8 @@ class CloudIKChainRig(CloudFKChainRig):
 		"""Gather and validate data about the rig."""
 		super().initialize()
 
+		assert self.params.CR_ik_length <= len(self.bones.org.main), f"IK Length parameter ({self.params.CR_ik_length}) higher than number of bones in the connected chain ({len(self.bones.org.main)}) on rig: {self.meta_base_bone.name}"
+
 		# UI Strings and Custom Property names
 		self.category = self.slice_name(self.base_bone)[1]
 		if self.params.CR_use_custom_category_name:
@@ -31,6 +33,9 @@ class CloudIKChainRig(CloudFKChainRig):
 		self.ik_stretch_name = "ik_stretch_" + self.limb_name_props
 		self.fk_hinge_name = "fk_hinge_" + self.limb_name_props
 
+		self.ik_pole_direction = 0 	# TODO: Calculate based on org chain's curvature!
+		self.ik_pole_offset = 3		# Scalar on distance from the body.
+
 	@stage.prepare_bones
 	def prepare_root_bone(self):
 		# Socket/Root bone to parent IK and FK to.
@@ -46,13 +51,11 @@ class CloudIKChainRig(CloudFKChainRig):
 		)
 		self.register_parent(self.limb_root_bone, self.limb_ui_name)
 	
-	def make_pole_control(self, chain, direction):
+	def make_pole_control(self, chain):
 		# Create IK Pole Control
 		first_bone = chain[0]
 		elbow = first_bone.tail.copy()
-		
-		offset_scale = 3 if self.limb_type=='ARM' else 5				# Scalar on distance from the body.
-		offset_y = direction * offset_scale * self.scale * self.params.CR_ik_limb_pole_offset	# Because of this code simplification, the character must face +Y axis.
+		offset_y = self.ik_pole_direction * self.ik_pole_offset * self.scale * self.params.CR_ik_limb_pole_offset	# Because of this code simplification, the character must face +Y axis.
 		offset = Vector((0, offset_y, 0))
 		pole_ctrl = self.pole_ctrl = self.bone_infos.bone(
 			name = self.make_name(["IK", "POLE"], self.limb_name, [self.side_suffix]),
@@ -111,20 +114,18 @@ class CloudIKChainRig(CloudFKChainRig):
 			"ik_pole" 				: self.pole_ctrl.name,
 			"ik_control"			: self.ik_mstr.name
 		}
-		default = 1.0 if self.limb_type == 'LEG' else 0.0
-		self.add_ui_data("ik_switches", self.category, self.limb_ui_name, info, default=default)
+		self.add_ui_data("ik_switches", self.category, self.limb_ui_name, info, default=1.0)
 
 	@stage.prepare_bones
 	def prepare_ik_chain(self):
-		direction = 1 if self.limb_type=='ARM' else -1				#TODO: 
-		pole_ctrl = self.make_pole_control(self.org_chain, direction)
+		pole_ctrl = self.make_pole_control(self.org_chain)
 
 		# Create IK control(s) (Hand/Foot)
 		ik_org_bone = self.org_chain[self.params.CR_ik_length-1]
 		mstr_name = ik_org_bone.name.replace("ORG", "IK-MSTR")
 		self.ik_mstr = self.bone_infos.bone(
 			name = mstr_name,
-			source = self.org_chain[-1],
+			source = self.org_chain[self.params.CR_ik_length-1],
 			custom_shape = self.load_widget("Sphere"),
 			parent = None,
 			bone_group = 'Body: Main IK Controls'
@@ -150,25 +151,16 @@ class CloudIKChainRig(CloudFKChainRig):
 			else:
 				ik_bone.parent = self.ik_chain[-2]
 			
-			if i == 2:
-				if self.limb_type == 'LEG':
-					# Create separate IK target bone, for keeping track of where IK should be before IK Roll is applied, whether IK Stretch is on or off.
-					self.ik_tgt_bone = self.bone_infos.bone(
-						name = org_bone.name.replace("ORG", "IK-TGT"),
-						source = org_bone,
-						bone_group = 'Body: IK-MCH - IK Mechanism Bones',
-						parent = self.ik_mstr,
-						hide_select = self.mch_disable_select
-					)
-				else:
-					self.ik_tgt_bone = ik_bone
-					ik_bone.parent = self.ik_mstr
+			if i == self.params.CR_ik_length-1:
 				# Add the IK constraint to the previous bone, targetting this one.
-				self.ik_chain[-2].add_constraint(self.obj, 'IK', 
+				self.ik_chain[self.params.CR_ik_length-2].add_constraint(self.obj, 'IK', 
 					pole_subtarget = pole_ctrl.name,
-					pole_angle = direction * rad(90),
-					subtarget = ik_bone.name
+					pole_angle = self.ik_pole_direction * rad(90),
+					subtarget = ik_bone.name,
+					chain_count = self.params.CR_ik_length-1
 				)
+				# Parent this one to the IK master.
+				ik_bone.parent = self.ik_mstr
 		
 		self.prepare_and_store_ikfk_info(self.fk_chain, self.ik_chain, pole_ctrl)
 	
@@ -233,7 +225,7 @@ class CloudIKChainRig(CloudFKChainRig):
 
 		icon = 'TRIA_DOWN' if params.CR_show_ik_settings else 'TRIA_RIGHT'
 		layout.prop(params, "CR_show_ik_settings", toggle=True, icon=icon)
-		if not params.CR_show_ik_settings: return
+		if not params.CR_show_ik_settings: return ui_rows
 
 		name_row = layout.row()
 		limb_column = name_row.column()
@@ -255,5 +247,5 @@ class CloudIKChainRig(CloudFKChainRig):
 
 		return ui_rows
 
-class Rig(CloudFKChainRig):
+class Rig(CloudIKChainRig):
 	pass

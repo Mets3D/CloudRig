@@ -311,7 +311,7 @@ class CloudChainRig(CloudBaseRig):
 
 		icon = 'TRIA_DOWN' if params.CR_show_chain_settings else 'TRIA_RIGHT'
 		layout.prop(params, "CR_show_chain_settings", toggle=True, icon=icon)
-		if not params.CR_show_chain_settings: return
+		if not params.CR_show_chain_settings: return ui_rows
 
 		layout.prop(params, "CR_deform_segments")
 		layout.prop(params, "CR_bbone_segments")

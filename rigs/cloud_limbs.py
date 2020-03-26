@@ -37,6 +37,11 @@ class Rig(CloudIKChainRig):
 		
 		self.limb_ui_name = self.side_prefix + " " + self.limb_name
 
+		# IK values
+		self.ik_pole_direction = 1 if self.limb_type=='ARM' else -1				#TODO: self.limb_type doesn't exist in cloud_ik_chain...
+		if self.limb_type=='LEG':
+			self.ik_pole_offset = 5
+
 	# Overrides CloudChainRig.get_segments()
 	def get_segments(self, org_i, chain):
 		segments = self.params.CR_deform_segments
@@ -158,6 +163,20 @@ class Rig(CloudIKChainRig):
 		)
 		str_bone.scale_width(0.4)
 
+		ik_bone = self.ik_chain[self.params.CR_ik_length-1]
+		if self.limb_type == 'LEG':
+			# Create separate IK target bone, for keeping track of where IK should be before IK Roll is applied, whether IK Stretch is on or off.
+			# TODO: I'm guessing this is redundant when FootRoll feature is disabled, so shouldn't create it then.
+			self.ik_tgt_bone = self.bone_infos.bone(
+				name = ik_org_bone.name.replace("ORG", "IK-TGT"),
+				source = ik_org_bone,
+				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
+				parent = self.ik_mstr,
+				hide_select = self.mch_disable_select
+			)
+		else:
+			self.ik_tgt_bone = ik_bone
+
 		self.ik_tgt_bone.add_constraint(self.obj, 'COPY_LOCATION',
 			target = self.obj,
 			subtarget = str_bone.name,
@@ -208,7 +227,6 @@ class Rig(CloudIKChainRig):
 		#######################
 
 		if self.limb_type == 'LEG':
-			self.ik_chain[-2].parent = self.ik_mstr
 			self.prepare_ik_foot(self.ik_tgt_bone, self.ik_chain[-2:], self.org_chain[-2:])
 
 		for i in range(0, self.params.CR_deform_segments):
@@ -321,8 +339,8 @@ class Rig(CloudIKChainRig):
 			if ankle_pivot_name=="":
 				ankle_pivot_name = "AnklePivot." + self.side_suffix
 			meta_ankle_pivot = self.generator.metarig.data.bones.get(ankle_pivot_name)
-			assert meta_ankle_pivot, "ERROR: Could not find AnklePivot bone in the metarig: %s." %ankle_pivot_name
-			
+			assert meta_ankle_pivot, "ERROR: Could not find AnklePivot bone in the metarig: %s." %ankle_pivot_name	# TODO IMPORTANT: This doesn't need to be an assert, just use the transforms of the foot org bone and create a new bone there! After that, we could remove the hardcoded default name of "AnklePivot.L/R".
+
 			# I want to be able to customize the shape size of the foot controls from the metarig, via ankle pivot bone bbone scale.
 			self.ik_mstr._bbone_x = meta_ankle_pivot.bbone_x
 			self.ik_mstr._bbone_z = meta_ankle_pivot.bbone_z
@@ -589,17 +607,19 @@ class Rig(CloudIKChainRig):
 	def parameters_ui(cls, layout, params):
 		"""Create the ui for the rig parameters."""
 		ui_rows = super().parameters_ui(layout, params)
-		ui_rows['sharp_sections'].enabled = False
+		if 'sharp_sections' in ui_rows:
+			ui_rows['sharp_sections'].enabled = False
 
 		icon = 'TRIA_DOWN' if params.CR_show_limb_settings else 'TRIA_RIGHT'
 		layout.prop(params, "CR_show_limb_settings", toggle=True, icon=icon)
-		if not params.CR_show_limb_settings: return
+		if not params.CR_show_limb_settings: return ui_rows
 
 		layout.prop(params, "CR_limb_type")
 		if params.CR_limb_type=='LEG':
-			layout.prop(params, "CR_use_foot_roll")
+			footroll_row = layout.row()
+			footroll_row.prop(params, "CR_use_foot_roll")
 			if params.CR_use_foot_roll:
-				layout.prop_search(params, "CR_ankle_pivot_bone", bpy.context.object.data, "bones", text="Ankle Pivot")
+				footroll_row.prop_search(params, "CR_ankle_pivot_bone", bpy.context.object.data, "bones", text="Ankle Pivot")
 
 		double_row = layout.row()
 		double_row.prop(params, "CR_double_ik_control")
