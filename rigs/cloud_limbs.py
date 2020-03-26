@@ -147,88 +147,11 @@ class Rig(CloudIKChainRig):
 			if self.params.CR_world_aligned_controls:
 				double_control.flatten()
 
-		if self.params.CR_world_aligned_controls:
-			self.ik_mstr.flatten()
-
-		# Stretch mechanism
-		ik_org_bone = self.org_chain[self.params.CR_ik_length-1]
-		str_name = ik_org_bone.name.replace("ORG", "IK-STR")
-		str_bone = self.bone_infos.bone(
-			name = str_name, 
-			source = self.org_chain[0],
-			tail = self.ik_mstr.head.copy(),
-			parent = self.limb_root_bone.name,
-			bone_group = 'Body: IK-MCH - IK Mechanism Bones',
-			hide_select = self.mch_disable_select
-		)
-		str_bone.scale_width(0.4)
-
-		ik_bone = self.ik_chain[self.params.CR_ik_length-1]
-		if self.limb_type == 'LEG':
-			# Create separate IK target bone, for keeping track of where IK should be before IK Roll is applied, whether IK Stretch is on or off.
-			# TODO: I'm guessing this is redundant when FootRoll feature is disabled, so shouldn't create it then.
-			self.ik_tgt_bone = self.bone_infos.bone(
-				name = ik_org_bone.name.replace("ORG", "IK-TGT"),
-				source = ik_org_bone,
-				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
-				parent = self.ik_mstr,
-				hide_select = self.mch_disable_select
-			)
-		else:
-			self.ik_tgt_bone = ik_bone
-
-		self.ik_tgt_bone.add_constraint(self.obj, 'COPY_LOCATION',
-			target = self.obj,
-			subtarget = str_bone.name,
-			head_tail = 1,
-			true_defaults=True
-		)
-
-		str_tgt_name = ik_org_bone.name.replace("ORG", "IK-STR-TGT")
-		# Create bone responsible for keeping track of where the feet should be when stretchy IK is ON.
-		str_tgt_bone = self.bone_infos.bone(
-			name = str_tgt_name, 
-			source = ik_org_bone, 
-			parent = self.ik_mstr,
-			bone_group = 'Body: IK-MCH - IK Mechanism Bones',
-			hide_select = self.mch_disable_select
-		)
-
-		arm_length = self.ik_chain[0].length + self.ik_chain[1].length
-		length_factor = arm_length / str_bone.length
-		str_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=str_tgt_bone.name)
-		str_bone.add_constraint(self.obj, 'LIMIT_SCALE', 
-			use_max_y = True,
-			max_y = length_factor,
-			influence = 0
-		)
-
-		str_drv = Driver()
-		str_drv.expression = "1-stretch"
-		var = str_drv.make_var("stretch")
-		var.type = 'SINGLE_PROP'
-		var.targets[0].id_type = 'OBJECT'
-		var.targets[0].id = self.obj
-		var.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ik_stretch_name)
-
-		data_path = 'constraints["Limit Scale"].influence'
-		
-		str_bone.drivers[data_path] = str_drv
-
-		# Store info for UI
-		info = {
-			"prop_bone"			: self.prop_bone.name,
-			"prop_id" 			: self.ik_stretch_name,
-		}
-		self.add_ui_data("ik_stretches", self.category, self.limb_ui_name, info, default=1.0)
-
-		#######################
-		##### MORE STUFF ######
-		#######################
-
+		# IK Foot setup, including Foot Roll
 		if self.limb_type == 'LEG':
 			self.prepare_ik_foot(self.ik_tgt_bone, self.ik_chain[-2:], self.org_chain[-2:])
 
+		# Counter-Rotate setup for the first section of STR bones.
 		for i in range(0, self.params.CR_deform_segments):
 			factor_unit = 0.9 / self.params.CR_deform_segments
 			factor = 0.9 - factor_unit * i
@@ -308,6 +231,7 @@ class Rig(CloudIKChainRig):
 
 	def prepare_ik_foot(self, ik_tgt, ik_chain, org_chain):
 		ik_foot = ik_chain[0]
+		# TODO: This should be further split up into a separate function specifically for setting up foot roll, and one for the the rest(which I guess is setting up the toe Armature constraint)
 
 		# Create ROLL control behind the foot (Limit Rotation, lock other transforms)
 		if self.params.CR_use_foot_roll:	# TODO: Don't like this big if block. Maybe toe part should be moved out of this function, and the if check put before calling of this function, and then this function can be renamed to prepare_footroll.

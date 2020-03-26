@@ -97,7 +97,7 @@ class CloudIKChainRig(CloudFKChainRig):
 		self.create_dsp_bone(pole_ctrl)
 		return pole_ctrl
 	
-	def prepare_and_store_ikfk_info(self, fk_chain, ik_chain, ik_pole):
+	def add_ui_data_ik_fk(self, fk_chain, ik_chain, ik_pole):
 		""" Prepare the data needed to be stored on the armature object for IK/FK snapping. """
 		fk_chain = fk_chain[:self.params.CR_ik_length]
 		ik_chain = ik_chain[:self.params.CR_ik_length]
@@ -120,6 +120,7 @@ class CloudIKChainRig(CloudFKChainRig):
 		self.add_ui_data("ik_switches", self.category, self.limb_ui_name, info, default=default)
 
 	def make_ik_chain(self, org_chain, ik_mstr, pole_target, ik_pole_direction=0):
+		""" Based on a chain of ORG bones, create an IK chain, optionally with a pole target."""
 		ik_chain = []
 		for i, org_bone in enumerate(org_chain):
 			# org_bone = self.get_bone(bn)
@@ -155,7 +156,77 @@ class CloudIKChainRig(CloudFKChainRig):
 				# Parent this one to the IK master.
 				ik_bone.parent = ik_mstr
 		
+		# Add IK/FK Snapping to the UI.
+		self.add_ui_data_ik_fk(self.fk_chain, ik_chain, pole_target)
 		return ik_chain
+
+	def setup_ik_stretch(self):
+		ik_org_bone = self.org_chain[self.params.CR_ik_length-1]
+		str_name = ik_org_bone.name.replace("ORG", "IK-STR")
+		stretch_bone = self.bone_infos.bone(
+			name = str_name, 
+			source = self.org_chain[0],
+			tail = self.ik_mstr.head.copy(),
+			parent = self.limb_root_bone.name,
+			bone_group = 'Body: IK-MCH - IK Mechanism Bones',
+			hide_select = self.mch_disable_select
+		)
+		stretch_bone.scale_width(0.4)
+		
+		# Bone responsible for giving stretch_bone the target position to stretch to.
+		self.stretch_target_bone = self.bone_infos.bone(
+			name = ik_org_bone.name.replace("ORG", "IK-STR-TGT"), 
+			source = ik_org_bone, 
+			parent = self.ik_mstr,
+			bone_group = 'Body: IK-MCH - IK Mechanism Bones',
+			hide_select = self.mch_disable_select
+		)
+		
+		arm_length = self.ik_chain[0].length + self.ik_chain[1].length
+		length_factor = arm_length / stretch_bone.length
+		stretch_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=self.stretch_target_bone.name)
+		stretch_bone.add_constraint(self.obj, 'LIMIT_SCALE', 
+			use_max_y = True,
+			max_y = length_factor,
+			influence = 0
+		)
+
+		str_drv = Driver()
+		str_drv.expression = "1-stretch"
+		var = str_drv.make_var("stretch")
+		var.type = 'SINGLE_PROP'
+		var.targets[0].id_type = 'OBJECT'
+		var.targets[0].id = self.obj
+		var.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ik_stretch_name)
+
+		data_path = 'constraints["Limit Scale"].influence'
+		
+		stretch_bone.drivers[data_path] = str_drv
+
+		# Store info for UI
+		info = {
+			"prop_bone"			: self.prop_bone.name,
+			"prop_id" 			: self.ik_stretch_name,
+		}
+		self.add_ui_data("ik_stretches", self.category, self.limb_ui_name, info, default=1.0)
+
+		# Bone responsible for keeping track of where the IK master IS (ie, IK master is parented to this bone). Foot Roll could be parented to this, and then the IK bone gets parented to the foot roll.
+		self.ik_tgt_bone = self.bone_infos.bone(
+			name = ik_org_bone.name.replace("ORG", "IK-TGT"),
+			source = ik_org_bone,
+			bone_group = 'Body: IK-MCH - IK Mechanism Bones',
+			parent = self.ik_mstr,
+			hide_select = self.mch_disable_select
+		)
+		self.ik_tgt_bone.add_constraint(self.obj, 'COPY_LOCATION',
+			true_defaults = True,
+			target = self.obj,
+			subtarget = stretch_bone.name,
+			head_tail = 1
+		)
+		
+		ik_bone = self.ik_chain[self.params.CR_ik_length-1]
+		ik_bone.parent = self.ik_tgt_bone
 
 	@stage.prepare_bones
 	def prepare_ik_chain(self):
@@ -184,7 +255,11 @@ class CloudIKChainRig(CloudFKChainRig):
 		# Create IK Chain
 		self.ik_chain = self.make_ik_chain(self.org_chain, self.ik_mstr, self.pole_ctrl, self.ik_pole_direction)
 
-		self.prepare_and_store_ikfk_info(self.fk_chain, self.ik_chain, self.pole_ctrl)
+		if self.params.CR_world_aligned_controls:
+			self.ik_mstr.flatten()
+
+		# Set up IK Stretch
+		self.setup_ik_stretch()
 	
 	@stage.prepare_bones
 	def prepare_org_limb(self):
