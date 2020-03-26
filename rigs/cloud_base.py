@@ -25,6 +25,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		super().initialize()
 		"""Gather and validate data about the rig."""
 		self.generator_params = self.generator.metarig.data
+		self.meta_base_bone = self.generator.metarig.pose.bones.get(self.base_bone.replace("ORG-", ""))
 		self.parent_candidates = {}
 		
 		# Wipe any existing bone groups from the generated rig.
@@ -259,11 +260,15 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	def parameters_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
+		ui_rows = {}
 		icon = 'TRIA_DOWN' if params.CR_show_display_settings else 'TRIA_RIGHT'
 		layout.prop(params, "CR_show_display_settings", toggle=True, icon=icon)
 
 		if params.CR_show_display_settings:
 			cls.parameters_ui_display(layout.box(), params	)
+		
+		# We can return a dictionary of key:UILayout elements, in case we want to affect the UI layout of inherited rig elements.
+		return ui_rows
 
 # For testing purposes
 # class Rig(CloudBaseRig):

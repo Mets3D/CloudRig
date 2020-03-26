@@ -276,15 +276,15 @@ class CloudChainRig(CloudBaseRig):
 		params.CR_show_chain_settings = BoolProperty(name="Chain Rig")
 		params.CR_deform_segments = IntProperty(
 			 name		 = "Deform Segments"
-			,description = "Number of deform bones per limb piece"
+			,description = "Number of deform bones per section"
 			,default	 = 2
 			,min		 = 1
 			,max		 = 9
 		)
 		params.CR_bbone_segments = IntProperty(
 			 name="BBone Segments"
-			,description="BBone segments of deform bones"
-			,default=10
+			,description="Number of BBone segments on deform bones"
+			,default=6
 			,min=1
 			,max=32
 		)
@@ -294,8 +294,8 @@ class CloudChainRig(CloudBaseRig):
 		)
 		params.CR_sharp_sections = BoolProperty(
 			 name="Sharp Sections"
-			,description="BBone EaseIn/Out is set to 0 for controls connectiong two chain sections"
-			,default=True
+			,description="BBone EaseIn/Out is set to 0 for bones connectiong two sections"
+			,default=False
 		)
 		params.CR_cap_control = BoolProperty(
 			 name		 = "Final Control"
@@ -307,7 +307,7 @@ class CloudChainRig(CloudBaseRig):
 	def parameters_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
-		super().parameters_ui(layout, params)
+		ui_rows = super().parameters_ui(layout, params)
 
 		icon = 'TRIA_DOWN' if params.CR_show_chain_settings else 'TRIA_RIGHT'
 		layout.prop(params, "CR_show_chain_settings", toggle=True, icon=icon)
@@ -316,8 +316,12 @@ class CloudChainRig(CloudBaseRig):
 		layout.prop(params, "CR_deform_segments")
 		layout.prop(params, "CR_bbone_segments")
 		layout.prop(params, "CR_shape_key_helpers")
-		layout.prop(params, "CR_sharp_sections")
+		sharp_sections = layout.row()
+		sharp_sections.prop(params, "CR_sharp_sections")
+		ui_rows['sharp_sections'] = sharp_sections
 		layout.prop(params, "CR_cap_control")
+		
+		return ui_rows
 
 class Rig(CloudChainRig):
 	pass

@@ -15,6 +15,10 @@ class Rig(CloudIKChainRig):
 	def initialize(self):
 		super().initialize()
 		"""Gather and validate data about the rig."""
+		# Forced parameters
+		self.params.CR_sharp_sections = True
+		self.meta_base_bone.rigify_parameters.CR_sharp_sections = True
+
 		# Safety checks
 		self.limb_type = self.params.CR_limb_type
 		if self.limb_type=='ARM':
@@ -582,7 +586,8 @@ class Rig(CloudIKChainRig):
 	@classmethod
 	def parameters_ui(cls, layout, params):
 		"""Create the ui for the rig parameters."""
-		super().parameters_ui(layout, params)
+		ui_rows = super().parameters_ui(layout, params)
+		ui_rows['sharp_sections'].enabled = False
 
 		icon = 'TRIA_DOWN' if params.CR_show_limb_settings else 'TRIA_RIGHT'
 		layout.prop(params, "CR_show_limb_settings", toggle=True, icon=icon)

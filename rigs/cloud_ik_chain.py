@@ -117,7 +117,7 @@ class CloudIKChainRig(CloudFKChainRig):
 
 	@stage.prepare_bones
 	def prepare_ik_chain(self):
-		direction = 1 if self.limb_type=='ARM' else -1				# Character is expected to face +Y direction.
+		direction = 1 if self.limb_type=='ARM' else -1				#TODO: 
 		pole_ctrl = self.make_pole_control(self.org_chain, direction)
 
 		# Create IK control(s) (Hand/Foot)
@@ -198,8 +198,9 @@ class CloudIKChainRig(CloudFKChainRig):
 		)
 		params.CR_custom_category_name = StringProperty(default="arms")
 
-		params.CR_ik_limb_pole_offset = FloatProperty(	# TODO: Rename to ik_pole_offset
+		params.CR_ik_limb_pole_offset = FloatProperty(	# TODO: Rename to ik_pole_offset - Also, maybe this is redundant.
 			 name	 	 = "Pole Vector Offset"
+			,description = "Push the pole target closer to or further away from the chain"
 			,default 	 = 1.0
 		)
 		params.CR_world_aligned_controls = BoolProperty(
@@ -209,17 +210,27 @@ class CloudIKChainRig(CloudFKChainRig):
 		)
 		params.CR_ik_length = IntProperty(
 			name	 	 = "IK Length"
-			,description = "Length of the IK chain. Cannot be higher than the number of bones in the chain."
+			,description = "Length of the IK chain. Cannot be higher than the number of bones in the chain"
 			,default	 = 3
 			,min		 = 1
 			,max		 = 255
+		)
+		params.CR_use_pole_target = BoolProperty(
+			name 		 = "Use Pole Target"
+			,description = "If disabled, you can control the rotation of the IK chain by simply rotating its first bone, rather than with an IK pole control"
+			,default	 = True
+		)
+		params.CR_custom_pole_bone = StringProperty(
+			name 		 = "Custom Pole Position"
+			,description = "When chosen, use this bone's position as the IK pole target, instead of determining it automatically"
+			,default	 = ""
 		)
 
 	@classmethod
 	def parameters_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
-		super().parameters_ui(layout, params)
+		ui_rows = super().parameters_ui(layout, params)
 
 		icon = 'TRIA_DOWN' if params.CR_show_ik_settings else 'TRIA_RIGHT'
 		layout.prop(params, "CR_show_ik_settings", toggle=True, icon=icon)
@@ -235,9 +246,15 @@ class CloudIKChainRig(CloudFKChainRig):
 		if params.CR_use_custom_category_name:
 			category_column.prop(params, "CR_custom_category_name", text="")
 
+		pole_row = layout.row()
+		pole_row.prop(params, "CR_use_pole_target")
+		if params.CR_use_pole_target:
+			pole_row.prop_search(params, "CR_custom_pole_bone", bpy.context.object.data, "bones", text="Pole Target")
 		layout.prop(params, "CR_ik_length")
 		layout.prop(params, "CR_world_aligned_controls")
-		layout.prop(params, "CR_ik_limb_pole_offset")
+		# layout.prop(params, "CR_ik_limb_pole_offset")
+
+		return ui_rows
 
 class Rig(CloudFKChainRig):
 	pass
