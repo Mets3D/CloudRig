@@ -26,9 +26,10 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		"""Gather and validate data about the rig."""
 		self.generator_params = self.generator.metarig.data
 		self.meta_base_bone = self.generator.metarig.pose.bones.get(self.base_bone.replace("ORG-", ""))
-		self.parent_candidates = {}
 		
-		# Wipe any existing bone groups from the generated rig.
+		self.parent_candidates = {}
+
+		# Wipe any existing bone groups from the generated rig.	# TODO: Right now, every rig element nukes all the bone groups created by rig elements that generated before it, and then re-creates them. This could use smarter handling.
 		for bone_group in self.obj.pose.bone_groups:
 			self.obj.pose.bone_groups.remove(bone_group)
 
@@ -38,12 +39,12 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 		# Determine rig scale by armature height.
 		self.scale = max(self.generator.metarig.dimensions)/10
-		
-		# Slap user-provided multiplier on top.
+		# Slap user-provided multiplier on top. TODO: Generator parameter? Or just remove this altogether, it seems superfluous. At least we never use it.
 		self.display_scale = self.params.CR_display_scale * self.scale
 
-		self.mch_disable_select = False	# TODO: In future, this could be exposed as a parameter, but I wish it could be a generator parameter instead of a per-rig parametere.
-	
+		# TODO: Generator parameter.
+		self.mch_disable_select = False
+
 		self.side_suffix = ""
 		self.side_prefix = ""
 		base_bone_name = self.slice_name(self.base_bone)
@@ -68,6 +69,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		parent = self.get_bone(self.base_bone).parent
 		self.bones.parent = parent.name if parent else ""
 
+		# TODO: This should get created when attempting to add a Custom Property to it, and no sooner! Ie. it shouldn't get created when it's not being used by the rig.
 		# Properties bone and Custom Properties
 		self.prop_bone = self.bone_infos.bone(
 			name = "Properties_IKFK", 
@@ -97,11 +99,13 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			if k in ['_RNA_UI', 'rig_id']: continue
 			del self.obj.data[k]
 
+		# TODO: Put this under a generator parameter
 		self.obj.name = self.generator.metarig.name.replace("META", "RIG")
 		self.generator.metarig.data.name = "Data_" + self.generator.metarig.name
 		self.obj.data.name = "Data_" + self.obj.name
 		self.obj.data['cloudrig'] = self.script_id
 
+		# TODO: Put this under a generator parameter
 		# If no layers are protected, protect all layers. Otherwise, we assume protected layers were set up manually in a previously generated rig, so we don't touch them.
 		if list(self.obj.data.layers_protected) == [False]*32:
 			self.obj.data.layers_protected = [True]*32

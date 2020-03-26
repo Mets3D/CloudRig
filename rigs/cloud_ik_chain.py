@@ -20,11 +20,13 @@ class CloudIKChainRig(CloudFKChainRig):
 		if self.params.CR_use_custom_category_name:
 			self.category = self.params.CR_custom_category_name
 
-		self.limb_name = self.side_prefix + " " + self.category
+		self.limb_name = self.category						# Name used for naming bones. Should not contain a side identifier like .L/.R.
 		if self.params.CR_use_custom_limb_name:
 			self.limb_name = self.params.CR_custom_limb_name
+		
+		self.limb_ui_name = self.side_prefix + " " + self.limb_name	# Name used for UI related things. Should contain the side identifier.
 
-		self.limb_name_props = self.limb_name.replace(" ", "_").lower()
+		self.limb_name_props = self.limb_ui_name.replace(" ", "_").lower()
 		self.ikfk_name = "ik_" + self.limb_name_props
 		self.ik_stretch_name = "ik_stretch_" + self.limb_name_props
 		self.fk_hinge_name = "fk_hinge_" + self.limb_name_props
@@ -42,7 +44,7 @@ class CloudIKChainRig(CloudFKChainRig):
 			custom_shape_scale 	= 0.5,
 			bone_group			= 'Body: IK-MCH - IK Mechanism Bones'
 		)
-		self.register_parent(self.limb_root_bone, self.limb_name.capitalize())
+		self.register_parent(self.limb_root_bone, self.limb_ui_name)
 	
 	def make_pole_control(self, chain, direction):
 		# Create IK Pole Control
@@ -52,11 +54,8 @@ class CloudIKChainRig(CloudFKChainRig):
 		offset_scale = 3 if self.limb_type=='ARM' else 5				# Scalar on distance from the body.
 		offset_y = direction * offset_scale * self.scale * self.params.CR_ik_limb_pole_offset	# Because of this code simplification, the character must face +Y axis.
 		offset = Vector((0, offset_y, 0))
-		limb_name = self.limb_type.capitalize()
-		if self.params.CR_use_custom_limb_name:
-			limb_name = self.params.CR_custom_limb_name
 		pole_ctrl = self.pole_ctrl = self.bone_infos.bone(
-			name = self.make_name(["IK", "POLE"], limb_name, [self.side_suffix]),
+			name = self.make_name(["IK", "POLE"], self.limb_name, [self.side_suffix]),
 			bbone_width = 0.1,
 			head = elbow + offset,
 			tail = elbow + offset*1.1,
@@ -69,7 +68,7 @@ class CloudIKChainRig(CloudFKChainRig):
 		pole_ctrl.tail = pole_ctrl.tail.copy()
 
 		pole_line = self.bone_infos.bone(
-			name = self.make_name(["IK", "POLE", "LINE"], limb_name, [self.side_suffix]),
+			name = self.make_name(["IK", "POLE", "LINE"], self.limb_name, [self.side_suffix]),
 			source = pole_ctrl,
 			tail = elbow,
 			custom_shape = self.load_widget('Pole_Line'),
@@ -113,7 +112,7 @@ class CloudIKChainRig(CloudFKChainRig):
 			"ik_control"			: self.ik_mstr.name
 		}
 		default = 1.0 if self.limb_type == 'LEG' else 0.0
-		self.add_ui_data("ik_switches", self.category, self.limb_name, info, default=default)
+		self.add_ui_data("ik_switches", self.category, self.limb_ui_name, info, default=default)
 
 	@stage.prepare_bones
 	def prepare_ik_chain(self):

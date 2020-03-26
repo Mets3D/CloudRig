@@ -31,9 +31,11 @@ class Rig(CloudIKChainRig):
 		if self.params.CR_use_custom_category_name:
 			self.category = self.params.CR_custom_category_name
 
-		self.limb_name = self.side_prefix + " " + self.limb_type.capitalize()
+		self.limb_name = self.limb_type.capitalize()
 		if self.params.CR_use_custom_limb_name:
 			self.limb_name = self.params.CR_custom_limb_name
+		
+		self.limb_ui_name = self.side_prefix + " " + self.limb_name
 
 	# Overrides CloudChainRig.get_segments()
 	def get_segments(self, org_i, chain):
@@ -95,7 +97,7 @@ class Rig(CloudIKChainRig):
 			hng_name = self.base_bone.replace("ORG", "FK-HNG"),
 			prop_bone = self.prop_bone,
 			prop_name = self.fk_hinge_name,
-			limb_name = self.limb_name
+			limb_name = self.limb_ui_name
 		)
 
 	@stage.prepare_bones
@@ -199,7 +201,7 @@ class Rig(CloudIKChainRig):
 			"prop_bone"			: self.prop_bone.name,
 			"prop_id" 			: self.ik_stretch_name,
 		}
-		self.add_ui_data("ik_stretches", self.category, self.limb_name, info, default=1.0)
+		self.add_ui_data("ik_stretches", self.category, self.limb_ui_name, info, default=1.0)
 
 		#######################
 		##### MORE STUFF ######
@@ -475,9 +477,9 @@ class Rig(CloudIKChainRig):
 		# List of parent candidate identifiers that this rig is looking for among its registered parent candidates
 		parents = []
 		if self.limb_type == 'LEG':
-			parents = ['Root', 'Torso', 'Hips', self.side_suffix + ' Leg']
+			parents = ['Root', 'Torso', 'Hips', self.limb_ui_name]
 		elif self.limb_type == 'ARM':
-			parents = ['Root', 'Torso', 'Chest', self.side_suffix + ' Arm']
+			parents = ['Root', 'Torso', 'Chest', self.limb_ui_name]
 
 		# Try to rig the IK control's parent switcher, searching for these parent candidates.
 		ik_parents_prop_name = "ik_parents_" + self.limb_name_props
@@ -494,7 +496,7 @@ class Rig(CloudIKChainRig):
 				"parent_names" : parent_names,
 				"bones" : [b.name for b in [self.ik_ctrl, self.pole_ctrl]],
 				}
-			self.add_ui_data("parents", self.category, self.limb_name, info, default=0, _max=len(parent_names))
+			self.add_ui_data("parents", self.category, self.limb_ui_name, info, default=0, _max=len(parent_names))
 		
 		# Rig the IK Pole control's parent switcher.
 		self.rig_child(self.pole_ctrl, parents, self.prop_bone, ik_parents_prop_name)
@@ -511,7 +513,7 @@ class Rig(CloudIKChainRig):
 			"select_bones" : True
 		}
 		default = 1.0 if self.limb_type=='LEG' else 0.0
-		self.add_ui_data("ik_pole_follows", self.category, self.limb_name, info, default=default)
+		self.add_ui_data("ik_pole_follows", self.category, self.limb_ui_name, info, default=default)
 
 		# Get the armature constraint from the IK pole's parent, and add the IK master as a new target.
 		arm_con_bone = self.pole_ctrl.parent
