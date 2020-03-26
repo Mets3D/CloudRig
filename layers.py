@@ -47,6 +47,7 @@ DSP = 10
 PROPERTIES = 17
 BLACK_BOX = 31
 
+# TODO: Generator parameter!
 default_active_layers = [IK_MAIN, IK_SECOND, FK_MAIN, PROPERTIES]	# This is just a set of recommended active layers. Rigs can grab these defaults or use their own.
 
 # Name : Params dictionary.
@@ -71,13 +72,13 @@ group_defs = {
 		'normal' : presets['PRESET03'][0],
 		'select' : presets['PRESET03'][1],
 		'active' : presets['PRESET03'][2],
-		'layers' : [IK_SECOND]
+		'layers' : [IK_MAIN, IK_SECOND]
 	},
 	'Body: Main IK Controls Extra Parents' : {
 		'normal' : presets['PRESET09'][0],
 		'select' : presets['PRESET09'][1],
 		'active' : presets['PRESET09'][2],
-		'layers' : [IK_MAIN]
+		'layers' : [IK_MAIN, IK_SECOND]
 	},
 	'Body: IK - Secondary IK Controls' : {
 		'normal' : presets['PRESET11'][0],

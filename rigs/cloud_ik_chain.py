@@ -51,10 +51,10 @@ class CloudIKChainRig(CloudFKChainRig):
 		)
 		self.register_parent(self.limb_root_bone, self.limb_ui_name)
 	
-	def make_pole_control(self, chain):
+	def make_pole_control(self, org_chain):
 		# Create IK Pole Control
-		first_bone = chain[0]
-		elbow = first_bone.tail.copy()
+		first_bone = org_chain[0]
+		elbow = first_bone.tail.copy()	# Starting point for the location of the pole target. TODO: This is no good when IK length > 2.
 		offset_y = self.ik_pole_direction * self.ik_pole_offset * self.scale * self.params.CR_ik_limb_pole_offset	# Because of this code simplification, the character must face +Y axis.
 		offset = Vector((0, offset_y, 0))
 		pole_ctrl = self.pole_ctrl = self.bone_infos.bone(
@@ -94,7 +94,7 @@ class CloudIKChainRig(CloudFKChainRig):
 
 		pole_line.bone_drivers['hide'] = drv
 		
-		self.pole_dsp = self.create_dsp_bone(pole_ctrl)
+		self.create_dsp_bone(pole_ctrl)
 		return pole_ctrl
 	
 	def prepare_and_store_ikfk_info(self, fk_chain, ik_chain, ik_pole):
@@ -103,24 +103,63 @@ class CloudIKChainRig(CloudFKChainRig):
 		ik_chain = ik_chain[:self.params.CR_ik_length]
 
 		info = {	# These parameter names must be kept in sync with Snap_IK2FK in cloudrig.py
-			"operator" 				: "armature.ikfk_toggle",
+			"operator"				: "armature.ikfk_toggle",
 			"prop_bone"				: self.prop_bone.name,
-			"prop_id" 				: self.ikfk_name,
-			"fk_chain" 				: [b.name for b in fk_chain],
-			"ik_chain" 				: [b.name for b in ik_chain],
+			"prop_id"				: self.ikfk_name,
+			"fk_chain"				: [b.name for b in fk_chain],
+			"ik_chain"				: [b.name for b in ik_chain],
 			"str_chain"				: [b.name for b in self.main_str_bones],
 			"double_first_control"	: self.params.CR_double_first_control,
 			"double_ik_control"		: self.params.CR_double_ik_control,
-			"ik_pole" 				: self.pole_ctrl.name,
+			"ik_pole"				: self.pole_ctrl.name if self.pole_ctrl else "",
 			"ik_control"			: self.ik_mstr.name
 		}
-		self.add_ui_data("ik_switches", self.category, self.limb_ui_name, info, default=1.0)
+		default = 1.0
+		if hasattr(self, "limb_type") and self.limb_type=='ARM':
+			default = 0.0	# TODO: delet this.
+		self.add_ui_data("ik_switches", self.category, self.limb_ui_name, info, default=default)
+
+	def make_ik_chain(self, org_chain, ik_mstr, pole_target, ik_pole_direction=0):
+		ik_chain = []
+		for i, org_bone in enumerate(org_chain):
+			# org_bone = self.get_bone(bn)
+			ik_name = org_bone.name.replace("ORG", "IK")
+			ik_bone = self.bone_infos.bone(ik_name, org_bone,
+				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
+				hide_select = self.mch_disable_select
+			)
+			ik_chain.append(ik_bone)
+			
+			if i == 0:
+				# Parent first bone to the limb root
+				ik_bone.parent = self.limb_root_bone.name
+				if not self.params.CR_use_pole_target:
+					ik_bone.custom_shape = self.load_widget("IK_Base")
+					ik_bone.use_custom_shape_bone_size = True
+					ik_bone.custom_shape_scale = 0.8
+					ik_bone.bone_group = 'Body: Main IK Controls'
+
+			else:
+				ik_bone.parent = ik_chain[-2]
+			
+			if i == self.params.CR_ik_length-1:
+				# Add the IK constraint to the previous bone, targetting this one.
+				pole_target_name = pole_target.name if pole_target else ""
+				ik_chain[self.params.CR_ik_length-2].add_constraint(self.obj, 'IK', 
+					pole_target		= self.obj if pole_target_name!="" else None,
+					pole_subtarget	= pole_target_name,
+					pole_angle		= ik_pole_direction * rad(90),
+					subtarget		= ik_bone.name,
+					chain_count		= self.params.CR_ik_length-1
+				)
+				# Parent this one to the IK master.
+				ik_bone.parent = ik_mstr
+		
+		return ik_chain
 
 	@stage.prepare_bones
 	def prepare_ik_chain(self):
-		pole_ctrl = self.make_pole_control(self.org_chain)
-
-		# Create IK control(s) (Hand/Foot)
+		# Create IK Master control
 		ik_org_bone = self.org_chain[self.params.CR_ik_length-1]
 		mstr_name = ik_org_bone.name.replace("ORG", "IK-MSTR")
 		self.ik_mstr = self.bone_infos.bone(
@@ -131,38 +170,21 @@ class CloudIKChainRig(CloudFKChainRig):
 			bone_group = 'Body: Main IK Controls'
 		)
 
-		# IK Chain
-		self.ik_chain = []
-		for i, org_bone in enumerate(self.org_chain):
-			# org_bone = self.get_bone(bn)
-			ik_name = org_bone.name.replace("ORG", "IK")
-			ik_bone = self.bone_infos.bone(ik_name, org_bone, 
-				#ik_stretch = 0.1,
-				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
-				hide_select = self.mch_disable_select
+		# Create Pole control
+		self.pole_ctrl = None
+		if self.params.CR_use_pole_target:
+			self.pole_ctrl = self.make_pole_control(self.org_chain)
+			# Add aim constraint to pole display bone
+			self.pole_ctrl.dsp_bone.add_constraint(self.obj, 'DAMPED_TRACK', 
+				subtarget = self.main_str_bones[1].name, # TODO: This should be something else, maybe... But hard to make it any more accurate without causing a dependency cycle.
+				head_tail=1, 
+				track_axis='TRACK_NEGATIVE_Y'
 			)
-			self.ik_chain.append(ik_bone)
-			
-			if i == 0:
-				# Parent first bone to the limb root
-				ik_bone.parent = self.limb_root_bone.name
-				# Add aim constraint to pole display bone
-				self.pole_dsp.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=ik_bone.name, head_tail=1, track_axis='TRACK_NEGATIVE_Y')
-			else:
-				ik_bone.parent = self.ik_chain[-2]
-			
-			if i == self.params.CR_ik_length-1:
-				# Add the IK constraint to the previous bone, targetting this one.
-				self.ik_chain[self.params.CR_ik_length-2].add_constraint(self.obj, 'IK', 
-					pole_subtarget = pole_ctrl.name,
-					pole_angle = self.ik_pole_direction * rad(90),
-					subtarget = ik_bone.name,
-					chain_count = self.params.CR_ik_length-1
-				)
-				# Parent this one to the IK master.
-				ik_bone.parent = self.ik_mstr
-		
-		self.prepare_and_store_ikfk_info(self.fk_chain, self.ik_chain, pole_ctrl)
+
+		# Create IK Chain
+		self.ik_chain = self.make_ik_chain(self.org_chain, self.ik_mstr, self.pole_ctrl, self.ik_pole_direction)
+
+		self.prepare_and_store_ikfk_info(self.fk_chain, self.ik_chain, self.pole_ctrl)
 	
 	##############################
 	# Parameters
@@ -175,7 +197,7 @@ class CloudIKChainRig(CloudFKChainRig):
 		super().add_parameters(params)
 
 		params.CR_show_ik_settings = BoolProperty(name="IK Rig")
-
+		# TODO: Parameter to let the IK control be at the tip of the last bone instead of at the last bone itself. Would be useful for fingers.
 		params.CR_use_custom_limb_name = BoolProperty(
 			 name		 = "Custom Limb Name"
 			,description = 'Specify a name for this limb - There can be exactly two limbs with the same name, a Left and a Right one. This name should NOT include a side indicator such as "Left" or "Right". Limbs with the same name will be displayed on the same row'
@@ -211,9 +233,10 @@ class CloudIKChainRig(CloudFKChainRig):
 			,description = "If disabled, you can control the rotation of the IK chain by simply rotating its first bone, rather than with an IK pole control"
 			,default	 = True
 		)
+		#TODO: Implement this.
 		params.CR_custom_pole_bone = StringProperty(
 			name 		 = "Custom Pole Position"
-			,description = "When chosen, use this bone's position as the IK pole target, instead of determining it automatically"
+			,description = "When chosen, use this bone's position for the IK pole target, instead of determining it automatically"
 			,default	 = ""
 		)
 
@@ -240,7 +263,7 @@ class CloudIKChainRig(CloudFKChainRig):
 		pole_row = layout.row()
 		pole_row.prop(params, "CR_use_pole_target")
 		if params.CR_use_pole_target:
-			pole_row.prop_search(params, "CR_custom_pole_bone", bpy.context.object.data, "bones", text="Pole Target")
+			pole_row.prop_search(params, "CR_custom_pole_bone", bpy.context.object.data, "bones", text="Position")
 		layout.prop(params, "CR_ik_length")
 		layout.prop(params, "CR_world_aligned_controls")
 		# layout.prop(params, "CR_ik_limb_pole_offset")

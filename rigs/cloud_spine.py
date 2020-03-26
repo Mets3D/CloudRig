@@ -16,7 +16,7 @@ from .cloud_fk_chain import CloudChainRig
 #     When registering bones as a parent, the parent identifiers are also non-unique.
 
 class CloudSpineRig(CloudChainRig):
-	"""CloudRig spine"""
+	"""CloudRig Spine"""
 
 	def find_org_bones(self, bone):
 		"""Populate self.bones.org."""
@@ -27,7 +27,6 @@ class CloudSpineRig(CloudChainRig):
 	def initialize(self):
 		"""Gather and validate data about the rig."""
 		super().initialize()
-
 
 		assert len(self.bones.org.main) >= self.params.CR_spine_length, f"Spine Length parameter value({self.params.CR_spine_length}) cannot exceed length of bone chain connected to {self.base_bone} ({len(self.bones.org.main)})"
 		assert len(self.bones.org.main) > 2, "Spine must consist of at least 3 connected bones."
@@ -132,7 +131,7 @@ class CloudSpineRig(CloudChainRig):
 				prop_bone = self.prop_bone,
 				prop_name = "fk_hinge_head",
 				limb_name = "Head",
-				default_value = 1.0,
+				default_value = 1.0,	# TODO: Delet this.
 				head_tail = 1
 			)
 
@@ -293,7 +292,7 @@ class CloudSpineRig(CloudChainRig):
 			"prop_bone"		: self.prop_bone.name,
 			"prop_id"		: self.ik_prop_name,
 		}
-		self.add_ui_data("ik_switches", "spine", "Spine", info, default=1.0)
+		self.add_ui_data("ik_switches", "spine", "Spine", info, default=0.0)
 
 	@stage.prepare_bones
 	def prepare_def_str_spine(self):

@@ -35,7 +35,7 @@ Rig elements can have certain requirements, such as a specific number of childre
 
 ![](error_example.png)  
 
-While it is possible to mix CloudRig and regular Rigify elements in the same rig, I would advise against this because CloudRig handles its [UI](#Rig%20UI) differently from regular Rigify, so if you tried using both, you might end up with two separate rig UIs.
+While it is possible to mix CloudRig and regular Rigify elements in the same rig, I would advise against this because CloudRig handles its [UI](#rig-ui) differently from regular Rigify, so if you tried using both, you might end up with two separate rig UIs.
 
 ### Bone Display Size
 You might often encounter that the sizes of the bone shapes are too big or too small for some parts of your character. This can result in an eye sore, or worse, important controls only being visible with Bone X-Ray. For this reason, all CloudRig elements' bone shapes will scale according to the BBone scale of the bone in the metarig. You can adjust the BBone scale of bones using Ctrl+Alt+S, but only if your armature's bone display type is set to BBone. This will not affect any behaviour on the rig, it's purely for visual aid.
