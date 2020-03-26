@@ -3,8 +3,6 @@ from bpy.props import BoolProperty, FloatProperty
 from mathutils import Vector
 
 from rigify.base_rig import BaseRig, stage
-from rigify.utils.bones import BoneDict
-from rigify.utils.rig import connected_children_names
 
 from ..definitions.driver import Driver
 from ..definitions.bone import BoneInfoContainer
@@ -16,7 +14,9 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 	def find_org_bones(self, bone):
 		"""Populate self.bones.org."""
-		# For now we just grab all connected children of our main bone and put it in self.bones.org.main.
+		from rigify.utils.bones import BoneDict
+		from rigify.utils.rig import connected_children_names
+
 		return BoneDict(
 			main=[bone.name] + connected_children_names(self.obj, bone.name),
 		)

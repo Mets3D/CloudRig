@@ -207,8 +207,8 @@ class BoneInfo(ID):
 			setattr_safe(self, key, value)
 
 		if source:
-			self.head = copy.copy(source.head)
-			self.tail = copy.copy(source.tail)
+			self.head = source.head.copy()
+			self.tail = source.tail.copy()
 			self.roll = source.roll
 			self.envelope_distance = source.envelope_distance
 			self.envelope_weight = source.envelope_weight

@@ -11,16 +11,6 @@ from .cloud_ik_chain import CloudIKChainRig
 
 class Rig(CloudIKChainRig):
 	"""CloudRig arms and legs."""
-
-	def find_org_bones(self, bone):
-		"""Populate self.bones.org."""
-		# For limbs, we only care about the first three bones in the chain.
-		from rigify.utils.bones import BoneDict
-		from rigify.utils.rig import connected_children_names
-
-		return BoneDict(
-			main=[bone.name] + connected_children_names(self.obj, bone.name),
-		)
 	
 	def initialize(self):
 		super().initialize()
@@ -41,6 +31,7 @@ class Rig(CloudIKChainRig):
 		if self.params.CR_use_custom_limb_name:
 			self.limb_name = self.params.CR_custom_limb_name
 
+	# Overrides CloudChainRig.get_segments()
 	def get_segments(self, org_i, chain):
 		segments = self.params.CR_deform_segments
 		bbone_segments = self.params.CR_bbone_segments
@@ -55,25 +46,10 @@ class Rig(CloudIKChainRig):
 		return(segments, bbone_segments)
 
 	@stage.prepare_bones
-	def prepare_root_bone(self):
-		# Socket/Root bone to parent IK and FK to.
-		root_name = self.base_bone.replace("ORG", "ROOT")
-		base_bone = self.get_bone(self.base_bone)
-		self.limb_root_bone = self.bone_infos.bone(
-			name 				= root_name, 
-			source 				= base_bone, 
-			parent 				= self.bones.parent,
-			custom_shape 		= self.load_widget("Cube"),
-			custom_shape_scale 	= 0.5,
-			bone_group			= 'Body: IK-MCH - IK Mechanism Bones'
-		)
-		self.register_parent(self.limb_root_bone, self.side_suffix + " " + self.limb_type.capitalize())
-
-	@stage.prepare_bones
 	def prepare_fk_limb(self):
 		# NOTE: This runs after super().prepare_fk_chain().
 
-		hng_child = self.fk_chain[0]	# For keeping track of which bone will need to be parented to the Hinge mechanic bone.
+		hng_child = self.fk_chain[0]	# For keeping track of which bone will need to be parented to the Hinge helper bone.
 		for i, fk_bone in enumerate(self.fk_chain):
 			if i == 0 and self.params.CR_double_first_control:
 				# Make a parent for the first control.
@@ -88,19 +64,16 @@ class Rig(CloudIKChainRig):
 				fk_bone.lock_rotation[2] = self.params.CR_limb_lock_yz
 
 			if i == 2:
-				fk_bone.custom_shape_scale = 0.8
 				fk_bone.custom_shape_transform = None
 				if self.params.CR_world_aligned_controls:
 					fk_name = fk_bone.name
 					fk_bone.name = fk_bone.name.replace("FK-", "FK-W-")	# W for World.
 					# Make child control for the world-aligned control, that will have the original transforms and name.
-					# This is currently just the target of a Copy Transforms constraint on the ORG bone and therefore kindof redundant, because if we really wanted, we could use Armature constraints on those ORG bones instead of copy transforms. But then our outliner hierarchy is completely messed up ofc.
+					# This is currently just the target of a Copy Transforms constraint on the ORG bone.
 					fk_child_bone = self.bone_infos.bone(
 						name = fk_name,
 						source = fk_bone,
 						parent = fk_bone,
-						#custom_shape = self.load_widget("FK_Limb"),
-						custom_shape_scale = 0.5,
 						bone_group = 'Body: FK Helper Bones'
 					)
 					#self.fk_chain.append(fk_child_bone)
@@ -131,57 +104,11 @@ class Rig(CloudIKChainRig):
 			if len(str_h_bone.constraints) < 3:
 				# print(str_h_bone.name)
 				continue
-			str_h_bone.constraints[2][1]['mute'] = True	# TODO IMPORTANT: We have no proper way to access already existing constraints (by name, or even type) which is pretty sad. Instead of storing constraints as a (type, attribs) tuple, just store them as a dict, and initialize them a 'name' and 'type' attrib in add_constraint(). Relying on names can be tricky though... Maybe the proper solution here is proper code splitting, so adding the constraints to the str_h_bone would be done in a rig_str_h_bone() function, which we override here in cloud_limbs.
-			# Alternatively, do this part in stage.finalize.
+			str_h_bone.constraints[2][1]['mute'] = True	# TODO IMPORTANT: We have no proper way to access already existing constraints (by name, or even type) which is pretty sad. Instead of storing constraints as a (type, attribs) tuple, just store them as a dict, and initialize them a 'name' and 'type' attrib in add_constraint().
 
 	@stage.prepare_bones
 	def prepare_ik_limb(self):
-		chain = self.bones.org.main
-
-		# Create IK Pole Control
-		first_bone = self.get_bone(chain[0])
-		elbow = first_bone.tail.copy()
-		direction = 1 if self.limb_type=='ARM' else -1					# Character is expected to face +Y direction.
-		offset_scale = 3 if self.limb_type=='ARM' else 5					# Scalar on distance from the body.
-		offset = Vector((0, direction*offset_scale*self.scale, 0)) * self.params.CR_ik_limb_pole_offset
-		limb_name = self.limb_type.capitalize()
-		if self.params.CR_use_custom_limb_name:
-			limb_name = self.params.CR_custom_limb_name
-		pole_ctrl = self.pole_ctrl = self.bone_infos.bone(
-			name = self.make_name(["IK", "POLE"], limb_name, [self.side_suffix]),
-			bbone_width = 0.1,
-			head = elbow + offset,
-			tail = elbow + offset*1.1,
-			roll = 0,
-			custom_shape = self.load_widget('ArrowHead'),
-			custom_shape_scale = 0.5,
-			bone_group = 'Body: Main IK Controls',
-		)
-		pole_line = self.bone_infos.bone(
-			name = self.make_name(["IK", "POLE", "LINE"], limb_name, [self.side_suffix]),
-			source = pole_ctrl,
-			tail = elbow,
-			custom_shape = self.load_widget('Pole_Line'),
-			use_custom_shape_bone_size = True,
-			parent = pole_ctrl,
-			bone_group = 'Body: Main IK Controls',
-			hide_select = True
-		)
-		pole_line.add_constraint(self.obj, 'STRETCH_TO', 
-			subtarget = first_bone.name, 
-			head_tail = 1,
-		)
-		# Add a driver to the Line's hide property so it's hidden exactly when the pole target is hidden.
-		drv = Driver()
-		var = drv.make_var("var")
-		var.type = 'SINGLE_PROP'
-		var.targets[0].id_type = 'ARMATURE'
-		var.targets[0].id = self.obj.data
-		var.targets[0].data_path = 'bones["%s"].hide' %pole_ctrl.name
-
-		pole_line.bone_drivers['hide'] = drv
-		
-		pole_dsp = self.create_dsp_bone(pole_ctrl)
+		# NOTE: This runs after super().prepare_ik_chain()
 
 		def foot_dsp(bone):
 			# Create foot DSP helpers
@@ -195,19 +122,11 @@ class Rig(CloudIKChainRig):
 				dsp_bone.tail = projected_center + Vector((0, -self.scale/10, 0))
 				dsp_bone.roll = rad(90) * direction
 
-		# Create IK control(s) (Hand/Foot)
-		bone_name = chain[2]
-		org_bone = self.get_bone(bone_name)
-		mstr_name = bone_name.replace("ORG", "IK-MSTR")
+		# Configure IK Master
 		wgt_name = 'Hand_IK' if self.limb_type=='ARM' else 'Foot_IK'
-		self.ik_mstr = self.bone_infos.bone(
-			name = mstr_name, 
-			source = org_bone, 
-			custom_shape = self.load_widget(wgt_name),
-			custom_shape_scale = 0.8 if self.limb_type=='ARM' else 2.8,
-			parent = None,
-			bone_group = 'Body: Main IK Controls'
-		)
+		self.ik_mstr.custom_shape = self.load_widget(wgt_name)
+		self.ik_mstr.custom_shape_scale = 0.8 if self.limb_type=='ARM' else 2.8
+
 		foot_dsp(self.ik_mstr)
 		# Parent control
 		if self.params.CR_double_ik_control:
@@ -216,57 +135,16 @@ class Rig(CloudIKChainRig):
 			foot_dsp(double_control)
 			if self.params.CR_world_aligned_controls:
 				double_control.flatten()
-		
+
 		if self.params.CR_world_aligned_controls:
 			self.ik_mstr.flatten()
-		
-		# IK Chain
-		ik_chain = []
-		org_chain = []
-		for i, bn in enumerate(chain):
-			org_bone = self.get_bone(bn)
-			org_chain.append(org_bone)
-			ik_name = bn.replace("ORG", "IK")
-			ik_bone = self.bone_infos.bone(ik_name, org_bone, 
-				#ik_stretch = 0.1,
-				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
-				hide_select = self.mch_disable_select
-			)
-			ik_chain.append(ik_bone)
-			
-			if i == 0:
-				# Parent first bone to the limb root
-				ik_bone.parent = self.limb_root_bone.name
-				# Add aim constraint to pole display bone
-				pole_dsp.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=ik_bone.name, head_tail=1, track_axis='TRACK_NEGATIVE_Y')
-			else:
-				ik_bone.parent = ik_chain[-2]
-			
-			if i == 2:
-				if self.limb_type == 'LEG':
-					# Create separate IK target bone, for keeping track of where IK should be before IK Roll is applied, whether IK Stretch is on or off.
-					self.ik_tgt_bone = self.bone_infos.bone(
-						name = bn.replace("ORG", "IK-TGT"),
-						source = org_bone,
-						bone_group = 'Body: IK-MCH - IK Mechanism Bones',
-						parent = self.ik_mstr,
-						hide_select = self.mch_disable_select
-					)
-				else:
-					self.ik_tgt_bone = ik_bone
-					ik_bone.parent = self.ik_mstr
-				# Add the IK constraint to the previous bone, targetting this one.
-				ik_chain[-2].add_constraint(self.obj, 'IK', 
-					pole_subtarget = pole_ctrl.name,
-					pole_angle = direction * rad(90),
-					subtarget = ik_bone.name
-				)
-		
+
 		# Stretch mechanism
-		str_name = bone_name.replace("ORG", "IK-STR")
+		ik_org_bone = self.org_chain[self.params.CR_ik_length-1]
+		str_name = ik_org_bone.name.replace("ORG", "IK-STR")
 		str_bone = self.bone_infos.bone(
 			name = str_name, 
-			source = self.get_bone(chain[0]),
+			source = self.org_chain[0],
 			tail = self.ik_mstr.head.copy(),
 			parent = self.limb_root_bone.name,
 			bone_group = 'Body: IK-MCH - IK Mechanism Bones',
@@ -281,17 +159,17 @@ class Rig(CloudIKChainRig):
 			true_defaults=True
 		)
 
-		str_tgt_name = bone_name.replace("ORG", "IK-STR-TGT")
+		str_tgt_name = ik_org_bone.name.replace("ORG", "IK-STR-TGT")
 		# Create bone responsible for keeping track of where the feet should be when stretchy IK is ON.
 		str_tgt_bone = self.bone_infos.bone(
 			name = str_tgt_name, 
-			source = org_chain[2], 
+			source = ik_org_bone, 
 			parent = self.ik_mstr,
 			bone_group = 'Body: IK-MCH - IK Mechanism Bones',
 			hide_select = self.mch_disable_select
 		)
 
-		arm_length = ik_chain[0].length + ik_chain[1].length
+		arm_length = self.ik_chain[0].length + self.ik_chain[1].length
 		length_factor = arm_length / str_bone.length
 		str_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=str_tgt_bone.name)
 		str_bone.add_constraint(self.obj, 'LIMIT_SCALE', 
@@ -324,10 +202,8 @@ class Rig(CloudIKChainRig):
 		#######################
 
 		if self.limb_type == 'LEG':
-			ik_chain[-2].parent = self.ik_mstr
-			self.prepare_ik_foot(self.ik_tgt_bone, ik_chain[-2:], org_chain[-2:])
-		
-		self.ik_chain = ik_chain
+			self.ik_chain[-2].parent = self.ik_mstr
+			self.prepare_ik_foot(self.ik_tgt_bone, self.ik_chain[-2:], self.org_chain[-2:])
 
 		for i in range(0, self.params.CR_deform_segments):
 			factor_unit = 0.9 / self.params.CR_deform_segments
@@ -338,30 +214,6 @@ class Rig(CloudIKChainRig):
 
 		# TODO: Why do we do this? This is bad if we ever want to parent something to the IK control after this, since it will only be parented to the parent IK control.
 		self.ik_ctrl = self.ik_mstr.parent if self.params.CR_double_ik_control else self.ik_mstr
-		
-		self.prepare_and_store_ikfk_info(self.fk_chain, self.ik_chain, pole_ctrl)
-
-	def prepare_and_store_ikfk_info(self, fk_chain, ik_chain, ik_pole):
-		""" Prepare the data needed to be stored on the armature object for IK/FK snapping. """
-		if self.limb_type=='LEG':
-			# Ignore toes on the chains.
-			fk_chain = fk_chain[:-1]
-			ik_chain = ik_chain[:-1]
-
-		info = {	# These parameter names must be kept in sync with Snap_IK2FK in cloudrig.py
-			"operator" 				: "armature.ikfk_toggle",
-			"prop_bone"				: self.prop_bone.name,
-			"prop_id" 				: self.ikfk_name,
-			"fk_chain" 				: [b.name for b in fk_chain],
-			"ik_chain" 				: [b.name for b in ik_chain],
-			"str_chain"				: [b.name for b in self.main_str_bones],
-			"double_first_control"	: self.params.CR_double_first_control,
-			"double_ik_control"		: self.params.CR_double_ik_control,
-			"ik_pole" 				: self.pole_ctrl.name,
-			"ik_control"			: self.ik_mstr.name
-		}
-		default = 1.0 if self.limb_type == 'LEG' else 0.0
-		self.add_ui_data("ik_switches", self.category, self.limb_name, info, default=default)
 
 	def first_str_counterrotate_setup(self, str_bone, org_bone, factor):
 		str_bone.add_constraint(self.obj, 'TRANSFORM',
@@ -378,6 +230,10 @@ class Rig(CloudIKChainRig):
 
 	def mid_str_transform_setup(self, mid_str_bone):
 		""" Set up transformation constraint to mid-limb STR bone that ensures that it stays in between the root of the limb and the IK master control during IK stretching. """
+		# TODO IMPORTANT: This should be reworked, such that main_str_bones also have an STR-H bone that they are parented to. The STR-H bone has a Copy Transforms constraint to the stretch mechanism helper(the long bone going across the entire chain) which fully activates instantly using a driver, as soon as stretching begins(same check as current, but two checks rolled into one now: whether stretching is enabled and whether the distance to the arm is longer than max)
+		# This would allow arbitrary number of bones in a limb, and not have funny results when local Y axis isn't perfectly ideal(which is what we're relying on atm)
+		# But this does rely on finding the head_tail value for the copy transforms constraint appropriately - but that shouldn't be too hard.
+
 		mid_str_bone = self.main_str_bones[1]
 		trans_con_name = 'Transf_IK_Stretch'
 		mid_str_bone.add_constraint(self.obj, 'TRANSFORM',
@@ -696,6 +552,16 @@ class Rig(CloudIKChainRig):
 			)
 			,default	 = 'ARM'
 		)
+		params.CR_double_first_control = BoolProperty(
+			 name		 = "Double FK Control"
+			,description = "The first FK control has a parent control. Having two controls for the same thing can help avoid interpolation issues when the common pose in animation is far from the rest pose"
+			,default	 = True
+		)
+		params.CR_double_ik_control = BoolProperty(
+			 name		 = "Double IK Control"
+			,description = "The IK control has a parent control. Having two controls for the same thing can help avoid interpolation issues when the common pose in animation is far from the rest pose"
+			,default	 = True
+		)
 
 		params.CR_limb_lock_yz = BoolProperty(
 			 name		 = "Lock Elbow/Shin YZ"
@@ -728,6 +594,9 @@ class Rig(CloudIKChainRig):
 			if params.CR_use_foot_roll:
 				layout.prop_search(params, "CR_ankle_pivot_bone", bpy.context.object.data, "bones", text="Ankle Pivot")
 
+		double_row = layout.row()
+		double_row.prop(params, "CR_double_ik_control")
+		double_row.prop(params, "CR_double_first_control")
 		layout.prop(params, "CR_limb_lock_yz")
 
 def create_sample(obj):
