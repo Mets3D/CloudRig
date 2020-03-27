@@ -395,6 +395,9 @@ class CloudUtilities:
 			# Ensure bone group exists on the generated rig.
 			self.ensure_bone_group(bg_name, group_def)
 
+	def fit_on_bone_chain(self, chain, length, index=-1):
+		fit_on_bone_chain(chain, length, index)
+
 	@staticmethod
 	def lock_transforms(obj, loc=True, rot=True, scale=True):
 		return lock_transforms(obj, loc, rot, scale)
@@ -423,7 +426,6 @@ def slice_name(name):
 	suffixes = name.split(".")[1:]
 	base = name.split("-")[-1].split(".")[0]
 	return [prefixes, base, suffixes]
-
 
 def lock_transforms(obj, loc=True, rot=True, scale=True):
 	if type(loc)==list:
@@ -456,3 +458,37 @@ def ensure_bone_group(armature, name, group_def={}):
 			bg.color_set='CUSTOM'
 			setattr(bg.colors, prop, group_def[prop][:])
 	return bg
+
+def fit_on_bone_chain(self, chain, length, index=-1):
+	"""On a bone chain, find the point a given length down the chain. Return its position and direction."""
+	if index > -1:
+		# Instead of using bone length, simply return the location and direction of a bone at a given index.
+		
+		# If the index is too high, return the tail of the bone.
+		if index >= len(chain):
+			b = chain[-1]
+			return (b.tail.copy(), b.vec.normalized())
+		
+		b = chain[index]
+		direction = b.vec.normalized()
+
+		if index > 0:
+			prev_bone = chain[index-1]
+			direction = (b.vec + prev_bone.vec).normalized()
+		return (b.head.copy(), direction)
+
+	
+	length_cumultative = 0
+	for b in chain:
+		if length_cumultative + b.length > length:
+			length_remaining = length - length_cumultative
+			direction = b.vec.normalized()
+			loc = b.head + direction * length_remaining
+			return (loc, direction)
+		else:
+			length_cumultative += b.length
+	
+	length_remaining = length - length_cumultative
+	direction = chain[-1].vec.normalized()
+	loc = chain[-1].tail + direction * length_remaining
+	return (loc, direction)

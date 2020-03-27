@@ -142,6 +142,7 @@ class CloudChainRig(CloudBaseRig):
 					main_str_bone = str_bone
 					main_str_bone.sub_bones = []
 					continue
+				main_str_bone.sub_bones.append(str_bone)
 				str_h_bone = self.bone_infos.bone(
 					name = str_bone.name.replace("STR-", "STR-H-"),
 					source = str_bone,
@@ -150,7 +151,6 @@ class CloudChainRig(CloudBaseRig):
 					parent = str_bone.parent,
 					hide_select = self.mch_disable_select
 				)
-				main_str_bone.sub_bones.append(str_bone)
 				str_bone.parent = str_h_bone
 
 				first_str = section[0].name

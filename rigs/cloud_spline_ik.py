@@ -16,40 +16,6 @@ class CloudSplineIKRig(CloudBaseRig):
 		"""Gather and validate data about the rig."""
 		super().initialize()
 
-	def fit_on_bone_chain(self, chain, length, index=-1):
-		"""On a bone chain, find the point a given length down the chain. Return its position and direction."""
-		if index > -1:
-			# Instead of using bone length, simply return the location and direction of a bone at a given index.
-			
-			# If the index is too high, return the tail of the bone.
-			if index >= len(chain):
-				b = chain[-1]
-				return (b.tail.copy(), b.vec.normalized())
-			
-			b = chain[index]
-			direction = b.vec.normalized()
-
-			if index > 0:
-				prev_bone = chain[index-1]
-				direction = (b.vec + prev_bone.vec).normalized()
-			return (b.head.copy(), direction)
-
-		
-		length_cumultative = 0
-		for b in chain:
-			if length_cumultative + b.length > length:
-				length_remaining = length - length_cumultative
-				direction = b.vec.normalized()
-				loc = b.head + direction * length_remaining
-				return (loc, direction)
-			else:
-				length_cumultative += b.length
-		
-		length_remaining = length - length_cumultative
-		direction = chain[-1].vec.normalized()
-		loc = chain[-1].tail + direction * length_remaining
-		return (loc, direction)
-
 	@stage.prepare_bones
 	def create_def_chain(self):
 		self.def_bones = []
