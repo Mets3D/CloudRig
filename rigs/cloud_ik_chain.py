@@ -33,7 +33,7 @@ class CloudIKChainRig(CloudFKChainRig):
 		self.ik_stretch_name = "ik_stretch_" + self.limb_name_props
 		self.fk_hinge_name = "fk_hinge_" + self.limb_name_props
 
-		self.ik_pole_direction = 0 	# TODO: Calculate based on org chain's curvature!
+		self.ik_pole_direction = 1 	# TODO: Calculate based on org chain's curvature!
 		self.ik_pole_offset = 3		# Scalar on distance from the body.
 
 	@stage.prepare_bones
@@ -182,8 +182,11 @@ class CloudIKChainRig(CloudFKChainRig):
 			hide_select = self.mch_disable_select
 		)
 		
-		arm_length = self.ik_chain[0].length + self.ik_chain[1].length
-		length_factor = arm_length / stretch_bone.length
+		chain_length = 0
+		for ikb in self.ik_chain[:-1]:	# TODO: Support IK at tail of chain.
+			chain_length += ikb.length
+
+		length_factor = chain_length / stretch_bone.length
 		stretch_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=self.stretch_target_bone.name)
 		stretch_bone.add_constraint(self.obj, 'LIMIT_SCALE', 
 			use_max_y = True,
@@ -227,6 +230,73 @@ class CloudIKChainRig(CloudFKChainRig):
 		
 		ik_bone = self.ik_chain[self.params.CR_ik_length-1]
 		ik_bone.parent = self.ik_tgt_bone
+
+		# Create Helpers for main STR bones so they will stick to the stretchy bone.
+		self.main_str_transform_setup(stretch_bone, chain_length)
+
+	def main_str_transform_setup(self, stretch_bone, chain_length):
+		""" Set up transformation constraint to mid-limb STR bone that ensures that it stays in between the root of the limb and the IK master control during IK stretching. """
+		# TODO IMPORTANT: This should be reworked, such that main_str_bones also have an STR-H bone that they are parented to. The STR-H bone has a Copy Transforms constraint to the stretch mechanism helper(the long bone going across the entire chain) which fully activates instantly using a driver, as soon as stretching begins(same check as current, but two checks rolled into one now: whether stretching is enabled and whether the distance to the arm is longer than max)
+		# This would allow arbitrary number of bones in a limb, and not have funny results when local Y axis isn't perfectly ideal(which is what we're relying on atm)
+		# But this does rely on finding the head_tail value for the copy transforms constraint appropriately - but that shouldn't be too hard.
+
+		cum_length = self.org_chain[0].length
+		for i, main_str_bone in enumerate(self.main_str_bones):
+			if i == 0: continue
+			if i == len(self.main_str_bones)-1: continue
+			main_str_helper = self.bone_infos.bone(
+				name = main_str_bone.name.replace("STR-", "STR-S-"),
+				source = main_str_bone,
+				bbone_width = 1/10,
+				bone_group = 'Body: STR-H - Stretch Helpers',
+				parent = main_str_bone.parent,
+				hide_select = self.mch_disable_select
+			)
+			main_str_bone.parent = main_str_helper
+
+			con_name = 'CopyLoc_IK_Stretch'
+			main_str_helper.add_constraint(self.obj, 'COPY_LOCATION',
+				true_defaults	= True,
+				target			= self.obj,
+				subtarget		= stretch_bone.name,
+				name			= con_name,
+				head_tail		= cum_length/chain_length	# How far this bone is along the total chain length
+			)
+			cum_length += self.org_chain[i].length
+
+			stretchy_drv = Driver()		# Influence driver
+			stretchy_drv.expression = f"ik * stretch * (distance > {chain_length} * scale)"
+			var_stretch = stretchy_drv.make_var("stretch")
+			var_stretch.type = 'SINGLE_PROP'
+			var_stretch.targets[0].id_type = 'OBJECT'
+			var_stretch.targets[0].id = self.obj
+			var_stretch.targets[0].data_path = f'pose.bones["{self.prop_bone.name}"]["{self.ik_stretch_name}"]'
+
+			var_ik = stretchy_drv.make_var("ik")
+			var_ik.type = 'SINGLE_PROP'
+			var_ik.targets[0].id_type = 'OBJECT'
+			var_ik.targets[0].id = self.obj
+			var_ik.targets[0].data_path = f'pose.bones["{self.prop_bone.name}"]["{self.ikfk_name}"]'
+
+			var_dist = stretchy_drv.make_var("distance")
+			var_dist.type = 'LOC_DIFF'
+			var_dist.targets[0].id = self.obj
+			var_dist.targets[0].bone_target = self.ik_tgt_bone.name
+			var_dist.targets[0].transform_space = 'WORLD_SPACE'
+			var_dist.targets[1].id = self.obj
+			var_dist.targets[1].bone_target = self.ik_chain[0].name
+			var_dist.targets[1].transform_space = 'WORLD_SPACE'
+
+			var_scale = stretchy_drv.make_var("scale")
+			var_scale.type = 'TRANSFORMS'
+			var_scale.targets[0].id = self.obj
+			var_scale.targets[0].transform_type = 'SCALE_Y'
+			var_scale.targets[0].transform_space = 'WORLD_SPACE'
+			var_scale.targets[0].bone_target = self.ik_chain[0].name
+
+			data_path = f'constraints["{con_name}"].influence'
+
+			main_str_helper.drivers[data_path] = stretchy_drv
 
 	@stage.prepare_bones
 	def prepare_ik_chain(self):

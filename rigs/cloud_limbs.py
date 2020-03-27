@@ -157,8 +157,6 @@ class Rig(CloudIKChainRig):
 			factor = 0.9 - factor_unit * i
 			self.first_str_counterrotate_setup(self.str_bones[i], self.org_chain[0], factor)
 
-		self.mid_str_transform_setup(self.main_str_bones[1])
-
 		# TODO: Why do we do this? This is bad if we ever want to parent something to the IK control after this, since it will only be parented to the parent IK control.
 		self.ik_ctrl = self.ik_mstr.parent if self.params.CR_double_ik_control else self.ik_mstr
 
@@ -174,60 +172,6 @@ class Rig(CloudIKChainRig):
 			to_max_y_rot   = -factor,
 			from_rotation_mode = 'SWING_TWIST_Y'
 		)
-
-	def mid_str_transform_setup(self, mid_str_bone):
-		""" Set up transformation constraint to mid-limb STR bone that ensures that it stays in between the root of the limb and the IK master control during IK stretching. """
-		# TODO IMPORTANT: This should be reworked, such that main_str_bones also have an STR-H bone that they are parented to. The STR-H bone has a Copy Transforms constraint to the stretch mechanism helper(the long bone going across the entire chain) which fully activates instantly using a driver, as soon as stretching begins(same check as current, but two checks rolled into one now: whether stretching is enabled and whether the distance to the arm is longer than max)
-		# This would allow arbitrary number of bones in a limb, and not have funny results when local Y axis isn't perfectly ideal(which is what we're relying on atm)
-		# But this does rely on finding the head_tail value for the copy transforms constraint appropriately - but that shouldn't be too hard.
-
-		mid_str_bone = self.main_str_bones[1]
-		trans_con_name = 'Transf_IK_Stretch'
-		mid_str_bone.add_constraint(self.obj, 'TRANSFORM',
-			subtarget = 'root',
-			name = trans_con_name,
-		)
-
-		trans_drv = Driver()		# Influence driver
-		trans_drv.expression = "ik*stretch"
-		var_stretch = trans_drv.make_var("stretch")
-		var_stretch.type = 'SINGLE_PROP'
-		var_stretch.targets[0].id_type = 'OBJECT'
-		var_stretch.targets[0].id = self.obj
-		var_stretch.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ik_stretch_name)
-
-		var_ik = trans_drv.make_var("ik")
-		var_ik.type = 'SINGLE_PROP'
-		var_ik.targets[0].id_type = 'OBJECT'
-		var_ik.targets[0].id = self.obj
-		var_ik.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ikfk_name)
-
-		data_path = 'constraints["%s"].influence' %(trans_con_name)
-
-		mid_str_bone.drivers[data_path] = trans_drv
-
-		trans_loc_drv = Driver()
-		distance = (self.ik_tgt_bone.head - self.ik_chain[0].head).length
-		trans_loc_drv.expression = "max( 0, (distance-%0.4f * scale ) * (1/scale) /2 )" %(distance)
-
-		var_dist = trans_loc_drv.make_var("distance")
-		var_dist.type = 'LOC_DIFF'
-		var_dist.targets[0].id = self.obj
-		var_dist.targets[0].bone_target = self.ik_tgt_bone.name
-		var_dist.targets[0].transform_space = 'WORLD_SPACE'
-		var_dist.targets[1].id = self.obj
-		var_dist.targets[1].bone_target = self.ik_chain[0].name
-		var_dist.targets[1].transform_space = 'WORLD_SPACE'
-		
-		var_scale = trans_loc_drv.make_var("scale")
-		var_scale.type = 'TRANSFORMS'
-		var_scale.targets[0].id = self.obj
-		var_scale.targets[0].transform_type = 'SCALE_Y'
-		var_scale.targets[0].transform_space = 'WORLD_SPACE'
-		var_scale.targets[0].bone_target = self.fk_chain[0].name
-
-		data_path2 = 'constraints["%s"].to_min_y' %(trans_con_name)
-		mid_str_bone.drivers[data_path2] = trans_loc_drv
 
 	def prepare_ik_foot(self, ik_tgt, ik_chain, org_chain):
 		ik_foot = ik_chain[0]
