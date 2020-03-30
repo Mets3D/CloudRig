@@ -10,6 +10,8 @@ from .cloud_fk_chain import CloudFKChainRig
 class CloudShoulderRig(CloudFKChainRig):
 	"""Cloud shoulder rig. (Currently very simple)"""
 
+	description = "A single bone control that connects the arm to the spine."
+
 	def find_org_bones(self, bone):
 		"""Populate self.bones.org."""
 		from rigify.utils.bones import BoneDict

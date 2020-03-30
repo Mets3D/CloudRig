@@ -12,6 +12,8 @@ from .cloud_utils import make_name, slice_name
 class CloudSplineIKRig(CloudBaseRig):
 	"""CloudRig Spline IK chain."""
 
+	description = "Create a bezier curve object to drive a bone chain with Spline IK constraint, controlled by Hooks."
+
 	def initialize(self):
 		"""Gather and validate data about the rig."""
 		super().initialize()

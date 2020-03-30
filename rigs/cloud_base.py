@@ -12,6 +12,8 @@ from .cloud_utils import CloudUtilities
 class CloudBaseRig(BaseRig, CloudUtilities):
 	"""Base for all CloudRig rigs."""
 
+	description = "CloudRig Element (no description)"
+
 	def find_org_bones(self, bone):
 		"""Populate self.bones.org."""
 		from rigify.utils.bones import BoneDict
@@ -264,6 +266,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	def parameters_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
+		layout.label(text=cls.description)
+
 		ui_rows = {}
 		icon = 'TRIA_DOWN' if params.CR_show_display_settings else 'TRIA_RIGHT'
 		layout.prop(params, "CR_show_display_settings", toggle=True, icon=icon)

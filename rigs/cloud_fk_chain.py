@@ -10,6 +10,8 @@ from .cloud_chain import CloudChainRig
 class CloudFKChainRig(CloudChainRig):
 	"""CloudRig FK chain."""
 
+	description = "FK chain with squash and stretch controls."
+
 	def initialize(self):
 		"""Gather and validate data about the rig."""
 		super().initialize()

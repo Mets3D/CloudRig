@@ -18,6 +18,8 @@ from .cloud_fk_chain import CloudChainRig
 class CloudSpineRig(CloudChainRig):
 	"""CloudRig Spine"""
 
+	description = "Spine setup with FK and IK-like controls. IK Stretching can be toggled and tweaked with stretchy controls."
+
 	def find_org_bones(self, bone):
 		"""Populate self.bones.org."""
 		return BoneDict(

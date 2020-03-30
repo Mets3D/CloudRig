@@ -12,6 +12,8 @@ from .cloud_fk_chain import CloudFKChainRig
 class CloudIKChainRig(CloudFKChainRig):
 	"""CloudRig IK chain."""
 
+	description = "IK chain with stretchy IK and IK/FK snapping. Pole control optional."
+
 	def initialize(self):
 		"""Gather and validate data about the rig."""
 		super().initialize()

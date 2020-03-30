@@ -11,6 +11,8 @@ from .cloud_base import CloudBaseRig
 class CloudChainRig(CloudBaseRig):
 	"""CloudRig stretchy BBone chain."""
 
+	description = "Stretchy chain for pure squash and stretch."
+
 	def initialize(self):
 		super().initialize()
 		"""Gather and validate data about the rig."""

@@ -12,6 +12,8 @@ from .cloud_ik_chain import CloudIKChainRig
 class Rig(CloudIKChainRig):
 	"""CloudRig arms and legs."""
 	
+	description = "IK chain with extras for specific limbs, such as foot roll."
+
 	def initialize(self):
 		super().initialize()
 		"""Gather and validate data about the rig."""
