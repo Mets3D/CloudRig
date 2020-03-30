@@ -18,6 +18,11 @@ class CloudSplineIKRig(CloudBaseRig):
 		"""Gather and validate data about the rig."""
 		super().initialize()
 
+		length = len(self.bones.org.main)
+		subdiv = self.params.CR_subdivide_deform
+		total = length * subdiv
+		assert total <= 255, f"Error: Spline IK rig on {self.base_bone}: Trying to subdivide each bone {subdiv} times, in a bone chain of {length}, would result in {total} bones. The Spline IK constraint only supports a chain of 255 bones. You should lower the subdivision level"
+
 	@stage.prepare_bones
 	def create_def_chain(self):
 		self.def_bones = []
