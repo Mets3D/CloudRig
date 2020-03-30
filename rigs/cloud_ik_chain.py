@@ -8,6 +8,7 @@ from rigify.base_rig import stage
 from ..definitions.driver import Driver
 from .cloud_fk_chain import CloudFKChainRig
 
+#TODO: There's some code in limb that makes the last def- bone has bbone_easeout=0. That should be in here, under a parameter, that's greyed out when ik_tail or whatever it will be called, would be enabled. Maybe.
 class CloudIKChainRig(CloudFKChainRig):
 	"""CloudRig IK chain."""
 

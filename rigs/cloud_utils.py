@@ -396,7 +396,7 @@ class CloudUtilities:
 			self.ensure_bone_group(bg_name, group_def)
 
 	def fit_on_bone_chain(self, chain, length, index=-1):
-		fit_on_bone_chain(chain, length, index)
+		return fit_on_bone_chain(chain, length, index)
 
 	@staticmethod
 	def lock_transforms(obj, loc=True, rot=True, scale=True):
@@ -459,7 +459,7 @@ def ensure_bone_group(armature, name, group_def={}):
 			setattr(bg.colors, prop, group_def[prop][:])
 	return bg
 
-def fit_on_bone_chain(self, chain, length, index=-1):
+def fit_on_bone_chain(chain, length, index=-1):
 	"""On a bone chain, find the point a given length down the chain. Return its position and direction."""
 	if index > -1:
 		# Instead of using bone length, simply return the location and direction of a bone at a given index.
