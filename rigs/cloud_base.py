@@ -266,7 +266,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	def parameters_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
-		layout.label(text=cls.description)
+		ui_label_with_linebreak(layout, cls.description, bpy.context)
 
 		ui_rows = {}
 		icon = 'TRIA_DOWN' if params.CR_show_display_settings else 'TRIA_RIGHT'
@@ -281,3 +281,28 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 # For testing purposes
 # class Rig(CloudBaseRig):
 # 	pass
+
+def ui_label_with_linebreak(layout, text, context):
+	words = text.split(" ")
+	word_index = 0
+
+	lines = [""]
+	line_index = 0
+
+	cur_line_length = 0
+	max_line_length = context.area.width/6	# Try to determine maximum allowed characters in this line, based on pixel width of the area. Not a great solution, but a start.
+
+	while word_index < len(words):
+		word = words[word_index]
+
+		if cur_line_length + len(word)+1 < max_line_length:
+			word_index += 1
+			cur_line_length += len(word)+1
+			lines[line_index] += word + " "
+		else:
+			cur_line_length = 0
+			line_index += 1
+			lines.append("")
+	
+	for line in lines:
+		layout.label(text=line)
