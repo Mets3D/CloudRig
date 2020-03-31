@@ -45,8 +45,8 @@ class CloudCurveRig(CloudBaseRig):
 		
 		self.num_controls = len(self.bones.org.main)
 
-	def create_curve_point_hooks(self, cp, cyclic, i):
-		""" Create hook controls for a given bezier curve point. """
+	def create_hooks(self, loc, loc_left, loc_right, i, cyclic=False):
+		""" Create hook controls for a bezier curve point defined by three points (loc, loc_left, loc_right). """
 
 		parent = self.base_bone
 		if self.params.CR_hook_parent != "":
@@ -55,8 +55,8 @@ class CloudCurveRig(CloudBaseRig):
 		hook_name = self.params.CR_hook_name if self.params.CR_hook_name!="" else self.base_bone.replace("ORG-", "")
 		hook_ctr = self.bone_infos.bone(
 			name = f"Hook_{hook_name}_{str(i).zfill(2)}s",
-			head = cp.co,
-			tail = cp.handle_left,
+			head = loc,
+			tail = loc_left,
 			parent = parent,
 			bone_group = "Spline IK Hooks",
 			use_custom_shape_bone_size = True
@@ -72,8 +72,8 @@ class CloudCurveRig(CloudBaseRig):
 			if (i > 0) or cyclic:				# Skip for first hook. #TODO: Unless circular curve!
 				handle_left_ctr = self.bone_infos.bone(
 					name		 = f"Hook_L_{hook_name}_{str(i).zfill(2)}",
-					head 		 = cp.co,
-					tail 		 = cp.handle_left,
+					head 		 = loc,
+					tail 		 = loc_left,
 					bone_group 	 = "Spline IK Handles",
 					parent 		 = hook_ctr,
 					custom_shape = self.load_widget("CurveHandle")
@@ -84,8 +84,8 @@ class CloudCurveRig(CloudBaseRig):
 			if (i < self.num_controls-1) or cyclic:	# Skip for last hook.
 				handle_right_ctr = self.bone_infos.bone(
 					name 		 = f"Hook_R_{hook_name}_{str(i).zfill(2)}",
-					head 		 = cp.co,
-					tail 		 = cp.handle_right,
+					head 		 = loc,
+					tail 		 = loc_right,
 					bone_group 	 = "Spline IK Handles",
 					parent 		 = hook_ctr,
 					custom_shape = self.load_widget("CurveHandle")
@@ -119,15 +119,26 @@ class CloudCurveRig(CloudBaseRig):
 		
 		return hook_ctr
 
-	@stage.prepare_bones
-	def do_stuff(self):
+	def create_curve_point_hooks(self):
 		curve_ob = self.params.CR_target_curve
 		if not curve_ob: return
 
 		spline = curve_ob.data.splines[0]	# For now we only support a single spline per curve.
-
+		self.hooks = []
 		for i, cp in enumerate(spline.bezier_points):
-			hooks = self.create_curve_point_hooks(cp, spline.use_cyclic_u, i)
+			self.hooks.append(
+				self.create_hooks(
+					loc		  = cp.co, 
+					loc_left  = cp.handle_left, 
+					loc_right = cp.handle_right, 
+					i		  = i, 
+					cyclic	  = spline.use_cyclic_u
+				)
+			)
+
+	def prepare_bones(self):
+		super().prepare_bones()
+		self.create_curve_point_hooks()
 
 	def configure_bones(self):
 		super().configure_bones()

@@ -75,6 +75,8 @@ class CloudSplineIKRig(CloudCurveRig):
 		bpy.context.view_layer.objects.active = self.obj
 		self.obj.select_set(True)
 		bpy.ops.object.mode_set(mode=org_mode)
+		
+		return curve_ob
 
 	def create_def_chain(self):
 		self.def_bones = []
@@ -106,89 +108,31 @@ class CloudSplineIKRig(CloudCurveRig):
 				
 				self.def_bones.append(def_bone)
 
-	def create_hook_controls(self):
+	def create_curve_point_hooks(self):		
 		sum_bone_length = sum([b.length for b in self.org_chain])
 		length_unit = sum_bone_length / (self.num_controls-1)
 		handle_length = length_unit / self.params.CR_curve_handle_ratio
 
-		self.hook_bones = []
-		next_parent = self.bones.parent
+		self.hooks = []
+		
 		for i in range(0, self.num_controls):
 			point_along_chain = i * length_unit
 			index = i if self.params.CR_match_hooks_to_bones else -1
 			loc, direction = self.fit_on_bone_chain(self.org_chain, point_along_chain, index)
-			
-			hook_name = self.params.CR_hook_name if self.params.CR_hook_name!="" else self.base_bone.replace("ORG-", "")
-			hook_ctr = self.bone_infos.bone(
-				name = "Hook_%s_%s" %(hook_name, str(i).zfill(2)),
-				head = loc,
-				tail = loc + direction*self.scale/10,
-				parent = next_parent,
-				bone_group = "Spline IK Hooks",
+
+			self.hooks.append( 
+				self.create_hooks(
+					loc		  = loc, 
+					loc_left  = loc - handle_length * direction, 
+					loc_right = loc + handle_length * direction, 
+					i		  = i
+				)
 			)
-			hook_ctr.left_handle_control = None
-			hook_ctr.right_handle_control = None
-			if self.params.CR_hook_parent != "":
-				next_parent = self.params.CR_hook_parent
-			if self.params.CR_controls_for_handles:
-				hook_ctr.custom_shape = self.load_widget("Circle")
-				handles = []
-
-				if i > 0:				# Skip for first hook.
-					handle_left_ctr = self.bone_infos.bone(
-						name		 = "Hook_L_%s_%s" %(hook_name, str(i).zfill(2)),
-						head 		 = loc,
-						tail 		 = loc - handle_length * direction,
-						bone_group 	 = "Spline IK Handles",
-						parent 		 = hook_ctr,
-						custom_shape = self.load_widget("CurveHandle"),
-					)
-					hook_ctr.left_handle_control = handle_left_ctr
-					handles.append(handle_left_ctr)
-
-				if i < self.num_controls-1:	# Skip for last hook.
-					handle_right_ctr = self.bone_infos.bone(
-						name 		 = "Hook_R_%s_%s" %(hook_name, str(i).zfill(2)),
-						head 		 = loc,
-						tail 		 = loc + handle_length * direction,
-						bone_group 	 = "Spline IK Handles",
-						parent 		 = hook_ctr,
-						custom_shape = self.load_widget("CurveHandle"),
-					)
-					hook_ctr.right_handle_control = handle_right_ctr
-					handles.append(handle_right_ctr)
-
-				for handle in handles:
-					handle.use_custom_shape_bone_size = True
-					if self.params.CR_rotatable_handles:
-						dsp_bone = self.create_dsp_bone(handle)
-						dsp_bone.head = handle.tail.copy()
-						dsp_bone.tail = handle.head.copy()
-
-						self.lock_transforms(handle, loc=False, rot=False, scale=[True, False, True])
-
-						dsp_bone.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=hook_ctr.name)
-						dsp_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=hook_ctr.name)
-					else:
-						head = handle.head.copy()
-						handle.head = handle.tail.copy()
-						handle.tail = head
-
-						self.lock_transforms(handle, loc=False)
-
-						handle.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=hook_ctr.name)
-						handle.add_constraint(self.obj, 'STRETCH_TO', subtarget=hook_ctr.name)
-
-			else:
-				hook_ctr.custom_shape = self.load_widget("CurvePoint")
-
-			self.hook_bones.append(hook_ctr)
 
 	def prepare_bones(self):
 		super().prepare_bones()
 		self.create_curve()
 		self.create_def_chain()
-		self.create_hook_controls()
 
 	def add_hook(self, cp_i, boneinfo, main_handle=False, left_handle=False, right_handle=False):				
 		""" Create a Hook modifier on the curve(active object, in edit mode), hooking the control point at a given index to a given bone. The bone must exist. """
@@ -224,7 +168,7 @@ class CloudSplineIKRig(CloudCurveRig):
 		num_points = len(points)
 
 		for i in range(0, num_points):
-			hook_b = self.hook_bones[i]
+			hook_b = self.hooks[i]
 			if not self.params.CR_controls_for_handles:
 				self.add_hook(i, hook_b, main_handle=True, left_handle=True, right_handle=True)
 			else:
@@ -245,7 +189,7 @@ class CloudSplineIKRig(CloudCurveRig):
 			var_tgt.id = self.obj
 			var_tgt.transform_space = 'LOCAL_SPACE'
 			var_tgt.transform_type = 'SCALE_X'
-			var_tgt.bone_target = self.hook_bones[i].name
+			var_tgt.bone_target = self.hooks[i].name
 
 		# Reset selection so Rigify can continue execution.
 		bpy.ops.object.mode_set(mode='OBJECT')
@@ -287,6 +231,9 @@ class CloudSplineIKRig(CloudCurveRig):
 		"""
 		super().add_parameters(params)
 		
+		# TODO: Implement cyclic parameter. Just need to pass it to the curve creation and the create_hooks() call, and it should work.
+		# TODO: Alternatively or on top of that, implement "Create Curve Object" parameter. When disabled, we try using an existing curve. This would be useful when we want to arbitrarily modify the curve after generation. But moving the curve points around in edit mode would not be supported!
+
 		params.CR_show_spline_ik_settings = BoolProperty(name="Spline IK Rig")
 		params.CR_match_hooks_to_bones = BoolProperty(
 			 name		 = "Match Controls to Bones"
