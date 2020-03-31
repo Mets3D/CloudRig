@@ -45,6 +45,9 @@ class CloudSplineIKRig(CloudCurveRig):
 
 		curve_ob = bpy.context.view_layer.objects.active
 		curve_ob.name = curve_name
+
+		self.meta_base_bone.rigify_parameters.CR_target_curve = curve_ob
+
 		self.curve_ob_name = curve_ob.name
 		self.lock_transforms(curve_ob)
 
@@ -134,83 +137,7 @@ class CloudSplineIKRig(CloudCurveRig):
 		self.create_curve()
 		self.create_def_chain()
 
-	def add_hook(self, cp_i, boneinfo, main_handle=False, left_handle=False, right_handle=False):				
-		""" Create a Hook modifier on the curve(active object, in edit mode), hooking the control point at a given index to a given bone. The bone must exist. """
-		if not boneinfo: return
-		bpy.ops.curve.select_all(action='DESELECT')
-
-		# Workaround of T74888, can be removed once D7190 is in master. (Preferably wait until it's in a release build)
-		curve_ob = bpy.data.objects.get(self.curve_ob_name)
-		spline = curve_ob.data.splines[0]
-		points = spline.bezier_points
-		cp = points[cp_i]
-		
-		cp.select_control_point = main_handle
-		cp.select_left_handle = left_handle
-		cp.select_right_handle = right_handle
-
-		# Set active bone
-		bone = self.obj.data.bones.get(boneinfo.name)
-		self.obj.data.bones.active = bone
-
-		# Add hook
-		bpy.ops.object.hook_add_selob(use_bone=True)
-
-	def setup_curve(self):
-		""" Configure the Hook Modifiers for the curve. This requires switching object modes. """
-
-		curve_ob = bpy.data.objects.get(self.curve_ob_name)
-		bpy.context.view_layer.objects.active = curve_ob
-		bpy.ops.object.mode_set(mode='EDIT')
-		bpy.ops.curve.select_all(action='DESELECT')
-		spline = curve_ob.data.splines[0]
-		points = spline.bezier_points
-		num_points = len(points)
-
-		for i in range(0, num_points):
-			hook_b = self.hooks[i]
-			if not self.params.CR_controls_for_handles:
-				self.add_hook(i, hook_b, main_handle=True, left_handle=True, right_handle=True)
-			else:
-				self.add_hook(i, hook_b, main_handle=True)
-				self.add_hook(i, hook_b.left_handle_control, left_handle=True)
-				self.add_hook(i, hook_b.right_handle_control, right_handle=True)
-
-			# Add radius driver
-			D = curve_ob.data.driver_add(f"splines[0].bezier_points[{i}].radius")
-			driver = D.driver
-
-			driver.expression = "var"
-			my_var = driver.variables.new()
-			my_var.name = "var"
-			my_var.type = 'TRANSFORMS'
-			
-			var_tgt = my_var.targets[0]
-			var_tgt.id = self.obj
-			var_tgt.transform_space = 'LOCAL_SPACE'
-			var_tgt.transform_type = 'SCALE_X'
-			var_tgt.bone_target = self.hooks[i].name
-
-		# Reset selection so Rigify can continue execution.
-		bpy.ops.object.mode_set(mode='OBJECT')
-		bpy.context.view_layer.objects.active = self.obj
-		self.obj.select_set(True)
-
-		# Collections and visibility
-		if curve_ob.name not in self.generator.collection.objects:
-			self.generator.collection.objects.link(curve_ob)
-		for c in curve_ob.users_collection:
-			if c == self.generator.collection: continue
-			c.objects.unlink(curve_ob)
-		curve_ob.hide_viewport=True
-
-		# Reset selection so Rigify can continue execution.
-		bpy.context.view_layer.objects.active = self.obj
-		self.obj.select_set(True)
-
 	def configure_bones(self):
-		self.setup_curve()
-
 		# Add constraint to deform chain
 		self.def_bones[-1].add_constraint(self.obj, 'SPLINE_IK', 
 			use_curve_radius = True,
