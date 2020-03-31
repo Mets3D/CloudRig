@@ -23,12 +23,13 @@ class CloudSplineIKRig(CloudCurveRig):
 		total = length * subdiv
 		assert total <= 255, f"Error: Spline IK rig on {self.base_bone}: Trying to subdivide each bone {subdiv} times, in a bone chain of {length}, would result in {total} bones. The Spline IK constraint only supports a chain of 255 bones. You should lower the subdivision level"
 
+		self.num_controls = len(self.bones.org.main)+1 if self.params.CR_match_hooks_to_bones else self.params.CR_num_hooks
+
 	def create_curve(self):
 		""" Create the Bezier Curve that will be used by the rig. """
 		
 		sum_bone_length = sum([b.length for b in self.org_chain])
-		num_controls = len(self.org_chain)+1 if self.params.CR_match_hooks_to_bones else self.params.CR_num_hooks
-		length_unit = sum_bone_length / (num_controls-1)
+		length_unit = sum_bone_length / (self.num_controls-1)
 		handle_length = length_unit / self.params.CR_curve_handle_ratio
 		
 		# Find or create Bezier Curve object for this rig.
@@ -39,9 +40,8 @@ class CloudSplineIKRig(CloudCurveRig):
 			# There is no good way in the python API to delete curve points, so deleting the entire curve is necessary to allow us to generate with fewer controls than a previous generation.
 			bpy.data.objects.remove(curve_ob)	# What's not so cool about this is that if anything in the scene was referencing this curve, that reference gets broken.
 
+		org_mode = bpy.context.object.mode
 		bpy.ops.curve.primitive_bezier_curve_add(radius=0.2, location=(0, 0, 0))
-		
-		org_mode = bpy.context.mode
 
 		curve_ob = bpy.context.view_layer.objects.active
 		curve_ob.name = curve_name
@@ -53,7 +53,7 @@ class CloudSplineIKRig(CloudCurveRig):
 		points = spline.bezier_points
 
 		# Add the necessary number of curve points
-		points.add( num_controls-len(points) )
+		points.add( self.num_controls-len(points) )
 		num_points = len(points)
 
 		# Configure control points...
@@ -73,8 +73,8 @@ class CloudSplineIKRig(CloudCurveRig):
 		
 		# Reset selection so Rigify can continue execution.
 		bpy.context.view_layer.objects.active = self.obj
-		bpy.ops.object.mode_set(mode='EDIT')
 		self.obj.select_set(True)
+		bpy.ops.object.mode_set(mode=org_mode)
 
 	def create_def_chain(self):
 		self.def_bones = []
@@ -108,13 +108,12 @@ class CloudSplineIKRig(CloudCurveRig):
 
 	def create_hook_controls(self):
 		sum_bone_length = sum([b.length for b in self.org_chain])
-		num_controls = len(self.org_chain)+1 if self.params.CR_match_hooks_to_bones else self.params.CR_num_hooks
-		length_unit = sum_bone_length / (num_controls-1)
+		length_unit = sum_bone_length / (self.num_controls-1)
 		handle_length = length_unit / self.params.CR_curve_handle_ratio
 
 		self.hook_bones = []
 		next_parent = self.bones.parent
-		for i in range(0, num_controls):
+		for i in range(0, self.num_controls):
 			point_along_chain = i * length_unit
 			index = i if self.params.CR_match_hooks_to_bones else -1
 			loc, direction = self.fit_on_bone_chain(self.org_chain, point_along_chain, index)
@@ -147,7 +146,7 @@ class CloudSplineIKRig(CloudCurveRig):
 					hook_ctr.left_handle_control = handle_left_ctr
 					handles.append(handle_left_ctr)
 
-				if i < num_controls-1:	# Skip for last hook.
+				if i < self.num_controls-1:	# Skip for last hook.
 					handle_right_ctr = self.bone_infos.bone(
 						name 		 = "Hook_R_%s_%s" %(hook_name, str(i).zfill(2)),
 						head 		 = loc,

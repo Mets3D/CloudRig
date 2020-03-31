@@ -41,7 +41,11 @@ class CloudCurveRig(CloudBaseRig):
 		"""Gather and validate data about the rig."""
 		super().initialize()
 
-	def create_curve_point_hooks(self, cp, i):
+		# assert self.params.CR_target_curve, f"Error: Curve Rig has no target curve object! Base bone: {self.base_bone}" #TODO: Having this here causes assertion for spline IK rigs...
+		
+		self.num_controls = len(self.bones.org.main)
+
+	def create_curve_point_hooks(self, cp, cyclic, i):
 		""" Create hook controls for a given bezier curve point. """
 
 		parent = self.base_bone
@@ -50,54 +54,80 @@ class CloudCurveRig(CloudBaseRig):
 
 		hook_name = self.params.CR_hook_name if self.params.CR_hook_name!="" else self.base_bone.replace("ORG-", "")
 		hook_ctr = self.bone_infos.bone(
-			name = "Hook_%s_%s" %(hook_name, str(i).zfill(2)),
+			name = f"Hook_{hook_name}_{str(i).zfill(2)}s",
 			head = cp.co,
 			tail = cp.handle_left,
 			parent = parent,
 			bone_group = "Spline IK Hooks",
+			use_custom_shape_bone_size = True
 		)
 
 		hook_ctr.left_handle_control = None
 		hook_ctr.right_handle_control = None
+		handles = []
 		
 		if self.params.CR_controls_for_handles:
 			hook_ctr.custom_shape = self.load_widget("Circle")
 
-			if i > 0:				# Skip for first hook. #TODO: Unless circular curve!
-					handle_left_ctr = self.bone_infos.bone(
-						name		 = "Hook_L_%s_%s" %(hook_name, str(i).zfill(2)),
-						head 		 = loc,
-						tail 		 = loc - handle_length * direction,
-						bone_group 	 = "Spline IK Handles",
-						parent 		 = hook_ctr,
-						custom_shape = self.load_widget("CurveHandle"),
-					)
-					hook_ctr.left_handle_control = handle_left_ctr
-					handles.append(handle_left_ctr)
-
-			if i < num_controls-1:	# Skip for last hook.
-				handle_right_ctr = self.bone_infos.bone(
-					name 		 = "Hook_R_%s_%s" %(hook_name, str(i).zfill(2)),
-					head 		 = loc,
-					tail 		 = loc + handle_length * direction,
+			if (i > 0) or cyclic:				# Skip for first hook. #TODO: Unless circular curve!
+				handle_left_ctr = self.bone_infos.bone(
+					name		 = f"Hook_L_{hook_name}_{str(i).zfill(2)}",
+					head 		 = cp.co,
+					tail 		 = cp.handle_left,
 					bone_group 	 = "Spline IK Handles",
 					parent 		 = hook_ctr,
-					custom_shape = self.load_widget("CurveHandle"),
+					custom_shape = self.load_widget("CurveHandle")
+				)
+				hook_ctr.left_handle_control = handle_left_ctr
+				handles.append(handle_left_ctr)
+
+			if (i < self.num_controls-1) or cyclic:	# Skip for last hook.
+				handle_right_ctr = self.bone_infos.bone(
+					name 		 = f"Hook_R_{hook_name}_{str(i).zfill(2)}",
+					head 		 = cp.co,
+					tail 		 = cp.handle_right,
+					bone_group 	 = "Spline IK Handles",
+					parent 		 = hook_ctr,
+					custom_shape = self.load_widget("CurveHandle")
 				)
 				hook_ctr.right_handle_control = handle_right_ctr
 				handles.append(handle_right_ctr)
+			
+			for handle in handles:
+				handle.use_custom_shape_bone_size = True
+				if self.params.CR_rotatable_handles:
+					dsp_bone = self.create_dsp_bone(handle)
+					dsp_bone.head = handle.tail.copy()
+					dsp_bone.tail = handle.head.copy()
+
+					self.lock_transforms(handle, loc=False, rot=False, scale=[True, False, True])
+
+					dsp_bone.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=hook_ctr.name)
+					dsp_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=hook_ctr.name)
+				else:
+					head = handle.head.copy()
+					handle.head = handle.tail.copy()
+					handle.tail = head
+
+					self.lock_transforms(handle, loc=False)
+
+					handle.add_constraint(self.obj, 'DAMPED_TRACK', subtarget=hook_ctr.name)
+					handle.add_constraint(self.obj, 'STRETCH_TO', subtarget=hook_ctr.name)
 
 		else:
 			hook_ctr.custom_shape = self.load_widget("CurvePoint")
+		
 		return hook_ctr
 
-	# @stage.prepare_bones
+	@stage.prepare_bones
 	def do_stuff(self):
 		curve_ob = self.params.CR_target_curve
+		if not curve_ob: return
+
 		spline = curve_ob.data.splines[0]	# For now we only support a single spline per curve.
 
 		for i, cp in enumerate(spline.bezier_points):
-			hooks = self.create_curve_point_hooks(cp, i)
+			hooks = self.create_curve_point_hooks(cp, spline.use_cyclic_u, i)
 
 	def configure_bones(self):
 		super().configure_bones()
