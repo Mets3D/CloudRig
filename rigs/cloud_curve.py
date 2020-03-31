@@ -9,29 +9,6 @@ from ..definitions.driver import Driver
 from .cloud_base import CloudBaseRig
 from .cloud_utils import make_name, slice_name
 
-"""
-Relationship and code sharing of Curve rig and Spline IK rig:
-
-Goals:
-- Spline IK should not lose functionality.
-- Curve rig should be able to rig a pre-existing curve.
-    - Should it be able to create a curve though, if needed? :thinking: Nah, not sure I see the point.
-    - UI for curve pointerproperty needs to be disabled for Spline IK though, since that wouldn't work with a pre-existing curve, I think.
-
-- Code for creating hooks for a single curve point and its handles should probably be split off... Only issue is, in the case of Spline IK, this happens before the curve exists. Hmm...
-
-So, the Curve rig will only create hooks. It will not create, or require, or support, a chain of deform bones!
-The Spline IK rig on the other hand, while also creating hooks, will require an existing chain of deform bones(and create more bones along the chain, as needed)
-
-The biggest problem is this: For Spline IK, the curve setup code relies on the bones already existing.
-For the Curve rig, the bone creation code relies on the curve already existing.
-
-But they are kindof the same code!
-
-Actually, even for the Curve rig, the Hook modifier setup will have to happen after generate stage. So that should really be split up into a separate thing.
-
-"""
-
 class CloudCurveRig(CloudBaseRig):
 	"""CloudRig Curve Control Rig."""
 
@@ -41,12 +18,12 @@ class CloudCurveRig(CloudBaseRig):
 		"""Gather and validate data about the rig."""
 		super().initialize()
 
-		# assert self.params.CR_target_curve, f"Error: Curve Rig has no target curve object! Base bone: {self.base_bone}" #TODO: Having this here causes assertion for spline IK rigs...
+		# assert self.params.CR_target_curve_name, f"Error: Curve Rig has no target curve object! Base bone: {self.base_bone}" #TODO: Having this here causes assertion for spline IK rigs...
 		
 		self.num_controls = len(self.bones.org.main)
 		self.curve_ob_name = "Curve_" + self.base_bone
-		if self.params.CR_target_curve:
-			self.curve_ob_name = self.params.CR_target_curve.name
+		if self.params.CR_target_curve_name!="":
+			self.curve_ob_name = self.params.CR_target_curve_name
 
 	def create_hooks(self, loc, loc_left, loc_right, i, cyclic=False):
 		""" Create hook controls for a bezier curve point defined by three points (loc, loc_left, loc_right). """
@@ -123,7 +100,7 @@ class CloudCurveRig(CloudBaseRig):
 		return hook_ctr
 
 	def create_curve_point_hooks(self):
-		curve_ob = self.params.CR_target_curve
+		curve_ob = bpy.data.objects.get(self.params.CR_target_curve_name)
 		if not curve_ob: return
 
 		spline = curve_ob.data.splines[0]	# For now we only support a single spline per curve.
@@ -175,7 +152,11 @@ class CloudCurveRig(CloudBaseRig):
 		""" Configure the Hook Modifiers for the curve. This requires switching object modes. """
 
 		curve_ob = bpy.data.objects.get(self.curve_ob_name)
+		assert curve_ob, f"Error: Curve object {self.curve_ob_name} doesn't exist for rig: {self.base_bone}"
+		self.ensure_visible(curve_ob)
 		bpy.context.view_layer.objects.active = curve_ob
+		curve_ob.select_set(True)
+
 		bpy.ops.object.mode_set(mode='EDIT')
 		bpy.ops.curve.select_all(action='DESELECT')
 		spline = curve_ob.data.splines[0]
@@ -217,9 +198,10 @@ class CloudCurveRig(CloudBaseRig):
 		for c in curve_ob.users_collection:
 			if c == self.generator.collection: continue
 			c.objects.unlink(curve_ob)
-		curve_ob.hide_viewport=True
+		curve_ob.hide_viewport = False
 
 		# Reset selection so Rigify can continue execution.
+		self.restore_visible(curve_ob)
 		bpy.context.view_layer.objects.active = self.obj
 		self.obj.select_set(True)
 
@@ -260,8 +242,7 @@ class CloudCurveRig(CloudBaseRig):
 			,default	 = False
 		)
 
-		curve_poll = lambda self, obj: obj.type=='CURVE'
-		params.CR_target_curve = PointerProperty(type=bpy.types.Object, name="Curve", poll=curve_poll)	# TODO: This results in warnings and errors in the console, but it shouldn't. Poll function causes Rigify to detect it as being re-defined, when it isn't. And when the UI is disabled, there's some ID user decrement error...? Doesn't seem to cause any issues though. 
+		params.CR_target_curve_name = StringProperty(name="Curve")
 
 	@classmethod
 	def parameters_ui(cls, layout, params):
@@ -275,7 +256,7 @@ class CloudCurveRig(CloudBaseRig):
 
 		target_curve_row = layout.row()
 		ui_rows['target_curve'] = target_curve_row
-		target_curve_row.prop(params, "CR_target_curve")
+		target_curve_row.prop_search(params, "CR_target_curve_name", bpy.data, 'objects')
 		layout.prop(params, "CR_hook_name")
 		layout.prop(params, "CR_hook_parent")
 		layout.prop(params, "CR_controls_for_handles")

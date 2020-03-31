@@ -46,7 +46,7 @@ class CloudSplineIKRig(CloudCurveRig):
 		curve_ob = bpy.context.view_layer.objects.active
 		curve_ob.name = curve_name
 
-		self.meta_base_bone.rigify_parameters.CR_target_curve = curve_ob
+		self.meta_base_bone.rigify_parameters.CR_target_curve_name = curve_ob.name
 
 		self.curve_ob_name = curve_ob.name
 		self.lock_transforms(curve_ob)
@@ -69,7 +69,7 @@ class CloudSplineIKRig(CloudCurveRig):
 
 			# Place control points
 			index = i if self.params.CR_match_hooks_to_bones else -1
-			loc, direction = self.fit_on_bone_chain(self.org_chain, point_along_chain, index)
+			loc, direction = self.vector_along_bone_chain(self.org_chain, point_along_chain, index)
 			p.co = loc
 			p.handle_right = loc + handle_length * direction
 			p.handle_left  = loc - handle_length * direction
@@ -121,7 +121,7 @@ class CloudSplineIKRig(CloudCurveRig):
 		for i in range(0, self.num_controls):
 			point_along_chain = i * length_unit
 			index = i if self.params.CR_match_hooks_to_bones else -1
-			loc, direction = self.fit_on_bone_chain(self.org_chain, point_along_chain, index)
+			loc, direction = self.vector_along_bone_chain(self.org_chain, point_along_chain, index)
 
 			self.hooks.append( 
 				self.create_hooks(

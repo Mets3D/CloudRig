@@ -395,8 +395,8 @@ class CloudUtilities:
 			# Ensure bone group exists on the generated rig.
 			self.ensure_bone_group(bg_name, group_def)
 
-	def fit_on_bone_chain(self, chain, length, index=-1):
-		return fit_on_bone_chain(chain, length, index)
+	def vector_along_bone_chain(self, chain, length=0, index=-1):
+		return vector_along_bone_chain(chain, length, index)
 
 	@staticmethod
 	def lock_transforms(obj, loc=True, rot=True, scale=True):
@@ -409,6 +409,14 @@ class CloudUtilities:
 	@staticmethod
 	def slice_name(name):
 		return slice_name(name)
+	
+	@staticmethod
+	def ensure_visible(obj):
+		EnsureVisible.ensure(bpy.context, obj)
+
+	@staticmethod
+	def restore_visible(obj):
+		EnsureVisible.restore(obj)
 
 def make_name(prefixes=[], base="", suffixes=[]):
 	# In our naming convention, prefixes are separated by dashes and suffixes by periods, eg: DSP-FK-UpperArm_Parent.L.001
@@ -459,7 +467,7 @@ def ensure_bone_group(armature, name, group_def={}):
 			setattr(bg.colors, prop, group_def[prop][:])
 	return bg
 
-def fit_on_bone_chain(chain, length, index=-1):
+def vector_along_bone_chain(chain, length=0, index=-1):
 	"""On a bone chain, find the point a given length down the chain. Return its position and direction."""
 	if index > -1:
 		# Instead of using bone length, simply return the location and direction of a bone at a given index.
@@ -492,3 +500,49 @@ def fit_on_bone_chain(chain, length, index=-1):
 	direction = chain[-1].vec.normalized()
 	loc = chain[-1].tail + direction * length_remaining
 	return (loc, direction)
+
+class EnsureVisible:
+	""" Class to ensure an object is visible, then reset it to how it was before. """
+	is_visible = False
+	temp_coll = None
+	obj_hide = False
+	obj_hide_viewport = False
+
+	@classmethod
+	def ensure(cls, context, obj):
+		# Make temporary collection so we can ensure visibility.
+		if cls.is_visible:
+			print(f"Could not ensure visibility of object {obj.name}. Can only ensure the visibility of one object at a time. Must Run EnsureVisible.restore()!")
+			return
+		
+		coll_name = "temp_coll"
+		temp_coll = bpy.data.collections.get(coll_name)
+		if not temp_coll:
+			temp_coll = bpy.data.collections.new(coll_name)
+		if coll_name not in context.scene.collection.children:
+			context.scene.collection.children.link(temp_coll)
+	
+		if obj.name not in temp_coll.objects:
+			temp_coll.objects.link(obj)
+			cls.obj_hide = obj.hide_get()
+			obj.hide_set(False)
+			cls.obj_hide_viewport = obj.hide_viewport
+			obj.hide_viewport = False
+		
+		cls.obj = obj
+		cls.temp_coll = temp_coll
+		
+	@classmethod
+	def restore(cls, obj):
+		# Delete temp collection
+		if not cls.temp_coll:
+			return
+		cls.temp_coll = None
+
+		obj.hide_set(cls.obj_hide)
+		obj.hide_viewport = cls.obj_hide_viewport
+
+		cls.obj_hide = False
+		cls.obj_hide_viewport = False
+
+		cls.is_visible=False
