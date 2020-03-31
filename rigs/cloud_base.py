@@ -111,8 +111,10 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		# If no layers are protected, protect all layers. Otherwise, we assume protected layers were set up manually in a previously generated rig, so we don't touch them.
 		if list(self.obj.data.layers_protected) == [False]*32:
 			self.obj.data.layers_protected = [True]*32
-		
-	@stage.prepare_bones
+
+	def prepare_bones(self):
+		self.load_org_bones()
+
 	def load_org_bones(self):
 		# Load ORG bones into BoneInfo instances.
 		self.org_chain = []
@@ -142,13 +144,13 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			):
 				bone_name = self.copy_bone("root", bd.name)
 				# bone_name = self.new_bone(bd.name) # new_bone() is currently bugged and doesn't register the new bone, so we use copy_bone instead.
-	
+
 	def parent_bones(self):
 		for bd in self.bone_infos.bones:
 			edit_bone = self.get_bone(bd.name)
 
 			bd.write_edit_data(self.obj, edit_bone)
-	
+
 	def configure_bones(self):
 		self.init_bone_groups()
 		for bd in self.bone_infos.bones:

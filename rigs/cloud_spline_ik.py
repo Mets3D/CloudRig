@@ -6,10 +6,10 @@ from math import pi
 from rigify.base_rig import stage
 
 from ..definitions.driver import Driver
-from .cloud_base import CloudBaseRig
+from .cloud_curve import CloudCurveRig
 from .cloud_utils import make_name, slice_name
 
-class CloudSplineIKRig(CloudBaseRig):
+class CloudSplineIKRig(CloudCurveRig):
 	"""CloudRig Spline IK chain."""
 
 	description = "Create a bezier curve object to drive a bone chain with Spline IK constraint, controlled by Hooks."
@@ -23,7 +23,59 @@ class CloudSplineIKRig(CloudBaseRig):
 		total = length * subdiv
 		assert total <= 255, f"Error: Spline IK rig on {self.base_bone}: Trying to subdivide each bone {subdiv} times, in a bone chain of {length}, would result in {total} bones. The Spline IK constraint only supports a chain of 255 bones. You should lower the subdivision level"
 
-	@stage.prepare_bones
+	def create_curve(self):
+		""" Create the Bezier Curve that will be used by the rig. """
+		
+		sum_bone_length = sum([b.length for b in self.org_chain])
+		num_controls = len(self.org_chain)+1 if self.params.CR_match_hooks_to_bones else self.params.CR_num_hooks
+		length_unit = sum_bone_length / (num_controls-1)
+		handle_length = length_unit / self.params.CR_curve_handle_ratio
+		
+		# Find or create Bezier Curve object for this rig.
+		curve_name = "CUR-" + self.generator.metarig.name.replace("META-", "")
+		curve_name += "_" + (self.params.CR_hook_name if self.params.CR_hook_name!="" else self.base_bone.replace("ORG-", ""))
+		curve_ob = bpy.data.objects.get(curve_name)
+		if curve_ob:
+			# There is no good way in the python API to delete curve points, so deleting the entire curve is necessary to allow us to generate with fewer controls than a previous generation.
+			bpy.data.objects.remove(curve_ob)	# What's not so cool about this is that if anything in the scene was referencing this curve, that reference gets broken.
+
+		bpy.ops.curve.primitive_bezier_curve_add(radius=0.2, location=(0, 0, 0))
+		
+		org_mode = bpy.context.mode
+
+		curve_ob = bpy.context.view_layer.objects.active
+		curve_ob.name = curve_name
+		self.curve_ob_name = curve_ob.name
+		self.lock_transforms(curve_ob)
+
+		# Place the first and last bezier points to the first and last bone.
+		spline = curve_ob.data.splines[0]
+		points = spline.bezier_points
+
+		# Add the necessary number of curve points
+		points.add( num_controls-len(points) )
+		num_points = len(points)
+
+		# Configure control points...
+		for i in range(0, num_points):
+			curve_ob = bpy.data.objects.get(curve_name)
+			point_along_chain = i * length_unit
+			spline = curve_ob.data.splines[0]
+			points = spline.bezier_points
+			p = points[i]
+
+			# Place control points
+			index = i if self.params.CR_match_hooks_to_bones else -1
+			loc, direction = self.fit_on_bone_chain(self.org_chain, point_along_chain, index)
+			p.co = loc
+			p.handle_right = loc + handle_length * direction
+			p.handle_left  = loc - handle_length * direction
+		
+		# Reset selection so Rigify can continue execution.
+		bpy.context.view_layer.objects.active = self.obj
+		bpy.ops.object.mode_set(mode='EDIT')
+		self.obj.select_set(True)
+
 	def create_def_chain(self):
 		self.def_bones = []
 		segments = self.params.CR_subdivide_deform
@@ -54,7 +106,6 @@ class CloudSplineIKRig(CloudBaseRig):
 				
 				self.def_bones.append(def_bone)
 
-	@stage.prepare_bones
 	def create_hook_controls(self):
 		sum_bone_length = sum([b.length for b in self.org_chain])
 		num_controls = len(self.org_chain)+1 if self.params.CR_match_hooks_to_bones else self.params.CR_num_hooks
@@ -134,82 +185,53 @@ class CloudSplineIKRig(CloudBaseRig):
 
 			self.hook_bones.append(hook_ctr)
 
-	def setup_curve(self):
-		""" Create and configure the bezier curve that will be used by the rig."""
+	def prepare_bones(self):
+		super().prepare_bones()
+		self.create_curve()
+		self.create_def_chain()
+		self.create_hook_controls()
 
-		sum_bone_length = sum([b.length for b in self.org_chain])
-		num_controls = len(self.org_chain)+1 if self.params.CR_match_hooks_to_bones else self.params.CR_num_hooks
-		length_unit = sum_bone_length / (num_controls-1)
-		handle_length = length_unit / self.params.CR_curve_handle_ratio
-		
-		# Find or create Bezier Curve object for this rig.
-		curve_name = "CUR-" + self.generator.metarig.name.replace("META-", "")
-		curve_name += "_" + (self.params.CR_hook_name if self.params.CR_hook_name!="" else self.base_bone.replace("ORG-", ""))
-		curve_ob = bpy.data.objects.get(curve_name)
-		if curve_ob:
-			# There is no good way in the python API to delete curve points, so deleting the entire curve is necessary to allow us to generate with fewer controls than a previous generation.
-			bpy.data.objects.remove(curve_ob)	# What's not so cool about this is that if anything in the scene was referencing this curve, that reference gets broken.
-
-		bpy.ops.curve.primitive_bezier_curve_add(radius=0.2, location=(0, 0, 0))
-		self.obj.select_set(True)
-
-		bpy.ops.object.mode_set(mode='EDIT')
+	def add_hook(self, cp_i, boneinfo, main_handle=False, left_handle=False, right_handle=False):				
+		""" Create a Hook modifier on the curve(active object, in edit mode), hooking the control point at a given index to a given bone. The bone must exist. """
+		if not boneinfo: return
 		bpy.ops.curve.select_all(action='DESELECT')
-		self.curve = curve_ob = bpy.context.view_layer.objects.active
-		curve_ob.name = curve_name
-		self.lock_transforms(curve_ob)
 
-		# Place the first and last bezier points to the first and last bone.
+		# Workaround of T74888, can be removed once D7190 is in master. (Preferably wait until it's in a release build)
+		curve_ob = bpy.data.objects.get(self.curve_ob_name)
 		spline = curve_ob.data.splines[0]
 		points = spline.bezier_points
+		cp = points[cp_i]
+		
+		cp.select_control_point = main_handle
+		cp.select_left_handle = left_handle
+		cp.select_right_handle = right_handle
 
-		# Add the necessary number of curve points
-		points.add( num_controls-len(points) )
+		# Set active bone
+		bone = self.obj.data.bones.get(boneinfo.name)
+		self.obj.data.bones.active = bone
+
+		# Add hook
+		bpy.ops.object.hook_add_selob(use_bone=True)
+
+	def setup_curve(self):
+		""" Configure the Hook Modifiers for the curve. This requires switching object modes. """
+
+		curve_ob = bpy.data.objects.get(self.curve_ob_name)
+		bpy.context.view_layer.objects.active = curve_ob
+		bpy.ops.object.mode_set(mode='EDIT')
+		bpy.ops.curve.select_all(action='DESELECT')
+		spline = curve_ob.data.splines[0]
+		points = spline.bezier_points
 		num_points = len(points)
 
-		# Configure control points...
 		for i in range(0, num_points):
-			curve_ob = bpy.data.objects.get(curve_name)
-			point_along_chain = i * length_unit
-			spline = curve_ob.data.splines[0]
-			points = spline.bezier_points
-			p = points[i]
-
-			# Place control points
-			index = i if self.params.CR_match_hooks_to_bones else -1
-			loc, direction = self.fit_on_bone_chain(self.org_chain, point_along_chain, index)
-			p.co = loc
-			p.handle_right = loc + handle_length * direction
-			p.handle_left  = loc - handle_length * direction
-
-			def add_hook(cp, boneinfo, main_handle=False, left_handle=False, right_handle=False):				
-				if not boneinfo: return
-				bpy.ops.curve.select_all(action='DESELECT')
-
-				# Workaround of T74888, can be removed once D7190 is in master. (Preferably wait until it's in a release build)
-				curve_ob = bpy.data.objects.get(curve_name)
-				spline = curve_ob.data.splines[0]
-				points = spline.bezier_points
-				cp = points[i]
-
-				cp.select_control_point = main_handle
-				cp.select_left_handle = left_handle
-				cp.select_right_handle = right_handle
-
-				# Set active bone
-				bone = self.obj.data.bones.get(boneinfo.name)
-				self.obj.data.bones.active = bone
-
-				# Add hook
-				bpy.ops.object.hook_add_selob(use_bone=True)
-
 			hook_b = self.hook_bones[i]
 			if not self.params.CR_controls_for_handles:
-				add_hook(p, hook_b, main_handle=True, left_handle=True, right_handle=True)
+				self.add_hook(i, hook_b, main_handle=True, left_handle=True, right_handle=True)
 			else:
-				add_hook(p, hook_b, main_handle=True)
-				add_hook(p, hook_b.left_handle_control, left_handle=True)
-				add_hook(p, hook_b.right_handle_control, right_handle=True)
+				self.add_hook(i, hook_b, main_handle=True)
+				self.add_hook(i, hook_b.left_handle_control, left_handle=True)
+				self.add_hook(i, hook_b.right_handle_control, right_handle=True)
 
 			# Add radius driver
 			D = curve_ob.data.driver_add(f"splines[0].bezier_points[{i}].radius")
@@ -226,7 +248,10 @@ class CloudSplineIKRig(CloudBaseRig):
 			var_tgt.transform_type = 'SCALE_X'
 			var_tgt.bone_target = self.hook_bones[i].name
 
+		# Reset selection so Rigify can continue execution.
 		bpy.ops.object.mode_set(mode='OBJECT')
+		bpy.context.view_layer.objects.active = self.obj
+		self.obj.select_set(True)
 
 		# Collections and visibility
 		if curve_ob.name not in self.generator.collection.objects:
@@ -245,10 +270,10 @@ class CloudSplineIKRig(CloudBaseRig):
 
 		# Add constraint to deform chain
 		self.def_bones[-1].add_constraint(self.obj, 'SPLINE_IK', 
-			use_curve_radius=True,
-			chain_count=len(self.def_bones),
-			target=self.curve,
-			true_defaults=True
+			use_curve_radius = True,
+			chain_count		 = len(self.def_bones),
+			target			 = bpy.data.objects.get(self.curve_ob_name),
+			true_defaults	 = True
 		)
 
 		super().configure_bones()
@@ -264,30 +289,10 @@ class CloudSplineIKRig(CloudBaseRig):
 		super().add_parameters(params)
 		
 		params.CR_show_spline_ik_settings = BoolProperty(name="Spline IK Rig")
-		params.CR_hook_name = StringProperty(
-			 name		 = "Custom Name"
-			,description = "Used for naming control bones, deform bones and the curve object. If empty, use the base bone's name"
-			,default	 = ""
-		)
-		params.CR_hook_parent = StringProperty(
-			 name		 = "Custom Parent"
-			,description = "If not empty, parent all hooks except the first one to a bone with this name"
-			,default	 = ""
-		)
 		params.CR_match_hooks_to_bones = BoolProperty(
 			 name		 = "Match Controls to Bones"
 			,description = "Hook controls will be created at each bone, instead of being equally distributed across the length of the chain"
 			,default	 = True
-		)
-		params.CR_controls_for_handles = BoolProperty(
-			 name		 = "Controls for Handles"
-			,description = "For every curve point control, create two children that control the handles of that curve point"
-			,default	 = False
-		)
-		params.CR_rotatable_handles = BoolProperty(
-			 name		 = "Rotatable Handles"
-			,description = "Use a setup which allows handles to be rotated and scaled - Will behave oddly when rotation is done after translation"
-			,default	 = False
 		)
 		params.CR_curve_handle_ratio = FloatProperty(
 			 name		 = "Curve Handle Length Ratio"
@@ -313,24 +318,21 @@ class CloudSplineIKRig(CloudBaseRig):
 	def parameters_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
-		super().parameters_ui(layout, params)
+		ui_rows = super().parameters_ui(layout, params)
+		ui_rows['target_curve'].enabled=False
 
 		icon = 'TRIA_DOWN' if params.CR_show_spline_ik_settings else 'TRIA_RIGHT'
 		layout.prop(params, "CR_show_spline_ik_settings", toggle=True, icon=icon)
 		if not params.CR_show_spline_ik_settings: return
 
-		layout.prop(params, "CR_hook_name")
 		layout.prop(params, "CR_subdivide_deform")
 		layout.prop(params, "CR_curve_handle_ratio")
-
-		layout.prop(params, "CR_hook_parent")
-		layout.prop(params, "CR_controls_for_handles")
-		if params.CR_controls_for_handles:
-			layout.prop(params, "CR_rotatable_handles")
 
 		layout.prop(params, "CR_match_hooks_to_bones")	# TODO: When this is false, the directions of the curve points and bones don't match, and both of them are unsatisfactory. It would be nice if we would interpolate between the direction of the two bones, using length_remaining/bone.length as a factor, or something similar to that.
 		if not params.CR_match_hooks_to_bones:
 			layout.prop(params, "CR_num_hooks")
+		
+		return ui_rows
 
 class Rig(CloudSplineIKRig):
 	pass
