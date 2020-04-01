@@ -41,8 +41,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 		# Determine rig scale by armature height.
 		self.scale = max(self.generator.metarig.dimensions)/10
-		# Slap user-provided multiplier on top. TODO: Generator parameter? Or just remove this altogether, it seems superfluous. At least we never use it.
-		self.display_scale = self.params.CR_display_scale * self.scale
 
 		# TODO: Generator parameter.
 		self.mch_disable_select = False
@@ -162,7 +160,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 				continue
 			# Apply scaling
 			if not bd.use_custom_shape_bone_size:
-				bd.custom_shape_scale *= self.display_scale * bd.bbone_width * 10
+				bd.custom_shape_scale *= self.scale * bd.bbone_width * 10
 			bd.write_pose_data(pose_bone)
 
 	@stage.apply_bones
@@ -246,23 +244,11 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	# Parameters
 
 	@classmethod
-	def parameters_ui_display(cls, layout, params):
-		""" A separate category for display-related parameters."""
-		layout.prop(params, "CR_display_scale", text='Bone Shape Scale')
-
-	@classmethod
 	def add_parameters(cls, params):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
 		"""
-		params.CR_show_display_settings = BoolProperty(name="Display")
-		params.CR_display_scale = FloatProperty(
-			 name		 = "Display Scale"
-			,description = "Scale Bone Display Sizes"
-			,default	 = 1
-			,min		 = 0.1
-			,max		 = 100
-		)
+		pass
 
 	@classmethod
 	def parameters_ui(cls, layout, params):
@@ -270,15 +256,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		"""
 		ui_label_with_linebreak(layout, cls.description, bpy.context)
 
-		ui_rows = {}
-		icon = 'TRIA_DOWN' if params.CR_show_display_settings else 'TRIA_RIGHT'
-		layout.prop(params, "CR_show_display_settings", toggle=True, icon=icon)
-
-		if params.CR_show_display_settings:
-			cls.parameters_ui_display(layout.box(), params	)
-		
 		# We can return a dictionary of key:UILayout elements, in case we want to affect the UI layout of inherited rig elements.
-		return ui_rows
+		return {}
 
 # For testing purposes
 # class Rig(CloudBaseRig):

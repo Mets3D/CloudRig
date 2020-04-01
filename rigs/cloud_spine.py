@@ -18,7 +18,7 @@ from .cloud_fk_chain import CloudChainRig
 class CloudSpineRig(CloudChainRig):
 	"""CloudRig Spine"""
 
-	description = "Spine setup with FK and IK-like controls. IK Stretching can be toggled and tweaked with stretchy controls."
+	description = "Spine setup with FK and IK-like controls. Stretchy IK settings can be found in the rig UI."
 
 	def find_org_bones(self, bone):
 		"""Populate self.bones.org."""
@@ -32,8 +32,6 @@ class CloudSpineRig(CloudChainRig):
 
 		assert len(self.bones.org.main) >= self.params.CR_spine_length, f"Spine Length parameter value({self.params.CR_spine_length}) cannot exceed length of bone chain connected to {self.base_bone} ({len(self.bones.org.main)})"
 		assert len(self.bones.org.main) > 2, "Spine must consist of at least 3 connected bones."
-
-		self.display_scale *= 3
 
 		self.ik_prop_name = "ik_spine"
 		self.ik_stretch_name = "ik_stretch_spine"

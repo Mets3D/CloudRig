@@ -58,12 +58,6 @@ class CloudFKChainRig(CloudChainRig):
 
 	##############################
 	# Parameters
-
-	@classmethod
-	def parameters_ui_display(cls, layout, params):
-		""" A separate category for display-related parameters."""
-		super().parameters_ui_display(layout, params)
-		layout.prop(params, "CR_center_all_fk", text="FK in Center")
 	
 	@classmethod
 	def add_parameters(cls, params):
@@ -95,6 +89,7 @@ class CloudFKChainRig(CloudChainRig):
 		if not params.CR_show_fk_settings: return ui_rows
 
 		layout.prop(params, "CR_counter_rotate_str")
+		layout.prop(params, "CR_center_all_fk")
 
 		return ui_rows
 
@@ -186,10 +181,6 @@ def create_sample(obj):
 		pass
 	try:
 		pbone.rigify_parameters.CR_show_display_settings = False
-	except AttributeError:
-		pass
-	try:
-		pbone.rigify_parameters.CR_display_scale = 1.0
 	except AttributeError:
 		pass
 	try:

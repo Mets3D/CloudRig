@@ -195,7 +195,7 @@ class CloudChainRig(CloudBaseRig):
 				org_vec = org_eb.tail-org_eb.head
 				unit = org_vec / segments
 
-				org_bone.def_bone = def_bone = self.bone_infos.bone(
+				def_bone = self.bone_infos.bone(
 					name = def_name,
 					source = org_eb,
 					head = org_eb.head + (unit * i),
@@ -204,9 +204,10 @@ class CloudChainRig(CloudBaseRig):
 					bbone_handle_type_start = 'TANGENT',
 					bbone_handle_type_end = 'TANGENT',
 					bbone_segments = bbone_segments,
-					inherit_scale = 'NONE',
 					hide_select = self.mch_disable_select
 				)
+				if bbone_segments > 1:
+					def_bone.inherit_scale = 'NONE'
 				self.def_bones.append(def_bone)
 			
 				if self.params.CR_sharp_sections:
@@ -216,12 +217,7 @@ class CloudChainRig(CloudBaseRig):
 					# Last bone of the segment, but not the last bone of the chain.
 					if i==segments-1 and org_i != len(self.org_chain)-1:
 						def_bone.bbone_easeout = 0
-				
-				# Last bone of the chain.
-				if (i==segments-1) and (org_i == len(self.org_chain)-1) and (not self.params.CR_cap_control):
-					def_bone.inherit_scale = 'FULL'	# This is not perfect - when trying to adjust the spline shape by scaling the STR control on local Y axis, it scales the last deform bone in a bad way.
 
-				next_parent = def_bone.name
 				def_section.append(def_bone)
 			def_sections.append(def_section)
 
@@ -261,7 +257,8 @@ class CloudChainRig(CloudBaseRig):
 				def_bone.add_constraint(self.obj, 'STRETCH_TO', subtarget=next_str)
 
 				# BBone scale drivers
-				self.make_bbone_scale_drivers(def_bone)
+				if def_bone.bbone_segments > 1:
+					self.make_bbone_scale_drivers(def_bone)
 
 		self.connect_parent_chain_rig()
 
@@ -413,10 +410,6 @@ def create_sample(obj):
         pass
     try:
         pbone.rigify_parameters.CR_show_display_settings = False
-    except AttributeError:
-        pass
-    try:
-        pbone.rigify_parameters.CR_display_scale = 1.0
     except AttributeError:
         pass
     try:

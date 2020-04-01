@@ -119,7 +119,7 @@ class CloudIKChainRig(CloudFKChainRig):
 		}
 		default = 1.0
 		if hasattr(self, "limb_type") and self.limb_type=='ARM':
-			default = 0.0	# TODO: delet this.
+			default = 0.0	# TODO: delet this. (arbitrary hardcoded defaults, for CoffeeRun)
 		self.add_ui_data("ik_switches", self.category, self.limb_ui_name, info, default=default)
 
 	def make_ik_chain(self, org_chain, ik_mstr, pole_target, ik_pole_direction=0):
@@ -158,6 +158,23 @@ class CloudIKChainRig(CloudFKChainRig):
 				)
 				# Parent this one to the IK master.
 				ik_bone.parent = ik_mstr
+				
+				if self.params.CR_world_aligned_controls:
+					fk_bone = self.fk_chain[i]
+					fk_name = fk_bone.name
+					fk_bone.name = fk_bone.name.replace("FK-", "FK-W-")	# W for World.
+					# Make child control for the world-aligned control, that will have the original transforms and name.
+					# This is currently just the target of a Copy Transforms constraint on the ORG bone.
+					fk_child_bone = self.bone_infos.bone(
+						name = fk_name,
+						source = fk_bone,
+						parent = fk_bone,
+						bone_group = 'Body: FK Helper Bones'
+					)
+					
+					fk_bone.flatten()
+					
+					ik_mstr.flatten()
 		
 		# Add IK/FK Snapping to the UI.
 		self.add_ui_data_ik_fk(self.fk_chain, ik_chain, pole_target)
@@ -186,7 +203,7 @@ class CloudIKChainRig(CloudFKChainRig):
 		)
 		
 		chain_length = 0
-		for ikb in self.ik_chain[:-1]:	# TODO: Support IK at tail of chain.
+		for ikb in self.ik_chain[:self.params.CR_ik_length-1]:	# TODO: Support IK at tail of chain.
 			chain_length += ikb.length
 
 		length_factor = chain_length / stretch_bone.length
@@ -328,9 +345,6 @@ class CloudIKChainRig(CloudFKChainRig):
 		# Create IK Chain
 		self.ik_chain = self.make_ik_chain(self.org_chain, self.ik_mstr, self.pole_ctrl, self.ik_pole_direction)
 
-		if self.params.CR_world_aligned_controls:
-			self.ik_mstr.flatten()
-
 		# Set up IK Stretch
 		self.setup_ik_stretch()
 	
@@ -373,26 +387,29 @@ class CloudIKChainRig(CloudFKChainRig):
 		# TODO: Parameter to let the IK control be at the tip of the last bone instead of at the last bone itself. Would be useful for fingers.
 		params.CR_use_custom_limb_name = BoolProperty(
 			 name		 = "Custom Limb Name"
-			,description = 'Specify a name for this limb - There can be exactly two limbs with the same name, a Left and a Right one. This name should NOT include a side indicator such as "Left" or "Right". Limbs with the same name will be displayed on the same row'
+			,description = "Specify a name for this limb. Settings for limbs with the same name will be displayed on the same row in the rig UI. If not enabled, use the name of the base bone, without pre and suffixes"
 			,default 	 = False
 		)
-		params.CR_custom_limb_name = StringProperty(default="Arm")
+		params.CR_custom_limb_name = StringProperty(
+			name		 = "Custom Limb"
+			,default	 = "Arm"
+			,description = """This name should NOT include a side indicator such as ".L" or ".R", as that will be determined by the bone's name. There can be exactly two limbs with the same name(a left and a right one)."""
+		)
 		params.CR_use_custom_category_name = BoolProperty(
 			 name		 = "Custom Category Name"
-			,description = "Specify a category for this limb. Limbs in the same category will have their settings displayed in the same column"
+			,description = "Specify a category for this limb. If not enabled, use the name of the base bone, without pre and suffixes"
 			,default	 = False,
 		)
-		params.CR_custom_category_name = StringProperty(default="arms")
+		params.CR_custom_category_name = StringProperty(
+			name		 = "Custom Category"
+			,default	 = "arms"
+			,description = "Limbs in the same category will have their settings displayed in the same column"
+			)
 
 		params.CR_ik_limb_pole_offset = FloatProperty(	# TODO: Rename to ik_pole_offset - Also, maybe this is redundant.
 			 name	 	 = "Pole Vector Offset"
 			,description = "Push the pole target closer to or further away from the chain"
 			,default 	 = 1.0
-		)
-		params.CR_world_aligned_controls = BoolProperty(
-			 name		 = "World Aligned Control"
-			,description = "Ankle/Wrist IK/FK controls are aligned with world axes"
-			,default	 = True
 		)
 		params.CR_ik_length = IntProperty(
 			name	 	 = "IK Length"
@@ -400,6 +417,11 @@ class CloudIKChainRig(CloudFKChainRig):
 			,default	 = 3
 			,min		 = 1
 			,max		 = 255
+		)
+		params.CR_world_aligned_controls = BoolProperty(
+			 name		 = "World Aligned Control"
+			,description = "Ankle/Wrist IK/FK controls are aligned with world axes"
+			,default	 = True
 		)
 		params.CR_use_pole_target = BoolProperty(
 			name 		 = "Use Pole Target"
