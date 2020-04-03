@@ -18,14 +18,22 @@ class SettlerMouthRig(CloudCurveRig):
 		target_ob = bpy.data.objects.get(target_ob_name)
 		assert target_ob, f"Error: Could not find shrinkwrap target: {target_ob_name}"
 		
-		# for b in bones:
-		# 	b.add_constraint(self.obj, 'SHRINKWRAP',
-		# 		target = target_ob,
-		# 		distance = 0.01,
-		# 		shrinkwrap_type = 'TARGET_PROJECT'
-		# 	)
-			# TODO well, adding this from python results in a mess for no reason, so that's nice.
-			# TODO some driver on Influence or so.
+		for b in bones:
+			hooks = [b]
+			sub_hooks = ['left_handle_control', 'right_handle_control']
+			for attrib in sub_hooks:
+				if hasattr(b, attrib):
+					hooks.append(getattr(b, attrib))
+			
+			for hook in hooks:
+				hook.add_constraint(self.obj, 'SHRINKWRAP',
+					target = target_ob,
+					distance = 0.01,
+					shrinkwrap_type = 'TARGET_PROJECT'
+				)
+				# Not sure if this will work, but we need to ensure shrinkwrap is the first constraint.
+				hook.constraints = hook.constraints[-1:] + hook.constraints[:-1]
+				# TODO some driver on Influence or so.
 
 	def prepare_bones(self):
 		super().prepare_bones()

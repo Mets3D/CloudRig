@@ -16,10 +16,14 @@ def get_defaults(contype, armature):
 		"target" : armature,
 	 }
 
-	if contype not in ['STRETCH_TO', 'ARMATURE', 'IK', 'DAMPED_TRACK']:
+	# Constraints that support local space should default to local space.
+	local_space = ['COPY_LOCATION', 'COPY_SCALE', 'COPY_ROTATION', 'COPY_TRANSFORMS',
+						'LIMIT_LOCATION', 'LIMIT_SCALE', 'LIMIT_ROTATION',
+						'ACTION', 'TRANSFORM', ]
+	if contype in local_space:
+		ret["owner_space"] = 'LOCAL'
 		if contype not in ['LIMIT_SCALE']:
 			ret["target_space"] = 'LOCAL'
-		ret["owner_space"] = 'LOCAL'
 
 	if contype == 'STRETCH_TO':
 		ret["use_bulge_min"] = True
