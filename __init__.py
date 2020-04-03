@@ -24,8 +24,17 @@ def draw_cloud_generator_options(self, context):
 		layout.prop(obj.data, "cloudrig_options", toggle=True, icon=icon)
 		if not obj.data.cloudrig_options: return
 		
-		layout.prop(obj.data, "cloudrig_double_root")
 		layout.prop_search(obj.data, "cloudrig_custom_script", bpy.data, "texts")
+
+		root_row = layout.row()
+		root_row.prop(obj.data, "cloudrig_create_root")
+		if obj.data.cloudrig_create_root:
+			root_row.prop(obj.data, "cloudrig_double_root")
+
+		mech_row = layout.row()
+		mech_row.prop(obj.data, "cloudrig_mechanism_selectable")
+		if obj.data.cloudrig_mechanism_selectable:
+			mech_row.prop(obj.data, "cloudrig_mechanism_movable")
 
 # TODO: Not sure how to get Rigify to call our register() and unregister() for us.
 def register():
@@ -34,6 +43,11 @@ def register():
 		,description = "Show CloudRig Settings"
 		,default	 = False
 	)
+	bpy.types.Armature.cloudrig_create_root = BoolProperty(
+		name		 = "Create Root"
+		,description = "CloudRig: Create the root control"
+		,default	 = True
+	)
 	bpy.types.Armature.cloudrig_double_root = BoolProperty(
 		name		 = "Double Root"
 		,description = "CloudRig: Create two root controls"
@@ -41,7 +55,22 @@ def register():
 	)
 	bpy.types.Armature.cloudrig_custom_script = StringProperty(
 		name		 = "Custom Script"
-		,description = "CloudRig: Execute the selected python script file after the rig is generated"
+		,description = "CloudRig: Execute a python script after the rig is generated"
+	)
+	bpy.types.Armature.cloudrig_mechanism_movable = BoolProperty(
+		name		 = "Movable Helpers"
+		,description = "CloudRig: Whether helper bones can be moved or not"
+		,default	 = True
+	)
+	bpy.types.Armature.cloudrig_mechanism_selectable = BoolProperty(
+		name		 = "Selectable Helpers"
+		,description = "CloudRig: Whether helper bones can be selected or not"
+		,default	 = True
+	)
+	bpy.types.Armature.cloudrig_properties_bone = BoolProperty(
+		name		 = "Properties Bone"
+		,description = "CloudRig: Specify a bone to store Properties on. This bone doesn't have to exist in the metarig."
+		,default	 = True
 	)
 	
 	regenerate_rigify_rigs.register()
@@ -51,9 +80,12 @@ def register():
 
 def unregister():
 	ArmStore = bpy.types.Armature
+	del ArmStore.cloudrig_create_root
 	del ArmStore.cloudrig_double_root
 	del ArmStore.cloudrig_options
 	del ArmStore.cloudrig_custom_script
+	del ArmStore.cloudrig_mechanism_selectable
+	del ArmStore.cloudrig_mechanism_movable
 
 	regenerate_rigify_rigs.unregister()
 	refresh_drivers.unregister()
