@@ -26,6 +26,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	def initialize(self):
 		super().initialize()
 		"""Gather and validate data about the rig."""
+
 		self.generator_params = self.generator.metarig.data
 		self.meta_base_bone = self.generator.metarig.pose.bones.get(self.base_bone.replace("ORG-", ""))
 		
@@ -175,30 +176,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 					eb.parent = None
 					break
 
-	def finalize(self):
-		self.select_layers(layers.default_active_layers)
 
-		# Set root bone layers
-		root_bone = self.get_bone("root")
-		layers.set_layers(root_bone.bone, [0, 1, 16, 17])
-
-		# Nuke Rigify's generated root bone shape so it cannot be applied.
-		root_shape = bpy.data.objects.get("WGT-"+self.obj.name+"_root")
-		if root_shape:
-			bpy.data.objects.remove(root_shape)
-
-		self.obj.data['script'] = self.load_ui_script()
-
-		# For some god-forsaken reason, this is the earliest point when we can set bbone_x and bbone_z.
-		for b in self.obj.data.bones:
-			bi = self.bone_infos.find(b.name)
-			if not bi:
-				# print("How come there's no BoneInfo for %s?" %b.name)	# TODO?
-				continue
-			b.bbone_x = bi._bbone_x
-			b.bbone_z = bi._bbone_z
-
-	@stage.finalize
 	def organize_widgets(self):
 		# Hijack the widget collection automatically created by Rigify.
 		wgt_collection = self.generator.collection.children.get("Widgets")
@@ -222,13 +200,11 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			if wgt.name not in wgt_collection.objects:
 				wgt_collection.objects.link(wgt)
 
-	@stage.finalize
 	def configure_display(self):
 		# Armature display settings
 		self.obj.display_type = 'SOLID'
 		self.obj.data.display_type = 'BBONE'
 
-	@stage.finalize
 	def transform_locks(self):
 		# Rigify automatically locks transforms of bones whose names match this regex: "[A-Z][A-Z][A-Z]-"
 		# We want to undo this... For now, we just don't want anything to be locked. In future, maybe lock based on bone groups. (TODO)
@@ -239,6 +215,41 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			pb.lock_rotation = bd.lock_rotation
 			pb.lock_rotation_w = bd.lock_rotation_w
 			pb.lock_scale = bd.lock_scale
+
+	def execute_custom_script(self):
+		script_name = self.generator_params.cloudrig_custom_script
+		if script_name != "":
+			text = bpy.data.texts.get(script_name)
+			if text:
+				exec(text.as_string(), {})
+
+	def finalize(self):
+		self.select_layers(layers.default_active_layers)
+
+		# Set root bone layers
+		root_bone = self.get_bone("root")
+		layers.set_layers(root_bone.bone, [0, 1, 16, 17])
+
+		# Nuke Rigify's generated root bone shape so it cannot be applied.
+		root_shape = bpy.data.objects.get("WGT-"+self.obj.name+"_root")
+		if root_shape:
+			bpy.data.objects.remove(root_shape)
+
+		self.obj.data['script'] = self.load_ui_script()
+
+		# For some god-forsaken reason, this is the earliest point when we can set bbone_x and bbone_z.
+		for b in self.obj.data.bones:
+			bi = self.bone_infos.find(b.name)
+			if not bi:
+				# print("How come there's no BoneInfo for %s?" %b.name)	# TODO?
+				continue
+			b.bbone_x = bi._bbone_x
+			b.bbone_z = bi._bbone_z
+
+		self.organize_widgets()
+		self.configure_display()
+		self.transform_locks()
+		self.execute_custom_script()
 
 	##############################
 	# Parameters

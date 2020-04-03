@@ -3,7 +3,7 @@ rigify_info = {
 }
 
 import bpy
-from bpy.props import *
+from bpy.props import BoolProperty, StringProperty
 from .operators import regenerate_rigify_rigs
 from .operators import refresh_drivers
 
@@ -25,15 +25,24 @@ def draw_cloud_generator_options(self, context):
 		if not obj.data.cloudrig_options: return
 		
 		layout.prop(obj.data, "cloudrig_double_root")
+		layout.prop_search(obj.data, "cloudrig_custom_script", bpy.data, "texts")
 
 # TODO: Not sure how to get Rigify to call our register() and unregister() for us.
 def register():
-	bpy.types.Armature.cloudrig_double_root = BoolProperty(name="Double Root",
-		description="CloudRig: Create two root controls",
-		default=False)
-	bpy.types.Armature.cloudrig_options = BoolProperty(name="CloudRig Settings",
-		description="Show CloudRig Settings",
-		default=False)
+	bpy.types.Armature.cloudrig_options = BoolProperty(
+		name		 = "CloudRig Settings"
+		,description = "Show CloudRig Settings"
+		,default	 = False
+	)
+	bpy.types.Armature.cloudrig_double_root = BoolProperty(
+		name		 = "Double Root"
+		,description = "CloudRig: Create two root controls"
+		,default	 = False
+	)
+	bpy.types.Armature.cloudrig_custom_script = StringProperty(
+		name		 = "Custom Script"
+		,description = "CloudRig: Execute the selected python script file after the rig is generated"
+	)
 	
 	regenerate_rigify_rigs.register()
 	refresh_drivers.register()
@@ -44,6 +53,7 @@ def unregister():
 	ArmStore = bpy.types.Armature
 	del ArmStore.cloudrig_double_root
 	del ArmStore.cloudrig_options
+	del ArmStore.cloudrig_custom_script
 
 	regenerate_rigify_rigs.unregister()
 	refresh_drivers.unregister()
