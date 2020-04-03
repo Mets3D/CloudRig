@@ -1,7 +1,6 @@
 import bpy
 from bpy.props import BoolProperty, IntProperty, FloatProperty, StringProperty, PointerProperty
-from mathutils import Vector
-from math import pi
+from mathutils import Vector, Matrix
 
 from rigify.base_rig import stage
 
@@ -24,6 +23,16 @@ class CloudCurveRig(CloudBaseRig):
 		self.curve_ob_name = "Curve_" + self.base_bone
 		if self.params.CR_target_curve_name!="":
 			self.curve_ob_name = self.params.CR_target_curve_name
+
+	def create_root(self):
+		self.root_control = self.bone_infos.bone(
+			name = self.base_bone.replace("ORG", "ROOT"),
+			source = self.org_chain[0],
+			bone_group = "Spline IK Hooks",
+			use_custom_shape_bone_size = True,
+			custom_shape = self.load_widget("Cube")
+		)
+		self.org_chain[0].parent = self.root_control
 
 	def create_hooks(self, loc, loc_left, loc_right, i, cyclic=False):
 		""" Create hook controls for a bezier curve point defined by three points (loc, loc_left, loc_right). """
@@ -103,14 +112,17 @@ class CloudCurveRig(CloudBaseRig):
 		curve_ob = bpy.data.objects.get(self.params.CR_target_curve_name)
 		if not curve_ob: return
 
+		# Function to convert a location vector in the curve's local space into world space.
+		worldspace = lambda loc: (curve_ob.matrix_world @ Matrix.Translation(loc)).to_translation()
+
 		spline = curve_ob.data.splines[0]	# For now we only support a single spline per curve.
 		self.hooks = []
 		for i, cp in enumerate(spline.bezier_points):
 			self.hooks.append(
 				self.create_hooks(
-					loc		  = cp.co, 
-					loc_left  = cp.handle_left, 
-					loc_right = cp.handle_right, 
+					loc		  = worldspace(cp.co), 
+					loc_left  = worldspace(cp.handle_left), 
+					loc_right = worldspace(cp.handle_right), 
 					i		  = i, 
 					cyclic	  = spline.use_cyclic_u
 				)
@@ -118,6 +130,7 @@ class CloudCurveRig(CloudBaseRig):
 
 	def prepare_bones(self):
 		super().prepare_bones()
+		self.create_root()
 		self.create_curve_point_hooks()
 
 	def add_hook(self, cp_i, boneinfo, main_handle=False, left_handle=False, right_handle=False):				
