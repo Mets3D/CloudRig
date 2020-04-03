@@ -302,8 +302,8 @@ class CloudSpineRig(CloudChainRig):
 			str_bone.custom_shape_scale = 0.15
 		
 		if len(self.org_necks) > 0:
-			# If there are any neck bones, set the last one's easeout to 0.
-			self.org_necks[-1].def_bone.bbone_easeout = 0
+			# If there are any neck bones, set the last one's last def bone's easeout to 0.
+			self.org_necks[-1].def_bones[-1].bbone_easeout = 0
 
 		# The last DEF bone should copy the scale of the FK bone. (Or maybe each of them should? And maybe all FK chains, not just the spine? TODO)
 		last_def = self.def_bones[-1]

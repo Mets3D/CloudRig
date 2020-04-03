@@ -179,6 +179,7 @@ class CloudChainRig(CloudBaseRig):
 		def_sections = []
 		for org_i, org_bone in enumerate(self.org_chain):
 			org_name = org_bone.name
+			org_bone.def_bones = []
 			def_section = []
 
 			# Last bone shouldn't get segmented.
@@ -208,6 +209,7 @@ class CloudChainRig(CloudBaseRig):
 				)
 				if bbone_segments > 1:
 					def_bone.inherit_scale = 'NONE'
+				org_bone.def_bones.append(def_bone)
 				self.def_bones.append(def_bone)
 			
 				if self.params.CR_sharp_sections:
