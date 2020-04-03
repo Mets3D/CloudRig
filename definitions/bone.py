@@ -87,36 +87,7 @@ class BoneInfoContainer(ID):
 
 		bi = BoneInfo(self, name, source, armature, **kwargs)
 		self.bones.append(bi)
-		return bi			
-
-	def create_multiple_bones(self, armature, bones):
-		"""This will only switch between modes twice, so it is the preferred way of creating bones."""
-		assert armature.select_get() or bpy.context.view_layer.objects.active == armature, "Armature must be selected or active."
-		
-		org_mode = armature.mode
-
-		bpy.ops.object.mode_set(mode='EDIT')
-		# First we create all the bones.
-		for bd in bones:
-			edit_bone = find_or_create_bone(armature, bd.name)
-		
-		# Now that all the bones are created, loop over again to set the properties.
-		for bd in bones:
-			edit_bone = armature.data.edit_bones.get(bd.name)
-			bd.write_edit_data(armature, edit_bone)
-
-		# And finally a third time, after switching to pose mode, so we can add constraints.
-		bpy.ops.object.mode_set(mode='POSE')
-		for bd in bones:
-			pose_bone = armature.pose.bones.get(bd.name)
-			bd.write_pose_data(pose_bone)
-		
-		bpy.ops.object.mode_set(mode=org_mode)
-
-	def make_real(self, armature, clear=True):
-		self.create_multiple_bones(armature, self.bones)
-		if clear:
-			self.clear()
+		return bi
 	
 	def clear(self):
 		self.bones = []
@@ -281,7 +252,7 @@ class BoneInfo(ID):
 				maxabs = abs(x)
 				max_index = i
 
-		for i, co in enumerate(self.tail):
+		for i in range(0, len(self.tail)):
 			if i != max_index:
 				self.tail[i] = self.head[i]
 		self.roll = 0
@@ -430,8 +401,6 @@ class BoneInfo(ID):
 
 		assert armature.mode != 'EDIT', "Armature cannot be in Edit Mode when writing pose data"
 
-		data_bone = armature.data.bones.get(pose_bone.name)
-
 		my_dict = self.__dict__
 
 		# Bone group
@@ -493,31 +462,14 @@ class BoneInfo(ID):
 		# Pose Bone Property Drivers.
 		for path, d in self.drivers.items():
 			data_path = 'pose.bones["%s"].%s' %(pose_bone.name, path)
-			driv = d.make_real(pose_bone.id_data, data_path)
+			d.make_real(pose_bone.id_data, data_path)
 	
 		# Data Bone Property Drivers.
 		for path, d in self.bone_drivers.items():
 			#HACK: If we want to add drivers to bone properties that are shared between pose and edit mode, they aren't stored under armature.pose.bones[0].property but instead armature.bones[0].property... The entire way we handle drivers should be scrapped tbh. :P
 			# But scrapping that requires scrapping the way we handle bones, so... just keep making it work.
 			data_path = 'bones["%s"].%s' %(pose_bone.name, path)
-			driv = d.make_real(pose_bone.id_data.data, data_path)
-			
-	def make_real(self, armature):
-		# Create a single bone and its constraints. Needs to switch between object modes.
-		# It is preferred to create bones in bulk via BoneDataContainer.create_all_bones().
-		armature.select_set(True)
-		bpy.context.view_layer.objects.active = armature
-		org_mode = armature.mode
-
-		bpy.ops.object.mode_set(mode='EDIT')
-		edit_bone = find_or_create_bone(armature, self.name)
-		self.write_edit_data(edit_bone)
-
-		bpy.ops.object.mode_set(mode='POSE')
-		pose_bone = armature.pose.bones.get(self.name)
-		self.write_pose_data(pose_bone)
-
-		bpy.ops.object.mode_set(mode=org_mode)
+			d.make_real(pose_bone.id_data.data, data_path)
 	
 	def get_real(self, armature):
 		"""If a bone with the name in this BoneInfo exists in the passed armature, return it."""

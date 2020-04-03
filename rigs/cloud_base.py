@@ -132,17 +132,14 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			self.org_chain.append(org_bi)
 
 	def generate_bones(self):
-		root_bone = self.get_bone("root")
-		# root_bone.bbone_width = 1/10
-
 		for bd in self.bone_infos.bones:
 			if (
 				bd.name not in self.obj.data.edit_bones and
 				bd.name not in self.bones.flatten() and
 				bd.name != 'root'
 			):
-				bone_name = self.copy_bone("root", bd.name)
-				# bone_name = self.new_bone(bd.name) # new_bone() is currently bugged and doesn't register the new bone, so we use copy_bone instead.
+				self.copy_bone("root", bd.name)
+				# self.new_bone(bd.name) # new_bone() is currently bugged and doesn't register the new bone, so we use copy_bone instead.
 
 	def parent_bones(self):
 		for bd in self.bone_infos.bones:
@@ -175,7 +172,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 				if c.type=='ARMATURE':
 					eb.parent = None
 					break
-
 
 	def organize_widgets(self):
 		# Hijack the widget collection automatically created by Rigify.

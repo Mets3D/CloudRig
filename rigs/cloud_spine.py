@@ -297,7 +297,7 @@ class CloudSpineRig(CloudChainRig):
 	@stage.prepare_bones
 	def prepare_def_str_spine(self):
 		# Tweak some display things
-		for i, str_bone in enumerate(self.str_bones):
+		for str_bone in self.str_bones:
 			str_bone.use_custom_shape_bone_size = False
 			str_bone.custom_shape_scale = 0.15
 		
