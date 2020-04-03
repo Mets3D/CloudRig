@@ -182,7 +182,7 @@ class CloudIKChainRig(CloudFKChainRig):
 
 	def setup_ik_stretch(self):
 		ik_org_bone = self.org_chain[self.params.CR_ik_length-1]
-		str_name = ik_org_bone.name.replace("ORG", "IK-STR")
+		str_name = self.org_chain[0].name.replace("ORG", "IK-STR")
 		stretch_bone = self.bone_infos.bone(
 			name = str_name, 
 			source = self.org_chain[0],
@@ -233,23 +233,14 @@ class CloudIKChainRig(CloudFKChainRig):
 		}
 		self.add_ui_data("ik_stretches", self.category, self.limb_ui_name, info, default=1.0)
 
-		# Bone responsible for keeping track of where the IK master IS (ie, IK master is parented to this bone). Foot Roll could be parented to this, and then the IK bone gets parented to the foot roll.
-		self.ik_tgt_bone = self.bone_infos.bone(
-			name = ik_org_bone.name.replace("ORG", "IK-TGT"),
-			source = ik_org_bone,
-			bone_group = 'Body: IK-MCH - IK Mechanism Bones',
-			parent = self.ik_mstr,
-			hide_select = self.mch_disable_select
-		)
+		# Last IK bone should copy location of the tail of the stretchy bone.
+		self.ik_tgt_bone = self.ik_chain[self.params.CR_ik_length-1]
 		self.ik_tgt_bone.add_constraint(self.obj, 'COPY_LOCATION',
 			true_defaults = True,
 			target = self.obj,
 			subtarget = stretch_bone.name,
 			head_tail = 1
 		)
-		
-		ik_bone = self.ik_chain[self.params.CR_ik_length-1]
-		ik_bone.parent = self.ik_tgt_bone
 
 		# Create Helpers for main STR bones so they will stick to the stretchy bone.
 		self.main_str_transform_setup(stretch_bone, chain_length)

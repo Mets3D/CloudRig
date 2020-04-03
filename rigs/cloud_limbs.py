@@ -11,7 +11,7 @@ from .cloud_ik_chain import CloudIKChainRig
 
 class Rig(CloudIKChainRig):
 	"""CloudRig arms and legs."""
-	
+
 	description = "IK chain with extras for specific limbs, such as foot roll."
 
 	def initialize(self):
@@ -162,7 +162,30 @@ class Rig(CloudIKChainRig):
 
 		# Create ROLL control behind the foot (Limit Rotation, lock other transforms)
 		if self.params.CR_use_foot_roll:	# TODO: Don't like this big if block. Maybe toe part should be moved out of this function, and the if check put before calling of this function, and then this function can be renamed to prepare_footroll.
+			rolly_stretchy = self.bone_infos.bone(
+				name = self.org_chain[0].name.replace("ORG", "IK-STR-ROLL"),
+				source = self.org_chain[0],
+				tail = self.ik_mstr.head.copy(),
+				parent = self.limb_root_bone.name,
+				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
+				hide_select = self.mch_disable_select
+			)
+			rolly_stretchy.scale_width(0.4)
+			rolly_stretchy.add_constraint(self.obj, 'STRETCH_TO', subtarget=self.ik_chain[-2].name)
+
 			sliced_name = self.slice_name(ik_foot.name)
+			master_name = self.make_name(["ROLL", "MSTR"], sliced_name[1], sliced_name[2])
+			roll_master = self.bone_infos.bone(
+				name = master_name,
+				source = self.ik_mstr,
+				parent = self.ik_mstr,
+				bone_group = 'Body: IK-MCH - IK Mechanism Bones'
+			)
+			roll_master.constraints.append(self.ik_tgt_bone.constraints[0])
+			self.ik_tgt_bone.clear_constraints()
+
+			# self.stretch_target_bone.parent = roll_master
+			
 			roll_name = self.make_name(["ROLL"], sliced_name[1], sliced_name[2])
 			roll_ctrl = self.bone_infos.bone(
 				name = roll_name,
@@ -172,7 +195,7 @@ class Rig(CloudIKChainRig):
 				roll = rad(180),
 				custom_shape = self.load_widget('FootRoll'),
 				bone_group = 'Body: Main IK Controls',
-				parent = ik_tgt
+				parent = roll_master
 			)
 
 			roll_ctrl.add_constraint(self.obj, 'LIMIT_ROTATION', 
@@ -206,7 +229,7 @@ class Rig(CloudIKChainRig):
 				tail = meta_ankle_pivot.tail_local,
 				roll = rad(180),
 				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
-				parent = ik_tgt,
+				parent = roll_master,
 				hide_select = self.mch_disable_select
 			)
 
@@ -282,7 +305,14 @@ class Rig(CloudIKChainRig):
 						to_min_x_rot   = rad(0),
 						to_max_x_rot   = rad(-31.8)
 					)
-			
+				
+			# Change the subtarget of the constraints on main_str_bones from the old stretchy bone to the new one, that accounts for footroll.
+			for main_str_bone in self.main_str_bones:
+				for c in main_str_bone.parent.constraints:
+					if c[1]['name'] == 'CopyLoc_IK_Stretch':
+						c[1]['subtarget'] = rolly_stretchy.name
+						print(f"constraint set to {rolly_stretchy.name}")
+
 		# FK Toe bone should be parented between FK Foot and IK Toe.
 		fk_toe = self.fk_toe
 		fk_toe.parent = None
