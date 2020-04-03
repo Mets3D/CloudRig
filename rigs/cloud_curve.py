@@ -113,6 +113,9 @@ class CloudCurveRig(CloudBaseRig):
 		if not curve_ob: return
 
 		# Function to convert a location vector in the curve's local space into world space.
+
+		# For some reason this doesn't work when the curve object is parented to something, and we need it to be parented to the root bone kindof.
+		
 		worldspace = lambda loc: (curve_ob.matrix_world @ Matrix.Translation(loc)).to_translation()
 
 		spline = curve_ob.data.splines[0]	# For now we only support a single spline per curve.
@@ -139,7 +142,7 @@ class CloudCurveRig(CloudBaseRig):
 		bpy.ops.curve.select_all(action='DESELECT')
 
 		# Workaround of T74888, can be removed once D7190 is in master. (Preferably wait until it's in a release build)
-		curve_ob = bpy.data.objects.get(self.curve_ob_name)
+		curve_ob = bpy.data.objects.get(bpy.context.object.name)
 		spline = curve_ob.data.splines[0]
 		points = spline.bezier_points
 		cp = points[cp_i]
@@ -152,23 +155,34 @@ class CloudCurveRig(CloudBaseRig):
 		bone = self.obj.data.bones.get(boneinfo.name)
 		self.obj.data.bones.active = bone
 
-		# Remove hook modifier if already exists. (Could alternatively leave the hook modifier as is, if it already exists, and just not re-create it)
+		# If the hook modifier already exists, don't re-create it.
 		mod = curve_ob.modifiers.get(boneinfo.name)
 		if mod:
-			curve_ob.modifiers.remove(mod)
+			return
 
 		# Add hook
+		old_modifiers = [m.name for m in curve_ob.modifiers]
 		bpy.ops.object.hook_add_selob(use_bone=True)
-		curve_ob.modifiers[-1].name = boneinfo.name
 
-	def setup_curve(self):
-		""" Configure the Hook Modifiers for the curve. This requires switching object modes. """
+		# Find and rename the newly added modifier.
+		for m in curve_ob.modifiers:
+			if m.name not in old_modifiers:
+				m.name = boneinfo.name
 
-		curve_ob = bpy.data.objects.get(self.curve_ob_name)
-		assert curve_ob, f"Error: Curve object {self.curve_ob_name} doesn't exist for rig: {self.base_bone}"
+	def setup_curve(self, hooks, curve_ob_name):
+		""" Configure the Hook Modifiers for the curve. This requires switching object modes. 
+		hooks: List of BoneInfo objects that were created with create_hooks().
+		curve_ob: The curve object.
+		Only single-spline curve is supported. That one spline must have the same number of control points as the number of hooks."""
+
+		curve_ob = bpy.data.objects.get(curve_ob_name)
+		assert curve_ob, f"Error: Curve object {curve_ob_name} doesn't exist for rig: {self.base_bone}"
 		self.ensure_visible(curve_ob)
-		bpy.context.view_layer.objects.active = curve_ob
+		bpy.ops.object.select_all(action='DESELECT')
+		self.obj.select_set(True)
+		bpy.context.view_layer.objects.active = self.obj
 		curve_ob.select_set(True)
+		bpy.context.view_layer.objects.active = curve_ob
 
 		bpy.ops.object.mode_set(mode='EDIT')
 		bpy.ops.curve.select_all(action='DESELECT')
@@ -176,8 +190,10 @@ class CloudCurveRig(CloudBaseRig):
 		points = spline.bezier_points
 		num_points = len(points)
 
+		assert num_points == len(hooks), f"Error: Curve object {curve_ob_name} has {num_points} points, but {len(hooks)} hooks were passed."
+
 		for i in range(0, num_points):
-			hook_b = self.hooks[i]
+			hook_b = hooks[i]
 			if not self.params.CR_controls_for_handles:
 				self.add_hook(i, hook_b, main_handle=True, left_handle=True, right_handle=True)
 			else:
@@ -198,7 +214,7 @@ class CloudCurveRig(CloudBaseRig):
 			var_tgt.id = self.obj
 			var_tgt.transform_space = 'LOCAL_SPACE'
 			var_tgt.transform_type = 'SCALE_X'
-			var_tgt.bone_target = self.hooks[i].name
+			var_tgt.bone_target = hooks[i].name
 
 		# Reset selection so Rigify can continue execution.
 		bpy.ops.object.mode_set(mode='OBJECT')
@@ -219,7 +235,7 @@ class CloudCurveRig(CloudBaseRig):
 		self.obj.select_set(True)
 
 	def configure_bones(self):
-		self.setup_curve()
+		self.setup_curve(self.hooks, self.curve_ob_name)
 
 		super().configure_bones()
 
@@ -265,7 +281,7 @@ class CloudCurveRig(CloudBaseRig):
 
 		icon = 'TRIA_DOWN' if params.CR_show_curve_rig_settings else 'TRIA_RIGHT'
 		layout.prop(params, "CR_show_curve_rig_settings", toggle=True, icon=icon)
-		if not params.CR_show_curve_rig_settings: return
+		if not params.CR_show_curve_rig_settings: return ui_rows
 
 		target_curve_row = layout.row()
 		ui_rows['target_curve'] = target_curve_row
