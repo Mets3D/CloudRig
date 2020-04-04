@@ -78,8 +78,9 @@ class CloudIKChainRig(CloudFKChainRig):
 
 	def make_pole_control(self, org_chain):
 		elbow_vector = self.compute_elbow_vector(self.org_chain[:2])
-		self.pole_angle = self.compute_pole_angle(org_chain[:self.params.CR_ik_length], elbow_vector)
-		
+		# self.pole_angle = self.compute_pole_angle(org_chain[:self.params.CR_ik_length], elbow_vector)
+		self.pole_angle = 0
+
 		pole_location = self.org_chain[0].tail + elbow_vector
 		if self.params.CR_custom_pole_bone == "":
 			meta_first_name = self.org_chain[0].name.replace("ORG-", "")
@@ -103,19 +104,21 @@ class CloudIKChainRig(CloudFKChainRig):
 
 			# Store those distances in a dictionary where they are used to describe the main axis of rotation, when that distance is the lowest.
 			axis_dict = {
-				x_pos_distance : "-Z",
-				x_neg_distance : "+Z",
-				z_pos_distance : "+X",
-				z_neg_distance : "-X",
+				x_pos_distance : ("-Z", 180),
+				x_neg_distance : ("+Z", 0),
+				z_pos_distance : ("+X", -90),
+				z_neg_distance : ("-X", 90)
 			}
 
 			lowest_distance = axis_dict[min(list(axis_dict.keys()))]	# Find the main axis of rotation by picking the one corresponding to the lowest distance.
-			
+			rotation_axis = lowest_distance[0]
+			self.pole_angle = rad(lowest_distance[1])
+
 			vector_flipper = 1
 			perpendicular_axis = meta_first.x_axis
-			if lowest_distance[0] == "-":
+			if rotation_axis[0] == "-":
 				vector_flipper = -1
-			if lowest_distance[1] == "Z":
+			if rotation_axis[1] == "Z":
 				perpendicular_axis = meta_first.z_axis
 			
 			# Find the vector that is perpendicular to a plane defined by the chain vector and the main rotation axis.
