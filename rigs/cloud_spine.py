@@ -121,6 +121,9 @@ class CloudSpineRig(CloudChainRig):
 				next_parent = fk_child_bone
 				fk_bone.fk_child = fk_child_bone
 		
+		# Register final spine FK as an available parent.
+		self.register_parent(self.fk_chain[self.params.CR_spine_length-1], "Chest")
+
 		# Head Hinge
 		if self.org_head:
 			self.hinge_setup(
@@ -150,7 +153,6 @@ class CloudSpineRig(CloudChainRig):
 				parent				= self.mstr_torso,
 				bone_group 			= "Body: Main IK Controls"
 			)
-		self.register_parent(self.mstr_chest, "Chest")
 
 		if self.params.CR_double_controls:
 			double_mstr_chest = self.create_parent_bone(self.mstr_chest)
