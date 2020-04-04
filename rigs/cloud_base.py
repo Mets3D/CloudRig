@@ -32,13 +32,16 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		
 		self.parent_candidates = {}
 
-		# Wipe any existing bone groups from the generated rig.	# TODO: Right now, every rig element nukes all the bone groups created by rig elements that generated before it, and then re-creates them. This could use smarter handling.
+		# Wipe any existing bone groups from the generated rig.	# TODO: Right now, every rig element nukes all the bone groups created by rig elements that generated before it, and then re-creates them. This could use smarter handling... although I'm not too sure how.
+		# Maybe if we collected how many CloudRig rigs there are in the metarig, and how many of those have been initialized already - then we can choose to run code on the first or last rig element only...
+		# (So we would only wipe bone groups on the first CloudRig being initialized)
 		for bone_group in self.obj.pose.bone_groups:
 			self.obj.pose.bone_groups.remove(bone_group)
 
 		self.script_id = bpy.path.basename(bpy.data.filepath).split(".")[0]
 		if self.script_id=="":
-			assert False, "Error: Save your file before generating."
+			# Default in case the file hasn't been saved yet.
+			self.script_id = "cloudrig"
 
 		# Determine rig scale by armature height.
 		self.scale = max(self.generator.metarig.dimensions)/10

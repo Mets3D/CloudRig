@@ -45,31 +45,31 @@ def register():
 	)
 	bpy.types.Armature.cloudrig_create_root = BoolProperty(
 		name		 = "Create Root"
-		,description = "CloudRig: Create the root control"
+		,description = "Create the root control"
 		,default	 = True
 	)
 	bpy.types.Armature.cloudrig_double_root = BoolProperty(
 		name		 = "Double Root"
-		,description = "CloudRig: Create two root controls"
+		,description = "Create two root controls"
 		,default	 = False
 	)
 	bpy.types.Armature.cloudrig_custom_script = StringProperty(
 		name		 = "Custom Script"
-		,description = "CloudRig: Execute a python script after the rig is generated"
+		,description = "Execute a python script after the rig is generated"
 	)
 	bpy.types.Armature.cloudrig_mechanism_movable = BoolProperty(
 		name		 = "Movable Helpers"
-		,description = "CloudRig: Whether helper bones can be moved or not"
+		,description = "Whether helper bones can be moved or not"
 		,default	 = True
 	)
 	bpy.types.Armature.cloudrig_mechanism_selectable = BoolProperty(
 		name		 = "Selectable Helpers"
-		,description = "CloudRig: Whether helper bones can be selected or not"
+		,description = "Whether helper bones can be selected or not"
 		,default	 = True
 	)
 	bpy.types.Armature.cloudrig_properties_bone = BoolProperty(
 		name		 = "Properties Bone"
-		,description = "CloudRig: Specify a bone to store Properties on. This bone doesn't have to exist in the metarig."
+		,description = "Specify a bone to store Properties on. This bone doesn't have to exist in the metarig"
 		,default	 = True
 	)
 	

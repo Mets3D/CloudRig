@@ -224,6 +224,10 @@ class BoneInfo(ID):
 	def vec(self):
 		"""Vector pointing from head to tail."""
 		return self.tail-self.head
+	
+	@vec.setter
+	def vec(self, value):
+		self.tail = self.head + value
 
 	def scale_width(self, value):
 		"""Set bbone width relative to current."""
