@@ -54,14 +54,14 @@ class CloudIKChainRig(CloudFKChainRig):
 		)
 		self.register_parent(self.limb_root_bone, self.limb_ui_name)
 
-	def make_pole_control(self, org_chain):
+	def calculate_ik_info(self):
 		meta_first_name = self.org_chain[0].name.replace("ORG-", "")
 		meta_first = self.meta_bone(meta_first_name, pose=True)
 
 		meta_last_name = self.org_chain[1].name.replace("ORG-", "")
 		meta_last = self.meta_bone(meta_last_name, pose=True)
 
-		chain_vector = meta_last.bone.tail_local - meta_first.bone.head_local
+		self.chain_vector = meta_last.bone.tail_local - meta_first.bone.head_local
 
 		tail = meta_first.bone.tail_local
 		last_tail = meta_last.bone.tail_local
@@ -94,17 +94,18 @@ class CloudIKChainRig(CloudFKChainRig):
 			perpendicular_axis = meta_first.z_axis
 		
 		# Find the vector that is perpendicular to a plane defined by the chain vector and the main rotation axis.
-		pole_vector = chain_vector.cross(perpendicular_axis).normalized() * vector_flipper * chain_vector.length
+		self.pole_vector = self.chain_vector.cross(perpendicular_axis).normalized() * vector_flipper * self.chain_vector.length
 
 		# We want the pole control to be offset from the first bone's tail by that vector.
-		pole_location = tail + pole_vector
+		self.pole_location = tail + self.pole_vector
 
+	def create_pole_control(self):
 		# Create IK Pole Control
 		pole_ctrl = self.pole_ctrl = self.bone_infos.bone(
 			name			   = self.make_name(["IK", "POLE"], self.limb_name, [self.side_suffix]),
 			bbone_width		   = 0.1,
-			head			   = pole_location,
-			tail			   = pole_location + pole_vector.normalized() * chain_vector.length/5,
+			head			   = self.pole_location,
+			tail			   = self.pole_location + self.pole_vector.normalized() * self.chain_vector.length/5,
 			roll			   = 0,
 			custom_shape	   = self.load_widget('ArrowHead'),
 			custom_shape_scale = 0.5,
@@ -114,7 +115,7 @@ class CloudIKChainRig(CloudFKChainRig):
 		pole_line = self.bone_infos.bone(
 			name					   = self.make_name(["IK", "POLE", "LINE"], self.limb_name, [self.side_suffix]),
 			source					   = pole_ctrl,
-			tail					   = org_chain[0].tail.copy(),
+			tail					   = self.org_chain[0].tail.copy(),
 			custom_shape			   = self.load_widget('Pole_Line'),
 			use_custom_shape_bone_size = True,
 			parent					   = pole_ctrl,
@@ -362,10 +363,11 @@ class CloudIKChainRig(CloudFKChainRig):
 			bone_group	 = 'Body: Main IK Controls'
 		)
 
+		self.calculate_ik_info()
 		# Create Pole control
 		self.pole_ctrl = None
 		if self.params.CR_use_pole_target:
-			self.pole_ctrl = self.make_pole_control(self.org_chain)
+			self.pole_ctrl = self.create_pole_control()
 
 		# Create IK Chain
 		self.ik_chain = self.make_ik_chain(self.org_chain, self.ik_mstr, self.pole_ctrl, self.ik_pole_direction)
