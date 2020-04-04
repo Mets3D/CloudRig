@@ -14,28 +14,6 @@ class CloudIKChainRig(CloudFKChainRig):
 
 	description = "IK chain with stretchy IK and IK/FK snapping. Pole control optional."
 
-	####################################################
-	# Utilities
-
-	def compute_elbow_vector(self, bones):
-		lo_vector = bones[1].vec
-		tot_vector = bones[1].tail - bones[0].head
-		return (lo_vector.project(tot_vector) - lo_vector).normalized() * tot_vector.length
-
-	def compute_pole_angle(self, org_chain, elbow_vector):
-		if self.params.CR_rotation_axis == 'z':
-			return 0
-
-		vector = Vector()
-		for b in org_chain:
-			meta_bone = self.generator.metarig.pose.bones.get(b.name.replace("ORG-", ""))
-			vector += meta_bone.z_axis
-
-		if elbow_vector.angle(vector) > rad(90):
-			return -rad(90)
-		else:
-			return rad(90)
-
 	def initialize(self):
 		"""Gather and validate data about the rig."""
 		super().initialize()
@@ -77,69 +55,56 @@ class CloudIKChainRig(CloudFKChainRig):
 		self.register_parent(self.limb_root_bone, self.limb_ui_name)
 
 	def make_pole_control(self, org_chain):
-		elbow_vector = self.compute_elbow_vector(self.org_chain[:2])
-		# self.pole_angle = self.compute_pole_angle(org_chain[:self.params.CR_ik_length], elbow_vector)
-		self.pole_angle = 0
+		meta_first_name = self.org_chain[0].name.replace("ORG-", "")
+		meta_first = self.meta_bone(meta_first_name, pose=True)
 
-		pole_location = self.org_chain[0].tail + elbow_vector
-		if self.params.CR_custom_pole_bone == "":
-			meta_first_name = self.org_chain[0].name.replace("ORG-", "")
-			meta_first = self.meta_bone(meta_first_name, pose=True)
+		meta_last_name = self.org_chain[1].name.replace("ORG-", "")
+		meta_last = self.meta_bone(meta_last_name, pose=True)
 
-			meta_last_name = self.org_chain[1].name.replace("ORG-", "")
-			meta_last = self.meta_bone(meta_last_name, pose=True)
+		chain_vector = meta_last.bone.tail_local - meta_first.bone.head_local
 
-			chain_vector = meta_last.bone.tail_local - meta_first.bone.head_local
+		tail = meta_first.bone.tail_local
+		last_tail = meta_last.bone.tail_local
+		
+		# Calculate the distances of the four points to the tail of the last bone.
+		# These four points are in the four directions of the bone around the bone's tail.
+		x_pos_distance = ((tail+meta_first.x_axis) - last_tail).length
+		x_neg_distance = ((tail-meta_first.x_axis) - last_tail).length
 
-			tail = meta_first.bone.tail_local
-			last_tail = meta_last.bone.tail_local
-			
-			# Calculate the distances of the four points to the tail of the last bone.
-			# These four points are in the four directions of the bone around the bone's tail.
-			x_pos_distance = ((tail+meta_first.x_axis) - last_tail).length
-			x_neg_distance = ((tail-meta_first.x_axis) - last_tail).length
+		z_pos_distance = ((tail+meta_first.z_axis) - last_tail).length
+		z_neg_distance = ((tail-meta_first.z_axis) - last_tail).length
 
-			z_pos_distance = ((tail+meta_first.z_axis) - last_tail).length
-			z_neg_distance = ((tail-meta_first.z_axis) - last_tail).length
+		# Store those distances in a dictionary where they are matched with a tuple describing (the main axis of rotation, IK constraint pole_angle), that should be used, when that distance is the lowest.
+		axis_dict = {
+			x_pos_distance : ("-Z", 180),
+			x_neg_distance : ("+Z", 0),
+			z_pos_distance : ("+X", -90),
+			z_neg_distance : ("-X", 90)
+		}
 
-			# Store those distances in a dictionary where they are used to describe the main axis of rotation, when that distance is the lowest.
-			axis_dict = {
-				x_pos_distance : ("-Z", 180),
-				x_neg_distance : ("+Z", 0),
-				z_pos_distance : ("+X", -90),
-				z_neg_distance : ("-X", 90)
-			}
+		lowest_distance = axis_dict[min(list(axis_dict.keys()))]	# Find the tuple to use by picking the one corresponding to the lowest distance.
+		rotation_axis = lowest_distance[0]
+		self.pole_angle = rad(lowest_distance[1])
 
-			lowest_distance = axis_dict[min(list(axis_dict.keys()))]	# Find the main axis of rotation by picking the one corresponding to the lowest distance.
-			rotation_axis = lowest_distance[0]
-			self.pole_angle = rad(lowest_distance[1])
+		vector_flipper = 1
+		perpendicular_axis = meta_first.x_axis
+		if rotation_axis[0] == "-":
+			vector_flipper = -1
+		if rotation_axis[1] == "Z":
+			perpendicular_axis = meta_first.z_axis
+		
+		# Find the vector that is perpendicular to a plane defined by the chain vector and the main rotation axis.
+		pole_vector = chain_vector.cross(perpendicular_axis).normalized() * vector_flipper * chain_vector.length
 
-			vector_flipper = 1
-			perpendicular_axis = meta_first.x_axis
-			if rotation_axis[0] == "-":
-				vector_flipper = -1
-			if rotation_axis[1] == "Z":
-				perpendicular_axis = meta_first.z_axis
-			
-			# Find the vector that is perpendicular to a plane defined by the chain vector and the main rotation axis.
-			pole_vector = chain_vector.cross(perpendicular_axis).normalized() * vector_flipper * chain_vector.length
-
-			# We want the pole control to be offset from the first bone's tail by that vector.
-			pole_location = tail + pole_vector
-		else:
-			meta_pole = self.meta_bone(self.params.CR_custom_pole_bone)
-			if meta_pole:
-				pole_location = meta_pole.bone.head_local.copy()
+		# We want the pole control to be offset from the first bone's tail by that vector.
+		pole_location = tail + pole_vector
 
 		# Create IK Pole Control
-		first_bone = org_chain[0]
-		elbow = first_bone.tail.copy()	# Starting point for the location of the pole target. TODO: This is no good when IK length > 2.
-		offset = (pole_location - org_chain[0].tail) * self.scale
 		pole_ctrl = self.pole_ctrl = self.bone_infos.bone(
 			name			   = self.make_name(["IK", "POLE"], self.limb_name, [self.side_suffix]),
 			bbone_width		   = 0.1,
 			head			   = pole_location,
-			tail			   = pole_location + offset,
+			tail			   = pole_location + pole_vector.normalized() * chain_vector.length/5,
 			roll			   = 0,
 			custom_shape	   = self.load_widget('ArrowHead'),
 			custom_shape_scale = 0.5,
@@ -149,7 +114,7 @@ class CloudIKChainRig(CloudFKChainRig):
 		pole_line = self.bone_infos.bone(
 			name					   = self.make_name(["IK", "POLE", "LINE"], self.limb_name, [self.side_suffix]),
 			source					   = pole_ctrl,
-			tail					   = elbow,
+			tail					   = org_chain[0].tail.copy(),
 			custom_shape			   = self.load_widget('Pole_Line'),
 			use_custom_shape_bone_size = True,
 			parent					   = pole_ctrl,
@@ -318,6 +283,8 @@ class CloudIKChainRig(CloudFKChainRig):
 		# Create Helpers for main STR bones so they will stick to the stretchy bone.
 		self.main_str_transform_setup(stretch_bone, chain_length)
 
+		return stretch_bone
+
 	def main_str_transform_setup(self, stretch_bone, chain_length):
 		""" Set up transformation constraint to mid-limb STR bone that ensures that it stays in between the root of the limb and the IK master control during IK stretching. """
 		# TODO IMPORTANT: This should be reworked, such that main_str_bones also have an STR-H bone that they are parented to. The STR-H bone has a Copy Transforms constraint to the stretch mechanism helper(the long bone going across the entire chain) which fully activates instantly using a driver, as soon as stretching begins(same check as current, but two checks rolled into one now: whether stretching is enabled and whether the distance to the arm is longer than max)
@@ -399,18 +366,20 @@ class CloudIKChainRig(CloudFKChainRig):
 		self.pole_ctrl = None
 		if self.params.CR_use_pole_target:
 			self.pole_ctrl = self.make_pole_control(self.org_chain)
-			# Add aim constraint to pole display bone
-			self.pole_ctrl.dsp_bone.add_constraint(self.obj, 'DAMPED_TRACK', 
-				subtarget  = self.main_str_bones[1].name, # TODO: This should be something else, maybe... But hard to make it any more accurate without causing a dependency cycle.
-				head_tail  = 1, 
-				track_axis = 'TRACK_NEGATIVE_Y'
-			)
 
 		# Create IK Chain
 		self.ik_chain = self.make_ik_chain(self.org_chain, self.ik_mstr, self.pole_ctrl, self.ik_pole_direction)
 
 		# Set up IK Stretch
-		self.setup_ik_stretch()
+		stretch_bone = self.setup_ik_stretch()
+
+		if self.pole_ctrl:
+			# Add aim constraint to pole display bone
+			self.pole_ctrl.dsp_bone.add_constraint(self.obj, 'DAMPED_TRACK', 
+				subtarget  = stretch_bone.name,
+				head_tail  = 0.5,
+				track_axis = 'TRACK_NEGATIVE_Y'
+			)
 	
 	@stage.prepare_bones
 	def prepare_org_limb(self):
@@ -469,12 +438,6 @@ class CloudIKChainRig(CloudFKChainRig):
 			,default	 = "arms"
 			,description = "Limbs in the same category will have their settings displayed in the same column"
 			)
-
-		params.CR_ik_limb_pole_offset = FloatProperty(	# TODO: Rename to ik_pole_offset - Also, maybe this is redundant.
-			 name	 	 = "Pole Vector Offset"
-			,description = "Push the pole target closer to or further away from the chain"
-			,default 	 = 1.0
-		)
 		params.CR_ik_length = IntProperty(
 			name	 	 = "IK Length"
 			,description = "Length of the IK chain. Cannot be higher than the number of bones in the chain"
@@ -491,22 +454,6 @@ class CloudIKChainRig(CloudFKChainRig):
 			name 		 = "Use Pole Target"
 			,description = "If disabled, you can control the rotation of the IK chain by simply rotating its first bone, rather than with an IK pole control"
 			,default	 = True
-		)
-
-		params.CR_rotation_axis = bpy.props.EnumProperty(
-			name		 = "Rotation Axis"
-			,description = "Main rotation axis of this limb. Used to determine IK facing direction"
-			,items 		 = [
-							('x', 'X', ''),
-							('z', 'Z', '')
-						]
-			,default 	 = 'x'
-		)
-		#TODO: Implement this.
-		params.CR_custom_pole_bone = StringProperty(
-			name 		 = "Custom Pole Position"
-			,description = "When chosen, use this bone's position for the IK pole target, instead of determining it automatically"
-			,default	 = ""
 		)
 
 	@classmethod
@@ -531,12 +478,8 @@ class CloudIKChainRig(CloudFKChainRig):
 
 		pole_row = layout.row()
 		pole_row.prop(params, "CR_use_pole_target")
-		if params.CR_use_pole_target:
-			pole_row.prop_search(params, "CR_custom_pole_bone", bpy.context.object.data, "bones", text="")
-			pole_row.prop(params, "CR_rotation_axis", expand=True)
 		layout.prop(params, "CR_ik_length")
 		layout.prop(params, "CR_world_aligned_controls")
-		# layout.prop(params, "CR_ik_limb_pole_offset")
 
 		return ui_rows
 
