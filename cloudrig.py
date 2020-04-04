@@ -430,9 +430,8 @@ class IKFK_Toggle(bpy.types.Operator):
 		ik_chain = get_bones(armature, self.ik_chain)
 		str_chain = get_bones(armature, self.str_chain)
 
-		ik_pole = armature.pose.bones.get(self.ik_pole)
+		ik_pole = armature.pose.bones.get(self.ik_pole)	# Can be None.
 		ik_control = armature.pose.bones.get(self.ik_control)
-		assert ik_pole, "ERROR: Could not find IK Pole: " + self.ik_pole
 		assert ik_control, "ERROR: Could not find IK Control: " + self.ik_control
 
 		map_on = []
@@ -458,7 +457,14 @@ class IKFK_Toggle(bpy.types.Operator):
 			first_ik_bone = ik_chain[0]
 			last_ik_bone = ik_chain[-1]
 			first_fk_bone = fk_chain[-2].parent
-			self.match_pole_target(first_ik_bone, last_ik_bone, ik_pole, first_fk_bone, 0.5)
+			if ik_pole:
+				self.match_pole_target(first_ik_bone, last_ik_bone, ik_pole, first_fk_bone, 0.5)
+			else:
+				if first_ik_bone.rotation_mode == first_fk_bone.rotation_mode:
+					first_ik_bone.location = first_fk_bone.location.copy()
+					first_ik_bone.rotation_euler = first_fk_bone.rotation_euler.copy()
+				else:
+					first_ik_bone.matrix = first_fk_bone.matrix.copy()
 			context.evaluated_depsgraph_get().update()
 
 		bpy.ops.pose.snap_mapped(
@@ -473,7 +479,7 @@ class IKFK_Toggle(bpy.types.Operator):
 			select_bones = True,
 		)
 
-		if value==0:
+		if value==0 and ik_pole:
 			# Select pole
 			ik_pole.bone.select=True
 
