@@ -44,6 +44,14 @@ class Rig(CloudIKChainRig):
 		if self.limb_type=='LEG':
 			self.ik_pole_offset = 5
 			self.pole_side = -1
+		
+		# List of parent candidate identifiers that this rig is looking for among its registered parent candidates
+		self.ik_parents = ['Root', 'Torso']
+		if self.limb_type == 'LEG':
+			self.ik_parents.append('Hips')
+		elif self.limb_type == 'ARM':
+			self.ik_parents.append('Chest')
+		self.ik_parents.append(self.limb_ui_name)
 
 	# Overrides CloudChainRig.get_segments()
 	def get_segments(self, org_i, chain):
@@ -140,9 +148,6 @@ class Rig(CloudIKChainRig):
 			factor_unit = 0.9 / self.params.CR_deform_segments
 			factor = 0.9 - factor_unit * i
 			self.first_str_counterrotate_setup(self.str_bones[i], self.org_chain[0], factor)
-
-		# TODO: Why do we do this? This is bad if we ever want to parent something to the IK control after this, since it will only be parented to the parent IK control.
-		self.ik_ctrl = self.ik_mstr.parent if self.params.CR_double_ik_control else self.ik_mstr
 
 	def first_str_counterrotate_setup(self, str_bone, org_bone, factor):
 		str_bone.add_constraint(self.obj, 'TRANSFORM',
@@ -352,82 +357,6 @@ class Rig(CloudIKChainRig):
 			org_toe = self.org_chain[-1]
 			org_toe.constraints.pop()
 			org_toe.drivers = {}
-
-	@stage.prepare_bones
-	def prepare_parent_switch(self):
-		if len(self.get_parent_candidates()) == 0:
-			# If this rig has no parent candidates, there's nothing to be done here.
-			return
-		
-		# List of parent candidate identifiers that this rig is looking for among its registered parent candidates
-		parents = []
-		if self.limb_type == 'LEG':
-			parents = ['Root', 'Torso', 'Hips', self.limb_ui_name]
-		elif self.limb_type == 'ARM':
-			parents = ['Root', 'Torso', 'Chest', self.limb_ui_name]
-
-		# Try to rig the IK control's parent switcher, searching for these parent candidates.
-		ik_parents_prop_name = "ik_parents_" + self.limb_name_props
-		
-		parent_names = self.rig_child(self.ik_ctrl, parents, self.prop_bone, ik_parents_prop_name)
-		if len(parent_names) > 0:
-			bones = [self.ik_ctrl.name]
-			if self.params.CR_use_pole_target:
-				bones.append(self.pole_ctrl.name)
-			else:
-				bones.append(self.ik_chain[0].name)
-			info = {
-				"prop_bone" : self.prop_bone.name,
-				"prop_id" : ik_parents_prop_name,
-				"texts" : parent_names,
-				
-				"operator" : "pose.rigify_switch_parent",
-				"icon" : "COLLAPSEMENU",
-				"parent_names" : parent_names,
-				"bones" : bones,
-				}
-			self.add_ui_data("parents", self.category, self.limb_ui_name, info, default=0, _max=len(parent_names))
-		
-		### IK Pole Follow
-		if self.params.CR_use_pole_target:
-			# Rig the IK Pole control's parent switcher.
-			self.rig_child(self.pole_ctrl, parents, self.prop_bone, ik_parents_prop_name)
-
-			# Add option to the UI.
-			ik_pole_follow_name = "ik_pole_follow_" + self.limb_name_props
-			info = {
-				"prop_bone" : self.prop_bone.name,
-				"prop_id"	: ik_pole_follow_name,
-
-				"operator" : "pose.snap_simple",
-				"bones" : [self.pole_ctrl.name],
-				"select_bones" : True
-			}
-			default = 1.0 if self.limb_type=='LEG' else 0.0
-			self.add_ui_data("ik_pole_follows", self.category, self.limb_ui_name, info, default=default)
-
-			# Get the armature constraint from the IK pole's parent, and add the IK master as a new target.
-			arm_con_bone = self.pole_ctrl.parent
-			arm_con = arm_con_bone.constraints[0][1]
-			arm_con['targets'].append({
-				"subtarget" : self.ik_ctrl.name
-			})
-
-			# Tweak each driver on the IK pole's parent, as well as add a driver to the new target.
-			drv = Driver()
-			data_path = 'constraints["Armature"].targets[%d].weight' %(len(arm_con['targets'])-1)
-			arm_con_bone.drivers[data_path] = drv
-			for i, dp in enumerate(arm_con_bone.drivers):
-				d = arm_con_bone.drivers[dp]
-				d.expression = "(%s) - follow" %d.expression
-				if i == len(arm_con_bone.drivers)-1:
-					d.expression = "follow"
-				follow_var = d.make_var("follow")
-				follow_var
-				follow_var.type = 'SINGLE_PROP'
-				follow_var.targets[0].id_type = 'OBJECT'
-				follow_var.targets[0].id = self.obj
-				follow_var.targets[0].data_path = f'pose.bones["{self.prop_bone.name}"]["{ik_pole_follow_name}"]'
 
 	##############################
 	# Parameters
