@@ -506,10 +506,9 @@ class IKFK_Toggle(bpy.types.Operator):
 			loc = mat.to_translation()
 
 			rest = pose_bone.bone.matrix_local.copy()
+			par_rest = Matrix()
 			if pose_bone.bone.parent:
 				par_rest = pose_bone.bone.parent.matrix_local.copy()
-			else:
-				par_rest = Matrix()
 
 			q = (par_rest.inverted() @ rest).to_quaternion()
 			pose_bone.location = q @ loc

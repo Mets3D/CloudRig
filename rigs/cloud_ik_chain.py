@@ -58,6 +58,7 @@ class CloudIKChainRig(CloudFKChainRig):
 		self.ik_stretch_name = "ik_stretch_" + self.limb_name_props
 		self.fk_hinge_name = "fk_hinge_" + self.limb_name_props
 
+		self.pole_side = 1
 		self.ik_pole_offset = 3		# Scalar on distance from the body.
 
 	@stage.prepare_bones
@@ -74,17 +75,31 @@ class CloudIKChainRig(CloudFKChainRig):
 			bone_group			= 'Body: IK-MCH - IK Mechanism Bones'
 		)
 		self.register_parent(self.limb_root_bone, self.limb_ui_name)
-	
+
 	def make_pole_control(self, org_chain):
 		elbow_vector = self.compute_elbow_vector(self.org_chain[:2])
 		self.pole_angle = self.compute_pole_angle(org_chain[:self.params.CR_ik_length], elbow_vector)
 		
-		pole_location = Vector()
+		pole_location = self.org_chain[0].tail + elbow_vector
 		if self.params.CR_custom_pole_bone == "":
-			pole_location = self.org_chain[0].tail + elbow_vector
+			meta_first_name = self.org_chain[0].name.replace("ORG-", "")
+			meta_first = self.meta_bone(meta_first_name, pose=True)
+
+			meta_last_name = self.org_chain[1].name.replace("ORG-", "")
+			meta_last = self.meta_bone(meta_last_name, pose=True)
+
+			chain_head = meta_first.bone.head_local
+			chain_tail = meta_last.bone.tail_local
+			chain_vector = chain_tail - chain_head
+
+			# Get a vector perpendicular to the plane defined by the IK chain and the first bone's X axis.
+			pole_vector = chain_vector.cross(meta_first.x_axis).normalized() * -self.pole_side * self.scale*3
+
+			pole_location = chain_head + (chain_vector/2) + pole_vector
 		else:
-			meta_pole = self.generator.metarig.pose.bones.get(self.params.CR_custom_pole_bone)
-			pole_location = meta_pole.bone.head_local.copy()
+			meta_pole = self.meta_bone(self.params.CR_custom_pole_bone)
+			if meta_pole:
+				pole_location = meta_pole.bone.head_local.copy()
 
 		# Create IK Pole Control
 		first_bone = org_chain[0]

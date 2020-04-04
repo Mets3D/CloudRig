@@ -43,6 +43,7 @@ class Rig(CloudIKChainRig):
 		self.ik_pole_direction = 1 if self.limb_type=='ARM' else -1				#TODO: self.limb_type doesn't exist in cloud_ik_chain...
 		if self.limb_type=='LEG':
 			self.ik_pole_offset = 5
+			self.pole_side = -1
 
 	# Overrides CloudChainRig.get_segments()
 	def get_segments(self, org_i, chain):
