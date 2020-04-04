@@ -79,16 +79,22 @@ class CloudIKChainRig(CloudFKChainRig):
 		elbow_vector = self.compute_elbow_vector(self.org_chain[:2])
 		self.pole_angle = self.compute_pole_angle(org_chain[:self.params.CR_ik_length], elbow_vector)
 		
+		pole_location = Vector()
+		if self.params.CR_custom_pole_bone == "":
+			pole_location = self.org_chain[0].tail + elbow_vector
+		else:
+			meta_pole = self.generator.metarig.pose.bones.get(self.params.CR_custom_pole_bone)
+			pole_location = meta_pole.bone.head_local.copy()
+
 		# Create IK Pole Control
 		first_bone = org_chain[0]
 		elbow = first_bone.tail.copy()	# Starting point for the location of the pole target. TODO: This is no good when IK length > 2.
-		head = self.org_chain[0].tail + elbow_vector
-		offset = elbow_vector * self.scale
+		offset = (pole_location - org_chain[0].tail) * self.scale
 		pole_ctrl = self.pole_ctrl = self.bone_infos.bone(
 			name			   = self.make_name(["IK", "POLE"], self.limb_name, [self.side_suffix]),
 			bbone_width		   = 0.1,
-			head			   = head,
-			tail			   = head + offset,
+			head			   = pole_location,
+			tail			   = pole_location + offset,
 			roll			   = 0,
 			custom_shape	   = self.load_widget('ArrowHead'),
 			custom_shape_scale = 0.5,
