@@ -42,7 +42,6 @@ class CloudIKChainRig(CloudFKChainRig):
 		# List of parent candidate identifiers that this rig is looking for among its registered parent candidates
 		self.ik_parents = ['Root', 'Torso', 'Hips', 'Chest', self.limb_ui_name]
 
-	@stage.prepare_bones
 	def prepare_root_bone(self):
 		# Socket/Root bone to parent IK and FK to.
 		root_name = self.base_bone.replace("ORG", "ROOT")
@@ -353,7 +352,6 @@ class CloudIKChainRig(CloudFKChainRig):
 
 			main_str_helper.drivers[data_path] = stretchy_drv
 
-	@stage.prepare_bones
 	def prepare_ik_chain(self):
 		# Create IK Master control
 		ik_org_bone = self.org_chain[self.params.CR_ik_length-1]
@@ -386,7 +384,6 @@ class CloudIKChainRig(CloudFKChainRig):
 				track_axis = 'TRACK_NEGATIVE_Y'
 			)
 	
-	@stage.prepare_bones
 	def prepare_org_limb(self):
 		# Note: Runs after prepare_org_chain().
 		
@@ -411,13 +408,10 @@ class CloudIKChainRig(CloudFKChainRig):
 			data_path = 'constraints["%s"].influence' %(ik_ct_name)
 			org_bone.drivers[data_path] = drv
 
-	@stage.prepare_bones
-	def prepare_parent_switch(self):
+	def prepare_parent_switch(self, ik_ctrl):
 		if len(self.get_parent_candidates()) == 0:
 			# If this rig has no parent candidates, there's nothing to be done here.
 			return
-
-		ik_ctrl = self.ik_mstr.parent if self.params.CR_double_ik_control else self.ik_mstr
 
 		# Try to rig the IK control's parent switcher, searching for these parent candidates.
 		ik_parents_prop_name = "ik_parents_" + self.limb_name_props
@@ -481,6 +475,13 @@ class CloudIKChainRig(CloudFKChainRig):
 				follow_var.targets[0].id_type = 'OBJECT'
 				follow_var.targets[0].id = self.obj
 				follow_var.targets[0].data_path = f'pose.bones["{self.prop_bone.name}"]["{ik_pole_follow_name}"]'
+
+	def prepare_bones(self):
+		super().prepare_bones()
+		self.prepare_root_bone()
+		self.prepare_ik_chain()
+		self.prepare_org_limb()
+		self.prepare_parent_switch(self.ik_mstr)
 
 	##############################
 	# Parameters

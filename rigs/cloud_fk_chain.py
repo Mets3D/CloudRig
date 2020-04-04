@@ -16,7 +16,6 @@ class CloudFKChainRig(CloudChainRig):
 		"""Gather and validate data about the rig."""
 		super().initialize()
 
-	@stage.prepare_bones
 	def prepare_fk_chain(self):
 		self.fk_chain = []
 		fk_name = ""
@@ -47,7 +46,6 @@ class CloudFKChainRig(CloudChainRig):
 				)
 			self.fk_chain.append(fk_bone)
 
-	@stage.prepare_bones
 	def prepare_org_chain(self):
 		# Find existing ORG bones
 		# Add Copy Transforms constraints targetting FK.
@@ -55,6 +53,11 @@ class CloudFKChainRig(CloudChainRig):
 			fk_bone = self.bone_infos.find(org_bone.name.replace("ORG", "FK"))
 
 			org_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=fk_bone.name, name="Copy Transforms FK")
+
+	def prepare_bones(self):
+		super().prepare_bones()
+		self.prepare_fk_chain()
+		self.prepare_org_chain()
 
 	##############################
 	# Parameters

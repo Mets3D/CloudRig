@@ -161,7 +161,6 @@ class CloudChainRig(CloudBaseRig):
 				influence = i * influence_unit
 				self.rig_str_helper(str_h_bone, first_str, last_str, influence)
 
-	@stage.prepare_bones
 	def prepare_def_str_chains(self):
 		# We refer to a full limb as a limb. (eg. Arm)
 		# Each part of that limb is a section. (eg. Forearm)
@@ -263,6 +262,10 @@ class CloudChainRig(CloudBaseRig):
 					self.make_bbone_scale_drivers(def_bone)
 
 		self.connect_parent_chain_rig()
+
+	def prepare_bones(self):
+		super().prepare_bones()
+		self.prepare_def_str_chains()
 
 	##############################
 	# Parameters

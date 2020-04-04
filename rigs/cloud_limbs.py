@@ -350,6 +350,9 @@ class Rig(CloudIKChainRig):
 		fk_toe.drivers[data_path1] = drv1
 		fk_toe.drivers[data_path2] = drv2
 
+	def prepare_parent_switch(self, ik_ctrl):
+		return
+
 	@stage.prepare_bones
 	def foot_org_tweak(self):
 		# Delete IK constraint and driver from toe bone. It should always use FK.
@@ -357,6 +360,14 @@ class Rig(CloudIKChainRig):
 			org_toe = self.org_chain[-1]
 			org_toe.constraints.pop()
 			org_toe.drivers = {}
+
+	@stage.prepare_bones
+	def prepare_parent_switch_with_double_control(self):
+		ik_ctrl = self.ik_mstr
+		if self.params.CR_double_ik_control:
+			ik_ctrl = ik_ctrl.parent
+
+		super().prepare_parent_switch(ik_ctrl)
 
 	##############################
 	# Parameters
