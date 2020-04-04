@@ -88,14 +88,41 @@ class CloudIKChainRig(CloudFKChainRig):
 			meta_last_name = self.org_chain[1].name.replace("ORG-", "")
 			meta_last = self.meta_bone(meta_last_name, pose=True)
 
-			chain_head = meta_first.bone.head_local
-			chain_tail = meta_last.bone.tail_local
-			chain_vector = chain_tail - chain_head
+			chain_vector = meta_last.bone.tail_local - meta_first.bone.head_local
 
-			# Get a vector perpendicular to the plane defined by the IK chain and the first bone's X axis.
-			pole_vector = chain_vector.cross(meta_first.x_axis).normalized() * -self.pole_side * self.scale*3
+			tail = meta_first.bone.tail_local
+			last_tail = meta_last.bone.tail_local
+			
+			# Calculate the distances of the four points to the tail of the last bone.
+			# These four points are in the four directions of the bone around the bone's tail.
+			x_pos_distance = ((tail+meta_first.x_axis) - last_tail).length
+			x_neg_distance = ((tail-meta_first.x_axis) - last_tail).length
 
-			pole_location = chain_head + (chain_vector/2) + pole_vector
+			z_pos_distance = ((tail+meta_first.z_axis) - last_tail).length
+			z_neg_distance = ((tail-meta_first.z_axis) - last_tail).length
+
+			# Store those distances in a dictionary where they are used to describe the main axis of rotation, when that distance is the lowest.
+			axis_dict = {
+				x_pos_distance : "-Z",
+				x_neg_distance : "+Z",
+				z_pos_distance : "+X",
+				z_neg_distance : "-X",
+			}
+
+			lowest_distance = axis_dict[min(list(axis_dict.keys()))]	# Find the main axis of rotation by picking the one corresponding to the lowest distance.
+			
+			vector_flipper = 1
+			perpendicular_axis = meta_first.x_axis
+			if lowest_distance[0] == "-":
+				vector_flipper = -1
+			if lowest_distance[1] == "Z":
+				perpendicular_axis = meta_first.z_axis
+			
+			# Find the vector that is perpendicular to a plane defined by the chain vector and the main rotation axis.
+			pole_vector = chain_vector.cross(perpendicular_axis).normalized() * vector_flipper * chain_vector.length
+
+			# We want the pole control to be offset from the first bone's tail by that vector.
+			pole_location = tail + pole_vector
 		else:
 			meta_pole = self.meta_bone(self.params.CR_custom_pole_bone)
 			if meta_pole:
@@ -161,8 +188,8 @@ class CloudIKChainRig(CloudFKChainRig):
 			"ik_control"			: self.ik_mstr.name
 		}
 		default = 1.0
-		if hasattr(self, "limb_type") and self.limb_type=='ARM':
-			default = 0.0	# TODO: delet this. (arbitrary hardcoded defaults, for CoffeeRun)
+		# if hasattr(self, "limb_type") and self.limb_type=='ARM':
+		# 	default = 0.0	# TODO: delet this. (arbitrary hardcoded defaults, for CoffeeRun)
 		self.add_ui_data("ik_switches", self.category, self.limb_ui_name, info, default=default)
 
 	def make_ik_chain(self, org_chain, ik_mstr, pole_target, ik_pole_direction=0):
