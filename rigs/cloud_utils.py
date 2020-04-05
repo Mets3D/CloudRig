@@ -522,6 +522,9 @@ class EnsureVisible:
 			print(f"Could not ensure visibility of object {obj.name}. Can only ensure the visibility of one object at a time. Must Run EnsureVisible.restore()!")
 			return
 		
+		if obj.visible_get():
+			return
+		
 		coll_name = "temp_coll"
 		temp_coll = bpy.data.collections.get(coll_name)
 		if not temp_coll:
@@ -544,6 +547,7 @@ class EnsureVisible:
 		# Delete temp collection
 		if not cls.temp_coll:
 			return
+		bpy.data.collections.remove(cls.temp_coll)
 		cls.temp_coll = None
 
 		obj.hide_set(cls.obj_hide)

@@ -218,18 +218,6 @@ class CloudCurveRig(CloudBaseRig):
 
 		# Reset selection so Rigify can continue execution.
 		bpy.ops.object.mode_set(mode='OBJECT')
-		bpy.context.view_layer.objects.active = self.obj
-		self.obj.select_set(True)
-
-		# Collections and visibility
-		if curve_ob.name not in self.generator.collection.objects:
-			self.generator.collection.objects.link(curve_ob)
-		for c in curve_ob.users_collection:
-			if c == self.generator.collection: continue
-			c.objects.unlink(curve_ob)
-		curve_ob.hide_viewport = False
-
-		# Reset selection so Rigify can continue execution.
 		self.restore_visible(curve_ob)
 		bpy.context.view_layer.objects.active = self.obj
 		self.obj.select_set(True)
