@@ -5,6 +5,7 @@ from rigify.utils.bones import BoneDict
 from ..definitions.bone import BoneInfoContainer, BoneInfo
 from ..definitions.driver import Driver
 from ..definitions import custom_props
+from . import cloud_utils
 
 # TODO: When Transforms param is unchecked, move the metabone to the generated bone's transforms during generation?
 
@@ -28,7 +29,7 @@ class CloudBoneRig(BaseRig):
 		new_con = to_bone.constraints.new(from_con.type)
 		new_con.name = from_con.name
 
-		skip = ['active', 'bl_rna', 'error_location', 'error_rotation']
+		skip = ['active', 'bl_rna', 'error_location', 'error_rotation', 'is_proxy_local', 'is_valid', 'rna_type', 'type']
 		for key in dir(from_con):
 			if "__" in key: continue
 			if(key in skip): continue
@@ -55,32 +56,18 @@ class CloudBoneRig(BaseRig):
 	def generate_bones(self):
 		if self.params.CR_copy_type != "Create": return
 		
-		# TODO: If the bone already exists, delete it.
-		# Make a copy of the ORG- bone without the ORG- prefix. This is our control bone.
-		mod_bone_name = self.copy_bone(self.bones.org, self.bone_name, parent=True)
-		self.bone_name = mod_bone_name
-		
 		# Make a copy with DEF- prefix, as our deform bone.
 		if self.params.CR_create_deform_bone: 
-			def_bone_name = self.copy_bone(self.bones.org, self.bone_name)
+			def_bone_name = "DEF-" + self.bone_name
+			def_bone_name = self.copy_bone(self.bones.org, def_bone_name)
 			def_bone = self.get_bone(def_bone_name)
-			def_bone.name = "DEF-" + self.bone_name
-			def_bone.parent = self.get_bone(self.bone_name)
+			def_bone.parent = self.get_bone(self.bones.org)
 
-		# And then we hack our parameters, so future stages just modify this newly created bone :)
-		# Afaik, we only need to worry about pose bone properties, edit_bone stuff is taken care of by self.copy_bone().
-		self.params.CR_copy_type = 'Tweak'
-		self.params.CR_transform_locks = True
-		self.params.CR_bone_rot_mode = True
-		self.params.CR_bone_shape = True
-		self.params.CR_layers = True
-		self.params.CR_custom_props = True
-		self.params.CR_ik_settings = True
 
 	@stage.configure_bones
 	def modify_bone_group(self):
 		if self.params.CR_copy_type != 'Tweak': return
-		mod_bone = self.get_bone(self.bone_name)
+		mod_bone = self.get_bone(self.bones.org)
 		meta_bone = self.generator.metarig.pose.bones.get(self.bone_name)
 
 		meta_bg = meta_bone.bone_group
@@ -101,10 +88,9 @@ class CloudBoneRig(BaseRig):
 	@stage.apply_bones
 	def modify_edit_bone(self):
 		if self.params.CR_copy_type != 'Tweak': return
-		bone_name = self.base_bone.replace("ORG-", "")
-		mod_bone = self.get_bone(bone_name)
+		mod_bone = self.get_bone(self.bones.org)
 		org_bone = self.get_bone(self.base_bone)
-		meta_bone = self.generator.metarig.data.bones.get(bone_name)
+		meta_bone = self.generator.metarig.data.bones.get(self.bone_name)
 
 		if self.params.CR_bone_transforms:
 			mod_bone.head = meta_bone.head_local.copy()
@@ -114,7 +100,6 @@ class CloudBoneRig(BaseRig):
 			mod_bone.bbone_z = meta_bone.bbone_z
 		
 		parent = self.obj.data.edit_bones.get(self.params.CR_custom_bone_parent)
-		
 		if parent:
 			mod_bone.parent = parent
 
@@ -124,6 +109,8 @@ class CloudBoneRig(BaseRig):
 		mod_bone = self.get_bone(self.bone_name)
 		meta_bone = self.generator.metarig.pose.bones.get(self.bone_name)
 		org_bone = self.get_bone(self.base_bone)
+
+		mod_bone.bone.use_deform = meta_bone.bone.use_deform
 		
 		if self.params.CR_transform_locks:
 			mod_bone.lock_location = meta_bone.lock_location[:]
@@ -172,7 +159,8 @@ class CloudBoneRig(BaseRig):
 		for org_c in org_bone.constraints:
 			# Create a copy of this constraint on mod_bone
 			new_con = self.copy_constraint(org_c, mod_bone)
-			new_con.target = self.obj
+			if not new_con.target:
+				new_con.target = self.obj
 			split_name = new_con.name.split("@")
 			subtargets = split_name[1:]
 			if new_con.type=='ARMATURE':
@@ -195,12 +183,6 @@ class CloudBoneRig(BaseRig):
 		# Copy and retarget drivers
 		self.copy_and_retarget_drivers(mod_bone)
 
-	@stage.finalize
-	def rig_org_bone(self):
-		# Constrain the ORG- bone to the control bone.
-		org_bone = self.get_bone(self.base_bone)
-		self.make_constraint(self.base_bone, 'COPY_TRANSFORMS', self.bone_name)
-	
 	def copy_and_retarget_driver(self, BPY_driver, obj, data_path, index=-1):
 		"""Copy a driver to some other data path, while accounting for any constraint retargetting."""
 		driver = Driver(BPY_driver)
@@ -229,6 +211,22 @@ class CloudBoneRig(BaseRig):
 		for d in metarig.data.animation_data.drivers:
 			if bone.name in d.data_path:
 				self.copy_and_retarget_driver(d, rig.data, d.data_path, d.array_index)
+
+	@stage.finalize
+	def tweak_org_bone(self):
+		if self.params.CR_copy_type != 'Create': return
+		org_bone = self.get_bone(self.bones.org)
+		org_bone.name = self.bone_name
+
+		meta_bone = self.generator.metarig.pose.bones.get(self.bone_name)
+
+		cloud_utils.lock_transforms(org_bone, loc=meta_bone.lock_location[:], rot=meta_bone.lock_rotation[:], scale=meta_bone.lock_scale[:])
+
+		org_bone.bone.layers = meta_bone.bone.layers[:]
+		org_bone.bone.use_deform = meta_bone.bone.use_deform
+
+		if meta_bone.bone_group:
+			org_bone.bone_group = self.obj.pose.bone_groups.get(meta_bone.bone_group.name)
 
 	##############################
 	# Parameters
