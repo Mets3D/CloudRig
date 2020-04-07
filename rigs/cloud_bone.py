@@ -45,7 +45,7 @@ class CloudBoneRig(BaseRig):
 			try:
 				setattr(new_con, key, value)
 			except AttributeError:	# Read-Only properties throw AttributeError. These should all be added to the skip list.
-				print("Warning: Can't copy read-only attribute %s to %s type constraint" %(key, new_con.type) )
+				print(f"Warning: Can't copy read-only attribute {key} to {new_con.type} type constraint")
 				continue
 		
 		return new_con

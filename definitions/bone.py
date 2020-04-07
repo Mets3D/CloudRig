@@ -7,7 +7,7 @@ import copy
 from ..layers import group_defs, set_layers
 
 # Attributes that reference an actual bone ID. These should get special treatment, because we don't want to store said bone ID. 
-# Ideally we would store a BoneInfo, but a string is allowed too(less safe).
+# Ideally we would store a BoneInfo, but a string is allowed too.
 bone_attribs = ['parent', 'bbone_custom_handle_start', 'bbone_custom_handle_end']
 
 def get_defaults(contype, armature):
@@ -58,7 +58,7 @@ def setattr_safe(thing, key, value):
 	try:
 		setattr(thing, key, value)
 	except:
-		print("ERROR: Wrong type assignment: key:%s, type:%s, expected:%s"%(key, type(key), type(getattr(thing, key)) ) )
+		print(f"ERROR: Wrong type assignment: key:{key}, type:{type(key)}, expected:{type(getattr(thing, key))}")
 		print(thing)
 
 class BoneInfoContainer(ID):
@@ -382,9 +382,9 @@ class BoneInfo(ID):
 					elif(type(value) == BoneInfo):
 						real_bone = value.get_real(armature)
 						if not real_bone:
-							print("WARNING: Parent %s not found for bone: %s" % (self.parent.name, self.name))
+							print(f"WARNING: {key}: {self.parent.name} not found for bone: {self.name}")
 					elif value != None:
-						# TODO: Maybe this should be raised when assigning the parent to the variable in the first place(via @property setter/getter)
+						# TODO: Maybe this should be raised when assigning the parent in the first place(via @property setter/getter)
 						assert False, "ERROR: Unsupported parent type: " + str(type(value))
 					
 					setattr_safe(edit_bone, key, real_bone)
@@ -413,16 +413,12 @@ class BoneInfo(ID):
 
 			# If the bone group doesn't already exist, warn about it. It should've been created in cloud_utils.init_bone_groups().
 			if not bone_group:
-				print("Warning: Could not find bone group %s for bone %s." %(self.bone_group, self.name))
+				print(f"Warning: Could not find bone group {self.bone_group} for bone {self.name}.")
 			else:
 				pose_bone.bone_group = bone_group
-
-				# Set layers if specified in the group definition.
-				if self.bone_group in group_defs:
-					group_def = group_defs[self.bone_group]
-					if 'layers' in group_def:
-						self.set_layers(group_def['layers'])
-						pose_bone.bone.layers = self.layers[:]
+		
+		# Layers
+		pose_bone.bone.layers = self.layers[:]
 
 		# Pose bone data.
 		skip = ['constraints', 'head', 'tail', 'parent', 'children', 'length', 'use_connect', 'bone_group']
@@ -465,14 +461,14 @@ class BoneInfo(ID):
 		
 		# Pose Bone Property Drivers.
 		for path, d in self.drivers.items():
-			data_path = 'pose.bones["%s"].%s' %(pose_bone.name, path)
+			data_path = f'pose.bones["{pose_bone.name}"].{path}'
 			d.make_real(pose_bone.id_data, data_path)
 	
 		# Data Bone Property Drivers.
 		for path, d in self.bone_drivers.items():
 			#HACK: If we want to add drivers to bone properties that are shared between pose and edit mode, they aren't stored under armature.pose.bones[0].property but instead armature.bones[0].property... The entire way we handle drivers should be scrapped tbh. :P
 			# But scrapping that requires scrapping the way we handle bones, so... just keep making it work.
-			data_path = 'bones["%s"].%s' %(pose_bone.name, path)
+			data_path = f'bones["{pose_bone.name}"].{path}'
 			d.make_real(pose_bone.id_data.data, data_path)
 	
 	def get_real(self, armature):

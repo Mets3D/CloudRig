@@ -233,7 +233,7 @@ class CloudSpineRig(CloudChainRig):
 					head_tail = 1,
 				)
 				drv = Driver()
-				drv.expression = "var * %f" %influence
+				drv.expression = f"var * {influence}"
 				var = drv.make_var("var")
 				var.type = 'SINGLE_PROP'
 				var.targets[0].id_type='OBJECT'
@@ -278,7 +278,7 @@ class CloudSpineRig(CloudChainRig):
 			var.type = 'SINGLE_PROP'
 			var.targets[0].id_type='OBJECT'
 			var.targets[0].id = self.obj
-			var.targets[0].data_path = 'pose.bones["%s"]["%s"]' %(self.prop_bone.name, self.ik_prop_name)
+			var.targets[0].data_path = f'pose.bones["{self.prop_bone.name}"]["{self.ik_prop_name}"]'
 
 			data_path = f'constraints["{con_name}"].influence'
 			fk_bone.drivers[data_path] = drv

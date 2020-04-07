@@ -166,8 +166,8 @@ class Snap_Simple(bpy.types.Operator):
 
 	def get_custom_property_value(self, rig, bone_name, prop_id):
 		prop_bone = rig.pose.bones.get(self.prop_bone)
-		assert prop_bone, "Bone snapping failed: Properties bone %s not found.)" %self.bone_name
-		assert self.prop_id in prop_bone, "Bone snapping failed: Bone %s has no property %s" %(self.bone_name, self.bone_id)
+		assert prop_bone, f"Bone snapping failed: Properties bone {self.bone_name} not found.)"
+		assert self.prop_id in prop_bone, f"Bone snapping failed: Bone {self.bone_name} has no property {self.bone_id}"
 		return prop_bone[self.prop_id]
 
 	def set_custom_property_value(self, rig, bone_name, prop, value, *, keyflags=None):
@@ -368,12 +368,12 @@ class Snap_Mapped(Snap_Simple):
 		matrices = []
 		for affector_name in names_affector:
 			affector_bone = rig.pose.bones.get(affector_name)
-			assert affector_bone, "Error: Snapping failed, bone not found: %s" %affector_name
+			assert affector_bone, f"Error: Snapping failed, bone not found: {affector_name}"
 			matrices.append(affector_bone.matrix.copy())
 
 		for i, affected_name in enumerate(names_affected):
 			affected_bone = rig.pose.bones.get(affected_name)
-			assert affected_bone, "Error: Snapping failed, bones not found: %s" %affected_name
+			assert affected_bone, f"Error: Snapping failed, bones not found: {affected_name}"
 			affected_bone.matrix = matrices[i]
 			context.evaluated_depsgraph_get().update()
 
@@ -761,7 +761,7 @@ class RigUI_Outfits(RigUI):
 				if "$"+prop_id in prop_owner and type(value)==int:
 					names = prop_owner["$"+prop_id]
 					if value > len(names)-1:
-						print("WARNING: Name list for this property is not long enough for current value: %s" %prop_id)
+						print(f"WARNING: Name list for this property is not long enough for current value: {prop_id}")
 						return text
 					return text + ": " + names[value]
 				else:
@@ -879,10 +879,10 @@ def draw_rig_settings(layout, rig, ui_area, label=""):
 		row = layout.row()
 		for entry_name in col_name.keys():
 			info = col_name[entry_name]
-			assert 'prop_bone' in info and 'prop_id' in info, "ERROR: Limb definition lacks properties bone or ID: %s, %s" %(row_name, info)
+			assert 'prop_bone' in info and 'prop_id' in info, f"ERROR: Limb definition lacks properties bone or ID: {row_name}, {info}"
 			prop_bone = rig.pose.bones.get(info['prop_bone'])
 			prop_id = info['prop_id']
-			assert prop_bone and prop_id in prop_bone, "ERROR: Properties bone or property does not exist: %s" %info
+			assert prop_bone and prop_id in prop_bone, f"ERROR: Properties bone or property does not exist: {info}"
 
 			col = row.column()
 			sub_row = col.row(align=True)

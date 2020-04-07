@@ -1,6 +1,3 @@
-from .definitions.driver import *
-from .definitions.custom_props import CustomProp
-
 # Default BoneGroup color schemes that come with Blender.
 presets = {
 	'PRESET01' : [(0.6039215922355652, 0.0, 0.0), (0.7411764860153198, 0.06666667014360428, 0.06666667014360428), (0.9686275124549866, 0.03921568766236305, 0.03921568766236305)],
@@ -145,7 +142,7 @@ def set_layers(obj, layerlist, additive=False):
 	
 	for i, e in enumerate(layerlist):
 		if type(e)==bool:
-			assert len(layerlist)==32, "ERROR: Layer assignment expected a list of 32 booleans, got %d."%len(layerlist)
+			assert len(layerlist)==32, f"ERROR: Layer assignment expected a list of 32 booleans, got {len(layerlist)}."
 			layers[i] = e
 		elif type(e)==int:
 			layers[e] = True

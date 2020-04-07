@@ -87,7 +87,7 @@ class CloudUtilities:
 		var1.type = 'SINGLE_PROP'
 		var1.targets[0].id_type='OBJECT'
 		var1.targets[0].id = self.obj
-		var1.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (str(prop_bone), prop_name)
+		var1.targets[0].data_path = f'pose.bones["{prop_bone.name}"]["{prop_name}"]'
 
 		drv2 = drv1.clone()
 		drv2.expression = "1-var"
@@ -110,7 +110,7 @@ class CloudUtilities:
 
 	def register_parent(self, bone, name):
 		if name in self.parent_candidates:
-			print("WARNING: OVERWRITING REGISTERED PARENT: %s, %s" %(bone.name, name))
+			print(f"WARNING: OVERWRITING REGISTERED PARENT: {bone.name}, {name}")
 		self.parent_candidates[name] = bone
 
 	def get_parent_candidates(self, candidates={}):
@@ -217,7 +217,7 @@ class CloudUtilities:
 			if pn in list(parent_candidates.keys()):
 				found_parents.append(pn)
 		if len(found_parents) == 0: 
-			print("No parents to be rigged for %s." %child_bone.name)
+			print(f"No parents to be rigged for {child_bone.name}.")
 			return found_parents
 
 		# Create parent bone for the bone that stores the Armature constraint.
@@ -237,14 +237,14 @@ class CloudUtilities:
 			})
 
 			drv = Driver()
-			drv.expression = "parent==%d" %(len(targets)-1)
+			drv.expression = f"parent=={len(targets)-1}"
 			var = drv.make_var("parent")
 			var.type = 'SINGLE_PROP'
 			var.targets[0].id_type = 'OBJECT'
 			var.targets[0].id = self.obj
-			var.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (prop_bone.name, prop_name)
+			var.targets[0].data_path = f'pose.bones["{prop_bone.name}"]["{prop_name}"]'
 
-			data_path = 'constraints["Armature"].targets[%d].weight' %(len(targets)-1)
+			data_path = f'constraints["Armature"].targets[{len(targets)-1}].weight'
 			
 			arm_con_bone.drivers[data_path] = drv
 

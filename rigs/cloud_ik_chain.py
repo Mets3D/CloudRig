@@ -134,7 +134,7 @@ class CloudIKChainRig(CloudFKChainRig):
 		var.type = 'SINGLE_PROP'
 		var.targets[0].id_type = 'ARMATURE'
 		var.targets[0].id = self.obj.data
-		var.targets[0].data_path = 'bones["%s"].hide' %pole_ctrl.name
+		var.targets[0].data_path = f'bones["{pole_ctrl.name}"].hide'
 
 		pole_line.bone_drivers['hide'] = drv
 		
@@ -261,7 +261,7 @@ class CloudIKChainRig(CloudFKChainRig):
 		var.type = 'SINGLE_PROP'
 		var.targets[0].id_type = 'OBJECT'
 		var.targets[0].id = self.obj
-		var.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ik_stretch_name)
+		var.targets[0].data_path = f'pose.bones["{self.prop_bone.name}"]["{self.ik_stretch_name}"]'
 
 		data_path = 'constraints["Limit Scale"].influence'
 		
@@ -403,9 +403,9 @@ class CloudIKChainRig(CloudFKChainRig):
 			drv = Driver()
 			var = drv.make_var()
 			var.targets[0].id = self.obj
-			var.targets[0].data_path = 'pose.bones["%s"]["%s"]' %(self.prop_bone.name, self.ikfk_name)
+			var.targets[0].data_path = f'pose.bones["{self.prop_bone.name}"]["{self.ikfk_name}"]'
 
-			data_path = 'constraints["%s"].influence' %(ik_ct_name)
+			data_path = f'constraints["{ik_ct_name}"].influence'
 			org_bone.drivers[data_path] = drv
 
 	def prepare_parent_switch(self, ik_ctrl):
@@ -462,11 +462,12 @@ class CloudIKChainRig(CloudFKChainRig):
 
 			# Tweak each driver on the IK pole's parent, as well as add a driver to the new target.
 			drv = Driver()
-			data_path = 'constraints["Armature"].targets[%d].weight' %(len(arm_con['targets'])-1)
+			target_idx = len(arm_con['targets'])-1
+			data_path = f'constraints["Armature"].targets[{target_idx}].weight'
 			arm_con_bone.drivers[data_path] = drv
 			for i, dp in enumerate(arm_con_bone.drivers):
 				d = arm_con_bone.drivers[dp]
-				d.expression = "(%s) - follow" %d.expression
+				d.expression = f"({d.expression}) - follow"
 				if i == len(arm_con_bone.drivers)-1:
 					d.expression = "follow"
 				follow_var = d.make_var("follow")

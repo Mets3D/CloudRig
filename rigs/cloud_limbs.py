@@ -219,7 +219,7 @@ class Rig(CloudIKChainRig):
 			if ankle_pivot_name=="":
 				ankle_pivot_name = "AnklePivot." + self.side_suffix
 			meta_ankle_pivot = self.generator.metarig.data.bones.get(ankle_pivot_name)
-			assert meta_ankle_pivot, "ERROR: Could not find AnklePivot bone in the metarig: %s." %ankle_pivot_name	# TODO IMPORTANT: This doesn't need to be an assert, just use the transforms of the foot org bone and create a new bone there! After that, we could remove the hardcoded default name of "AnklePivot.L/R".
+			assert meta_ankle_pivot, f"ERROR: Could not find AnklePivot bone in the metarig: {ankle_pivot_name}."	# TODO IMPORTANT: This doesn't need to be an assert, just use the transforms of the foot org bone and create a new bone there! After that, we could remove the hardcoded default name of "AnklePivot.L/R".
 
 			# I want to be able to customize the shape size of the foot controls from the metarig, via ankle pivot bone bbone scale.
 			self.ik_mstr._bbone_x = meta_ankle_pivot.bbone_x
@@ -339,7 +339,7 @@ class Rig(CloudIKChainRig):
 		var1.type = 'SINGLE_PROP'
 		var1.targets[0].id_type='OBJECT'
 		var1.targets[0].id = self.obj
-		var1.targets[0].data_path = 'pose.bones["%s"]["%s"]' % (self.prop_bone.name, self.ikfk_name)
+		var1.targets[0].data_path = f'pose.bones["{self.prop_bone.name}"]["{self.ikfk_name}"]'
 
 		drv2 = drv1.clone()
 		drv2.expression = "ik"

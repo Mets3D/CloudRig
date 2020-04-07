@@ -15,7 +15,7 @@ class CustomProp:
 		self.subtype = subtype
 
 	def make_real(self, owner):
-		""" Apply this custom property to a real Blender ID, such as an object or a bone. """
+		"""Apply this custom property to a real Blender ID, such as an object or a bone."""
 		return rna_idprop_ui_create(
 			owner, 
 			self.name, 
@@ -30,18 +30,18 @@ class CustomProp:
 		)
 	
 	def as_driver_variable(self, owner, id_type='OBJECT'):
-		"""Convert this custom property definition into a driver variable definition, assuming this custom property was already applied to the given owner.."""
+		"""Convert this custom property definition into a driver variable definition, assuming this custom property was already applied to the given owner."""
 		var = DriverVariable(self.name)
 		var.type = 'SINGLE_PROP'
 
 		if type(owner) != bpy.types.Object and id_type != 'OBJECT':
 			# TODO: This doesn't catch nearly all bad cases, we're just assuming here that we won't be making drivers to non-OBJECT id_types. To support that, we'd need a mapping of what id_type enum corresponds to what bpy.type.
-			print("ERROR: Failed to convert custom property into driver variable description, wrong id_type: %s for owner: %s" % (id_type, str(owner)))
+			print(f"ERROR: Failed to convert custom property into driver variable description, wrong id_type: {id_type} for owner: {str(owner)}")
 			return
 		target = var.targets[0]
 		target.id_type = id_type
 		target.id = owner.id_data
-		target.data_path = owner.path_from_id() + '["%s"]' % self.name
+		target.data_path = f'{owner.path_from_id()}["{self.name}"]'
 
 		return var
 
