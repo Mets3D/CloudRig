@@ -48,6 +48,9 @@ class CustomProp:
 def copy_custom_properties(from_obj, keys, to_obj, safe=True):
 	rna_ui = from_obj['_RNA_UI'].to_dict()
 	for key in keys:
+		if key not in rna_ui.keys():
+			print(f"Warning: Could not copy custom property {key} to {to_obj}")
+			continue
 		data = rna_ui[key]
 		custom_prop = CustomProp(
 			key,

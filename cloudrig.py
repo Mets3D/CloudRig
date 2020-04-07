@@ -665,7 +665,7 @@ class Rig_Properties(bpy.types.PropertyGroup):
 			Based on naming convention. Bones storing an outfit's properties must be named "Properties_Outfit_OutfitName".
 		"""
 		rig = self.get_rig()
-		if not rig: return [(('identifier', 'name', 'description'))]
+		if not rig: return [(('0', 'Default', 'Default'))]
 
 		outfits = []
 		for b in rig.pose.bones:
@@ -679,7 +679,7 @@ class Rig_Properties(bpy.types.PropertyGroup):
 		
 		# If no outfits were found, don't return an empty list so the console doesn't spam "'0' matches no enum" warnings.
 		if(items==[]):
-			return [(('identifier', 'name', 'description'))]
+			return [(('0', 'Default', 'Default'))]
 		
 		return items
 	

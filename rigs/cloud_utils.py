@@ -447,12 +447,12 @@ def slice_name(name, prefix_separator="-", suffix_separator="."):
 	return [prefixes, base, suffixes]
 
 def lock_transforms(obj, loc=True, rot=True, scale=True):
-	if type(loc)==list:
+	if type(loc) in (list, tuple):
 		obj.lock_location = loc
 	else:
 		obj.lock_location = [loc, loc, loc]
 
-	if type(rot)==list:
+	if type(rot) in (list, tuple):
 		obj.lock_rotation = rot[:3]
 		if len(rot)==4:
 			obj.lock_rotation_w = rot[-1]
@@ -460,7 +460,7 @@ def lock_transforms(obj, loc=True, rot=True, scale=True):
 		obj.lock_rotation = [rot, rot, rot]
 		obj.lock_rotation_w = rot
 
-	if type(scale)==list:
+	if type(scale) in (list, tuple):
 		obj.lock_scale = scale
 	else:
 		obj.lock_scale = [scale, scale, scale]
