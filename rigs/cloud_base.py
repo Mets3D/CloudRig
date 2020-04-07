@@ -28,8 +28,12 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		"""Gather and validate data about the rig."""
 
 		self.generator_params = self.generator.metarig.data
+		self.prefix_separator = self.generator_params.cloudrig_prefix_separator
+		self.suffix_separator = self.generator_params.cloudrig_suffix_separator
+		assert self.prefix_separator != self.suffix_separator, "Error: Prefix and Suffix separators cannot be the same."
+
 		self.meta_base_bone = self.generator.metarig.pose.bones.get(self.base_bone.replace("ORG-", ""))
-		
+
 		self.parent_candidates = {}
 
 		# Wipe any existing bone groups from the generated rig.	# TODO: Right now, every rig element nukes all the bone groups created by rig elements that generated before it, and then re-creates them. This could use smarter handling... although I'm not too sure how.
@@ -124,11 +128,14 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		for bn in self.bones.org.main:
 			eb = self.get_bone(bn)
 			eb.use_connect = False
+
+			meta_org_name = eb.name.replace("ORG-", "")
+			meta_org = self.generator.metarig.pose.bones.get(meta_org_name)
+			meta_org.name = meta_org.name.replace("-", self.prefix_separator)
+
 			org_bi = self.bone_infos.bone(bn, eb, self.obj, hide_select=self.mch_disable_select)
 			
 			# Rigify discards the bbone scale values from the metarig, but I'd like to keep them for easy visual scaling.
-			meta_org_name = eb.name.replace("ORG-", "")
-			meta_org = self.generator.metarig.pose.bones.get(meta_org_name)
 			org_bi._bbone_x = meta_org.bone.bbone_x
 			org_bi._bbone_z = meta_org.bone.bbone_z
 

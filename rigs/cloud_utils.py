@@ -409,13 +409,17 @@ class CloudUtilities:
 	def lock_transforms(obj, loc=True, rot=True, scale=True):
 		return lock_transforms(obj, loc, rot, scale)
 
-	@staticmethod
-	def make_name(prefixes=[], base="", suffixes=[]):
-		return make_name(prefixes, base, suffixes)
+	def add_prefix_to_name(self, name, new_prefix):
+		""" The most common case of making a bone name based on another one is to add a prefix to it. """
+		sliced_name = self.slice_name(name)
+		sliced_name[0].append(new_prefix)
+		return self.make_name(*sliced_name)
+
+	def make_name(self, prefixes=[], base="", suffixes=[]):
+		return make_name(prefixes, base, suffixes, self.prefix_separator, self.suffix_separator)
 	
-	@staticmethod
-	def slice_name(name):
-		return slice_name(name)
+	def slice_name(self, name):
+		return slice_name(name, self.prefix_separator, self.suffix_separator)
 	
 	@staticmethod
 	def ensure_visible(obj):
@@ -425,21 +429,21 @@ class CloudUtilities:
 	def restore_visible(obj):
 		EnsureVisible.restore(obj)
 
-def make_name(prefixes=[], base="", suffixes=[]):
+def make_name(prefixes=[], base="", suffixes=[], prefix_separator="-", suffix_separator="."):
 	# In our naming convention, prefixes are separated by dashes and suffixes by periods, eg: DSP-FK-UpperArm_Parent.L.001
 	# Trailing zeroes should be avoided though, but that's not done by this function(for now?)
 	name = ""
 	for pre in prefixes:
-		name += pre+"-"
+		name += pre + prefix_separator
 	name += base
 	for suf in suffixes:
-		name += "."+suf
+		name += suffix_separator + suf
 	return name
 
-def slice_name(name):
-	prefixes = name.split("-")[:-1]
-	suffixes = name.split(".")[1:]
-	base = name.split("-")[-1].split(".")[0]
+def slice_name(name, prefix_separator="-", suffix_separator="."):
+	prefixes = name.split(prefix_separator)[:-1]
+	suffixes = name.split(suffix_separator)[1:]
+	base = name.split(prefix_separator)[-1].split(suffix_separator)[0]
 	return [prefixes, base, suffixes]
 
 def lock_transforms(obj, loc=True, rot=True, scale=True):

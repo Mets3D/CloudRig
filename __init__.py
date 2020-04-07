@@ -3,7 +3,7 @@ rigify_info = {
 }
 
 import bpy
-from bpy.props import BoolProperty, StringProperty
+from bpy.props import BoolProperty, StringProperty, EnumProperty
 from .operators import regenerate_rigify_rigs
 from .operators import refresh_drivers
 
@@ -35,6 +35,13 @@ def draw_cloud_generator_options(self, context):
 		mech_row.prop(obj.data, "cloudrig_mechanism_selectable")
 		if obj.data.cloudrig_mechanism_selectable:
 			mech_row.prop(obj.data, "cloudrig_mechanism_movable")
+
+		naming_row = layout.row()
+		naming_row.column().label(text="Prefix Separator")
+		naming_row.column().prop(obj.data, "cloudrig_prefix_separator", text="")
+		naming_row.column().label(text="Suffix Separator")
+		naming_row.column().prop(obj.data, "cloudrig_suffix_separator", text="")
+		
 
 # TODO: Not sure how to get Rigify to call our register() and unregister() for us.
 def register():
@@ -72,6 +79,24 @@ def register():
 		,description = "Specify a bone to store Properties on. This bone doesn't have to exist in the metarig"
 		,default	 = True
 	)
+
+	separators = [
+		(".", ".", "."),
+		("-", "-", "-"),
+		("_", "_", "_"),
+	]
+	bpy.types.Armature.cloudrig_prefix_separator = EnumProperty(
+		name		 = "Prefix Separator"
+		,description = "Character that separates prefixes in the bone names"
+		,items 		 = separators
+		,default	 = "-"
+	)
+	bpy.types.Armature.cloudrig_suffix_separator = EnumProperty(
+		name		 = "Suffix Separator"
+		,description = "Character that separates suffixes in the bone names"
+		,items 		 = separators
+		,default	 = "."
+	)
 	
 	regenerate_rigify_rigs.register()
 	refresh_drivers.register()
@@ -86,6 +111,8 @@ def unregister():
 	del ArmStore.cloudrig_custom_script
 	del ArmStore.cloudrig_mechanism_selectable
 	del ArmStore.cloudrig_mechanism_movable
+	del ArmStore.cloudrig_prefix_separator
+	del ArmStore.cloudrig_suffix_separator
 
 	regenerate_rigify_rigs.unregister()
 	refresh_drivers.unregister()

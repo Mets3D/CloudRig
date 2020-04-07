@@ -145,13 +145,14 @@ class CloudChainRig(CloudBaseRig):
 					main_str_bone.sub_bones = []
 					continue
 				main_str_bone.sub_bones.append(str_bone)
+
 				str_h_bone = self.bone_infos.bone(
-					name = str_bone.name.replace("STR-", "STR-H-"),
-					source = str_bone,
-					bbone_width = 1/10,
-					bone_group = 'Body: STR-H - Stretch Helpers',
-					parent = str_bone.parent,
-					hide_select = self.mch_disable_select
+					name 		 = self.add_prefix_to_name(str_bone.name, "H")
+					,source 	 = str_bone
+					,bbone_width = 1/10
+					,bone_group  = 'Body: STR-H - Stretch Helpers'
+					,parent		 = str_bone.parent
+					,hide_select = self.mch_disable_select
 				)
 				str_bone.parent = str_h_bone
 
