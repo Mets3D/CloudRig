@@ -1,19 +1,14 @@
-import bpy
-from bpy.props import *
+import bpy, traceback, json
+from bpy.props import StringProperty, BoolProperty, BoolVectorProperty, EnumProperty, FloatVectorProperty, PointerProperty, CollectionProperty
 from mathutils import Vector, Matrix
-from math import *
-
-import json
-
-import math
-import traceback
-from mathutils import Euler, Quaternion
+from math import radians, acos
 from rna_prop_ui import rna_idprop_quote_path
 
 # During rig generation, SCRIPT_ID is replaced with the name of the blend file in which the rig was generated.
 # The same value is saved in the generated rig's 'cloudrig' property, which allows matching UI scripts to the rigs that were generated with them
 # This is useful when linking multiple characters that were generated at different times with different versions, into a single scene.
 # So that each rig would use the script that belongs to it.
+
 script_id = "SCRIPT_ID"
 
 class Snap_Simple(bpy.types.Operator):
@@ -22,13 +17,11 @@ class Snap_Simple(bpy.types.Operator):
 	bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
 	bl_description = "Toggle a custom property while ensuring that some bones stay in place"
 
-	bones:		 StringProperty(name="Control Bone")
-	prop_bone:	StringProperty(name="Property Bone")
+	bones:		  StringProperty(name="Control Bone")
+	prop_bone:	  StringProperty(name="Property Bone")
 	prop_id:	  StringProperty(name="Property")
-
 	select_bones: BoolProperty(name="Select Affected Bones", default=True)
-
-	locks:		bpy.props.BoolVectorProperty(name="Locked", size=3, default=[False,False,False])
+	locks:		  BoolVectorProperty(name="Locked", size=3, default=[False,False,False])
 
 	@classmethod
 	def poll(cls, context):
@@ -72,7 +65,7 @@ class Snap_Simple(bpy.types.Operator):
 		# Change the parent
 		# TODO: Instead of relying on scene settings(auto-keying, keyingset, etc) maybe it would be better to have a custom boolean to decide whether to insert keyframes or not. Ask animators.
 		value = self.get_custom_property_value(rig, self.prop_bone, self.prop_id)
-		
+
 		self.set_custom_property_value(
 			rig, self.prop_bone, self.prop_id, 1-value,
 			keyflags=self.keyflags_switch
@@ -248,18 +241,18 @@ class POSE_OT_rigify_switch_parent(Snap_Simple):
 	bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
 	bl_description = "Switch parent, preserving the bone position and orientation"
 
-	bones:		 StringProperty(name="Control Bone")
-	prop_bone:	StringProperty(name="Property Bone")
+	bones:		  StringProperty(name="Control Bone")
+	prop_bone:	  StringProperty(name="Property Bone")
 	prop_id:	  StringProperty(name="Property")
-	
+
 	select_bones: BoolProperty(name="Select Affected Bones", default=True)
 
 	parent_names: StringProperty(name="Parent Names")
-	locks:		bpy.props.BoolVectorProperty(name="Locked", size=3, default=[False,False,False])
+	locks:		  BoolVectorProperty(name="Locked", size=3, default=[False,False,False])
 
 	parent_items = [('0','None','None')]
 
-	selected: bpy.props.EnumProperty(
+	selected:	  EnumProperty(
 		name='Selected Parent',
 		items=lambda s,c: POSE_OT_rigify_switch_parent.parent_items
 	)
@@ -333,18 +326,18 @@ class Snap_Mapped(Snap_Simple):
 	bl_label = "Snap Bones"
 	bl_options = {'REGISTER', 'UNDO'}
 
-	prop_bone:	StringProperty(name="Property Bone")
+	prop_bone:	  StringProperty(name="Property Bone")
 	prop_id:	  StringProperty(name="Property")
 
 	select_bones: BoolProperty(name="Select Affected Bones", default=False)
-	locks:		bpy.props.BoolVectorProperty(name="Locked", size=3, default=[False,False,False])
+	locks:		  BoolVectorProperty(name="Locked", size=3, default=[False,False,False])
 
 	# Lists of bone names separated (converted to string so they could be passed to an operator)
-	map_on: StringProperty()		# Bone name dictionary to use when the property is toggled ON.
-	map_off: StringProperty()		# Bone name dictionary to use when the property is toggled OFF.
-	
-	hide_on: StringProperty()		# List of bone names to hide when property is toggled ON.
-	hide_off: StringProperty()		# List of bone names to hide when property is toggled OFF.
+	map_on:		  StringProperty()		# Bone name dictionary to use when the property is toggled ON.
+	map_off:	  StringProperty()		# Bone name dictionary to use when the property is toggled OFF.
+
+	hide_on:	  StringProperty()		# List of bone names to hide when property is toggled ON.
+	hide_off:	  StringProperty()		# List of bone names to hide when property is toggled OFF.
 
 	def execute(self, context):
 		rig = context.pose_object or context.active_object
@@ -386,14 +379,14 @@ class Snap_Mapped(Snap_Simple):
 
 		self.hide_unhide_bones(get_bones(rig, names_hide), get_bones(rig, names_unhide))
 		self.set_selection(context, get_bones(rig, json.dumps(names_affected)))
-		
+
 		return {'FINISHED'}
 
 	def hide_unhide_bones(self, hide_bones, unhide_bones):
 		# Hide bones
 		for b in hide_bones:
 			b.bone.hide = True
-		
+
 		# Unhide bones
 		for b in unhide_bones:
 			b.bone.hide = False
@@ -405,19 +398,19 @@ class IKFK_Toggle(bpy.types.Operator):
 	bl_idname = "armature.ikfk_toggle"
 	bl_label = "Toggle IK/FK"
 	bl_options = {'REGISTER', 'UNDO'}
-	
-	prop_bone: StringProperty()
-	prop_id: StringProperty()
 
-	fk_chain: StringProperty()
-	ik_chain: StringProperty()
-	str_chain: StringProperty()
+	prop_bone:	StringProperty()
+	prop_id:	StringProperty()
+
+	fk_chain:	StringProperty()
+	ik_chain:	StringProperty()
+	str_chain:	StringProperty()
+
+	ik_control: StringProperty()
+	ik_pole:	StringProperty()
 
 	double_first_control: BoolProperty(default=False)
-	double_ik_control: BoolProperty(default=False)
-
-	ik_pole: StringProperty()
-	ik_control: StringProperty()
+	double_ik_control:	  BoolProperty(default=False)
 
 	@classmethod
 	def poll(cls, context):
@@ -425,7 +418,7 @@ class IKFK_Toggle(bpy.types.Operator):
 
 	def execute(self, context):
 		armature = context.pose_object
-		
+
 		fk_chain = get_bones(armature, self.fk_chain)
 		ik_chain = get_bones(armature, self.ik_chain)
 		str_chain = get_bones(armature, self.str_chain)
@@ -554,8 +547,8 @@ class IKFK_Toggle(bpy.types.Operator):
 		q1 = mat1.to_quaternion()
 		q2 = mat2.to_quaternion()
 		angle = acos(min(1,max(-1,q1.dot(q2)))) * 2
-		if angle > pi:
-			angle = -angle + (2*pi)
+		if angle > radians(90):
+			angle = -angle + radians(180)
 		return angle
 
 	def match_pole_target(self, ik_first, ik_last, pole, match_bone, length):
@@ -629,8 +622,7 @@ class Reset_Rig_Colors(bpy.types.Operator):
 		return {'FINISHED'}
 
 class Rig_ColorProperties(bpy.types.PropertyGroup):
-	""" Store a ColorProperty that can be used to drive colors on the rig, and then be controlled even when the rig is linked.
-	"""
+	""" Store a ColorProperty that can be used to drive colors on the rig, and then be controlled even when the rig is linked. """
 	default: FloatVectorProperty(
 		name='Default',
 		description='',
@@ -659,7 +651,7 @@ class Rig_Properties(bpy.types.PropertyGroup):
 		for rig in get_rigs():
 			if(rig.rig_properties == self):
 				return rig
-	
+
 	def outfits(self, context):
 		""" Callback function for finding the list of available outfits for the outfit enum.
 			Based on naming convention. Bones storing an outfit's properties must be named "Properties_Outfit_OutfitName".
@@ -671,27 +663,27 @@ class Rig_Properties(bpy.types.PropertyGroup):
 		for b in rig.pose.bones:
 			if b.name.startswith("Properties_Outfit_"):
 				outfits.append(b.name.replace("Properties_Outfit_", ""))
-		
+
 		# Convert the list into what an EnumProperty expects.
 		items = []
 		for i, outfit in enumerate(outfits):
 			items.append((outfit, outfit, outfit, i))	# Identifier, name, description, can all be the outfit name.
-		
+
 		# If no outfits were found, don't return an empty list so the console doesn't spam "'0' matches no enum" warnings.
 		if(items==[]):
 			return [(('0', 'Default', 'Default'))]
-		
+
 		return items
-	
+
 	def change_outfit(self, context):
 		""" Update callback of outfit enum. """
-		
+
 		rig = self.get_rig()
 		if not rig: return
-		
+
 		if( (self.outfit == '') ):
 			self.outfit = self.outfits(context)[0][0]
-		
+
 		outfit_bone = rig.pose.bones.get("Properties_Outfit_"+self.outfit)
 
 		if outfit_bone:
@@ -700,13 +692,13 @@ class Rig_Properties(bpy.types.PropertyGroup):
 				value = outfit_bone[key]
 				if type(value) in [float, int]:
 					pass # TODO: Can't seem to reset custom properties to their default, or even so much as read their default!?!?
-			
+
 			# For outfit properties starting with "_", update the corresponding character property.
 			char_bone = get_char_bone(rig)
 			for key in outfit_bone.keys():
 				if key.startswith("_") and key[1:] in char_bone:
 					char_bone[key[1:]] = outfit_bone[key]
-		
+
 		context.evaluated_depsgraph_get().update()
 
 	# TODO: This could be implemented like an operator instead, just like parent switching. But maybe this way is better?
@@ -721,7 +713,7 @@ class RigUI(bpy.types.Panel):
 	bl_space_type = 'VIEW_3D'
 	bl_region_type = 'UI'
 	bl_category = 'CloudRig'
-	
+
 	@classmethod
 	def poll(cls, context):
 		return get_rig() is not None
@@ -753,7 +745,7 @@ class RigUI_Outfits(RigUI):
 		rig = context.pose_object or context.object
 
 		rig_props = rig.rig_properties
-		
+
 		def add_props(prop_owner):
 			def get_text(prop_id, value):
 				""" If there is a property on prop_owner named $prop_id, expect it to be a list of strings and return the valueth element."""
@@ -790,33 +782,33 @@ class RigUI_Outfits(RigUI):
 class RigUI_Layers(RigUI):
 	bl_idname = "OBJECT_PT_rig_ui_layers_" + script_id
 	bl_label = "Layers"
-	
+
 	def draw(self, context):
 		layout = self.layout
 		rig = get_rig()
 		if not rig: return
 		data = rig.data
-		
+
 		row_ik = layout.row()
 		row_ik.prop(data, 'layers', index=0, toggle=True, text='IK')
 		row_ik.prop(data, 'layers', index=16, toggle=True, text='IK Secondary')
-		
+
 		row_fk = layout.row()
 		row_fk.prop(data, 'layers', index=1, toggle=True, text='FK')
 		row_fk.prop(data, 'layers', index=17, toggle=True, text='FK Secondary')
-		
+
 		layout.prop(data, 'layers', index=2, toggle=True, text='Stretch')
-		
+
 		row_face = layout.row()
 		row_face.column().prop(data, 'layers', index=3, toggle=True, text='Face Primary')
 		row_face.column().prop(data, 'layers', index=19, toggle=True, text='Face Extras')
 		row_face.column().prop(data, 'layers', index=20, toggle=True, text='Face Tweak')
-		
+
 		layout.prop(data, 'layers', index=5, toggle=True, text='Fingers')
-		
+
 		layout.row().prop(data, 'layers', index=6, toggle=True, text='Hair')
 		layout.row().prop(data, 'layers', index=7, toggle=True, text='Clothes')
-		
+
 		# Draw secret layers
 		if('dev' in rig and rig['dev']==1):
 			layout.separator()
@@ -845,7 +837,7 @@ class RigUI_Layers(RigUI):
 class RigUI_Settings(RigUI):
 	bl_idname = "OBJECT_PT_rig_ui_settings_" + script_id
 	bl_label = "Settings"
-	
+
 	def draw(self, context):
 		layout = self.layout
 		rig = get_rig()
@@ -857,19 +849,19 @@ class RigUI_Settings(RigUI):
 def draw_rig_settings(layout, rig, ui_area, label=""):
 	""" Draw UI settings in the layout, if info for those settings can be found in the rig's data. 
 	Parameters read from the rig data:
-	
+
 	prop_bone: Name of the pose bone that holds the custom property.
 	prop_id: Name of the custom property on aforementioned bone. This is the property that gets drawn in the UI as a slider.
-	
+
 	texts: Optional list of strings to display alongside the property name on the slider, chosen based on the current value of the property.
 	operator: Optional parameter to specify an operator to draw next to the slider.
 	icon: Optional prameter to override the icon of the operator. Defaults to 'FILE_REFRESH'.
-	
+
 	Arbitrary arguments will be passed on to the operator.
 	"""
-	
+
 	if ui_area not in rig.data: return
-	
+
 	if label!="":
 		layout.label(text=label)
 
@@ -886,7 +878,7 @@ def draw_rig_settings(layout, rig, ui_area, label=""):
 
 			col = row.column()
 			sub_row = col.row(align=True)
-			
+
 			text = entry_name
 			if 'texts' in info:
 				prop_value = prop_bone[prop_id]
@@ -894,13 +886,13 @@ def draw_rig_settings(layout, rig, ui_area, label=""):
 				text = entry_name + ": " + cur_text
 
 			sub_row.prop(prop_bone, '["' + prop_id + '"]', slider=True, text=text)
-			
+
 			# Draw an operator if provided.
 			if 'operator' in info:
 				icon = 'FILE_REFRESH'
 				if 'icon' in info:
 					icon = info['icon']
-				
+
 				switch = sub_row.operator(info['operator'], text="", icon=icon)
 				# Fill the operator's parameters where provided.
 				for param in info.keys():
@@ -924,7 +916,6 @@ class RigUI_Settings_FKIK(RigUI):
 		layout = self.layout
 		rig = get_rig()
 		if not rig: return
-		data = rig.data
 
 		draw_rig_settings(layout, rig, "ik_switches")
 
@@ -947,8 +938,6 @@ class RigUI_Settings_IK(RigUI):
 		layout = self.layout
 		rig = get_rig()
 		if not rig: return
-		ikfk_props = rig.pose.bones.get('Properties_IKFK')
-		data = rig.data
 
 		draw_rig_settings(layout, rig, "ik_stretches", label="IK Stretch")
 		draw_rig_settings(layout, rig, "parents", label="IK Parents")
@@ -974,7 +963,6 @@ class RigUI_Settings_FK(RigUI):
 		layout = self.layout
 		rig = get_rig()
 		if not rig: return
-		data = rig.data
 
 		draw_rig_settings(layout, rig, "fk_hinges", label='FK Hinge')
 
@@ -987,7 +975,7 @@ class RigUI_Settings_Face(RigUI):
 	def poll(cls, context):
 		rig = get_rig()
 		return rig and "face_settings" in rig.data
-	
+
 	def draw(self, context):
 		layout = self.layout
 		rig = get_rig()
@@ -1022,9 +1010,7 @@ class RigUI_Settings_Misc(RigUI):
 		layout = self.layout
 		rig = get_rig()
 		if not rig: return
-		rig_props = rig.rig_properties
 		ikfk_props = rig.pose.bones.get('Properties_IKFK')
-		face_props = rig.pose.bones.get('Properties_Face')
 
 		if 'misc_settings' in rig:
 			layout.label(text="Grab Parents")
@@ -1074,5 +1060,5 @@ from bpy.utils import register_class
 for c in classes:
 	register_class(c)
 
-bpy.types.Object.rig_properties = bpy.props.PointerProperty(type=Rig_Properties)
-bpy.types.Object.rig_colorproperties = bpy.props.CollectionProperty(type=Rig_ColorProperties)
+bpy.types.Object.rig_properties = PointerProperty(type=Rig_Properties)
+bpy.types.Object.rig_colorproperties = CollectionProperty(type=Rig_ColorProperties)
