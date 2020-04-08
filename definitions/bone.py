@@ -94,7 +94,7 @@ class BoneInfoContainer(ID):
 
 class BoneInfo(ID):
 	"""Container of all info relating to a Bone."""
-	def __init__(self, container, name="Bone", source=None, armature=None, **kwargs):
+	def __init__(self, container, name="Bone", source=None, armature=None, bone_group=None, **kwargs):
 		""" 
 		container: Need a reference to what BoneInfoContainer this BoneInfo belongs to.
 		source:	Bone to take transforms from (head, tail, roll, bbone_x, bbone_z).
@@ -153,7 +153,9 @@ class BoneInfo(ID):
 		self.parent = None	# Bone name only!
 
 		### Pose Mode Only
-		self.bone_group = ""
+		self._bone_group = None
+		if type(bone_group) != str:
+			self._bone_group = bone_group
 		self.custom_shape = None   # Object ID?
 		self.custom_shape_scale = 1.0
 		self.use_custom_shape_bone_size = False
@@ -191,6 +193,7 @@ class BoneInfo(ID):
 			self.head_radius = source.head_radius
 			self.tail_radius = source.tail_radius
 			if type(source)==BoneInfo:
+				self.bone_group = source.bone_group
 				self.bbone_width = source.bbone_width
 			else:
 				self._bbone_x = source.bbone_x
@@ -214,11 +217,28 @@ class BoneInfo(ID):
 
 	@bbone_width.setter
 	def bbone_width(self, value):
+		"""Set BBone width relative to the rig's scale."""
 		self._bbone_x = value * self.container.scale
 		self._bbone_z = value * self.container.scale
 		self.envelope_distance = value * self.container.scale
 		self.head_radius = value * self.container.scale
 		self.tail_radius = value * self.container.scale
+
+	@property
+	def bone_group(self):
+		return self._bone_group
+	
+	@bone_group.setter
+	def bone_group(self, value):
+		if type(value) == str:
+			self._bone_group = value
+			# Set layers if specified in the group definition. TODO: deprecate.
+			if value in group_defs:
+				group_def = group_defs[value]
+				if 'layers' in group_def:
+					self.set_layers(group_def['layers'])
+		elif value:
+			value.assign_bone(self)
 
 	@property
 	def vec(self):
@@ -366,10 +386,11 @@ class BoneInfo(ID):
 		"""Write relevant data into an EditBone."""
 		assert armature.mode == 'EDIT', "Armature must be in Edit Mode when writing bone data"
 
-		# Check for 0-length bones. Warn and skip if so.
+		# Check for 0-length bones.
 		if (self.head - self.tail).length == 0:
-			print("WARNING: Skpping 0-length bone: " + self.name)
-			return
+			# Warn and force length.
+			print("WARNING: Had to force 0-length bone to have some length: " + self.name)
+			self.tail = self.head+Vector((0, 0.1, 0))
 		
 		# Edit Bone Properties.
 		for key, value in self.__dict__.items():
@@ -408,8 +429,8 @@ class BoneInfo(ID):
 		my_dict = self.__dict__
 
 		# Bone group
-		if self.bone_group!="":
-			bone_group = armature.pose.bone_groups.get(self.bone_group)
+		if self.bone_group and not type(self.bone_group)==str:
+			bone_group = armature.pose.bone_groups.get(self.bone_group.name)
 
 			# If the bone group doesn't already exist, warn about it. It should've been created in cloud_utils.init_bone_groups().
 			if not bone_group:

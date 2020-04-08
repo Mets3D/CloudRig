@@ -375,6 +375,7 @@ class CloudUtilities:
 		Check for them on the metarig first. If it exists there, use the colors from there, 
 		otherwise create the bonegroup on both rigs with the default settings found in group_defs.
 		"""
+		return
 		metarig = self.generator.metarig
 		rig = self.obj
 

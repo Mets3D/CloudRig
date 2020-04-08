@@ -6,6 +6,7 @@ from rigify.base_rig import BaseRig, stage
 
 from ..definitions.driver import Driver
 from ..definitions.bone import BoneInfoContainer
+from ..definitions.bone_group import BoneGroupContainer
 from .. import layers
 from .cloud_utils import CloudUtilities
 
@@ -23,6 +24,10 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			main=[bone.name] + connected_children_names(self.obj, bone.name),
 		)
 
+	def ensure_bone_groups(self):
+		""" Ensure bone groups that this rig needs. """
+		pass
+
 	def initialize(self):
 		super().initialize()
 		"""Gather and validate data about the rig."""
@@ -36,11 +41,12 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 		self.parent_candidates = {}
 
-		# Wipe any existing bone groups from the generated rig.	# TODO: Right now, every rig element nukes all the bone groups created by rig elements that generated before it, and then re-creates them. This could use smarter handling... although I'm not too sure how.
-		# Maybe if we collected how many CloudRig rigs there are in the metarig, and how many of those have been initialized already - then we can choose to run code on the first or last rig element only...
-		# (So we would only wipe bone groups on the first CloudRig being initialized)
-		for bone_group in self.obj.pose.bone_groups:
-			self.obj.pose.bone_groups.remove(bone_group)
+		if not hasattr(self.generator, "bone_groups"):	# Since the generator object is persistent through different riglets, this code should only run once per generated rig.
+			self.generator.bone_groups = BoneGroupContainer()
+			# Wipe any existing bone groups from the generated rig.
+			for bone_group in self.obj.pose.bone_groups:
+				self.obj.pose.bone_groups.remove(bone_group)
+		self.ensure_bone_groups()
 
 		self.script_id = bpy.path.basename(bpy.data.filepath).split(".")[0]
 		if self.script_id=="":
@@ -139,6 +145,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			org_bi._bbone_x = meta_org.bone.bbone_x
 			org_bi._bbone_z = meta_org.bone.bbone_z
 
+			org_bi.meta_bone = meta_org
+
 			self.org_chain.append(org_bi)
 
 	def generate_bones(self):
@@ -159,6 +167,9 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 	def configure_bones(self):
 		self.init_bone_groups()
+		
+		self.generator.bone_groups.make_real(self.obj)
+
 		for bd in self.bone_infos.bones:
 			pose_bone = None
 			try:

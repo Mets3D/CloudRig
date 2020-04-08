@@ -5,6 +5,7 @@ from mathutils import Vector
 from rigify.base_rig import stage
 
 from ..definitions.driver import Driver
+from ..definitions.bone_group import BoneGroup
 from .cloud_utils import make_name, slice_name
 from .cloud_base import CloudBaseRig
 
@@ -12,6 +13,17 @@ class CloudChainRig(CloudBaseRig):
 	"""CloudRig stretchy BBone chain."""
 
 	description = "Stretchy chain for pure squash and stretch."
+
+	def ensure_bone_groups(self):
+		""" Ensure bone groups that this rig needs. """
+		super().ensure_bone_groups()
+		print("cloud_chain ensure_bone_groups().")
+		STRETCH = 2
+		self.group_str = self.generator.bone_groups.ensure(
+			name = 'STR - Stretch Controls'
+			,layers = [STRETCH]
+			,preset = 8
+		)
 
 	def initialize(self):
 		super().initialize()
@@ -66,13 +78,13 @@ class CloudChainRig(CloudBaseRig):
 		str_bone = self.bone_infos.bone(
 			name = name,
 			source = def_bone,
+			bone_group = self.group_str,
 			head = def_bone.head,
 			tail = def_bone.tail,
 			roll = def_bone.roll,
 			custom_shape = self.load_widget("Sphere"),
 			#use_custom_shape_bone_size = True,
 			custom_shape_scale = 0.3,
-			bone_group = 'Body: STR - Stretch Controls',
 			parent = org_bone,
 		)
 		str_bone.scale_length(0.3)
