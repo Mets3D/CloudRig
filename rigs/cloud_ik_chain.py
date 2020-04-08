@@ -433,7 +433,7 @@ class CloudIKChainRig(CloudFKChainRig):
 				"parent_names" : parent_names,
 				"bones" : bones,
 				}
-			self.add_ui_data("parents", self.category, self.limb_ui_name, info, default=0, _max=len(parent_names))
+			self.add_ui_data("parents", self.category, self.limb_ui_name, info, default=0, _max=len(parent_names)-1)
 		
 		### IK Pole Follow
 		if self.params.CR_use_pole_target:

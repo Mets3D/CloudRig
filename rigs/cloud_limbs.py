@@ -62,8 +62,8 @@ class Rig(CloudIKChainRig):
 			# Force strictly 1 segment on the foot and the toe.
 			return (1, self.params.CR_bbone_segments)
 		elif self.limb_type=='ARM' and org_i == len(chain)-1:
-			# Force strictly 1 segment and no BBone on the wrist.
-			return (1, 1)
+			# Force strictly 1 segment on the wrist.
+			return (1, self.params.CR_bbone_segments)
 		
 		return(segments, bbone_segments)
 
