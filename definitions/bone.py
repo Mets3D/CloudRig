@@ -154,8 +154,6 @@ class BoneInfo(ID):
 
 		### Pose Mode Only
 		self._bone_group = None
-		if type(bone_group) != str:
-			self._bone_group = bone_group
 		self.custom_shape = None   # Object ID?
 		self.custom_shape_scale = 1.0
 		self.use_custom_shape_bone_size = False
@@ -193,7 +191,7 @@ class BoneInfo(ID):
 			self.head_radius = source.head_radius
 			self.tail_radius = source.tail_radius
 			if type(source)==BoneInfo:
-				self.bone_group = source.bone_group
+				self._bone_group = source._bone_group
 				self.bbone_width = source.bbone_width
 			else:
 				self._bbone_x = source.bbone_x
@@ -204,6 +202,9 @@ class BoneInfo(ID):
 				else:
 					self.parent = source.parent 
 
+		if type(bone_group) != str:
+			self._bone_group = bone_group
+		
 		# Apply property values from arbitrary keyword arguments if any were passed.
 		for key, value in kwargs.items():
 			setattr_safe(self, key, value)
@@ -239,6 +240,9 @@ class BoneInfo(ID):
 					self.set_layers(group_def['layers'])
 		elif value:
 			value.assign_bone(self)
+		# elif value==None and self._bone_group!=None:
+		# 	self._bone_group.remove_bone(self)
+		# 	self._bone_group = None
 
 	@property
 	def vec(self):

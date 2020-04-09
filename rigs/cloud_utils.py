@@ -407,6 +407,10 @@ class CloudUtilities:
 		return vector_along_bone_chain(chain, length, index)
 
 	@staticmethod
+	def set_layers(obj, layerlist, additive=False):
+		set_layers(obj, layerlist, additive)
+
+	@staticmethod
 	def lock_transforms(obj, loc=True, rot=True, scale=True):
 		return lock_transforms(obj, loc, rot, scale)
 
@@ -512,6 +516,27 @@ def vector_along_bone_chain(chain, length=0, index=-1):
 	direction = chain[-1].vec.normalized()
 	loc = chain[-1].tail + direction * length_remaining
 	return (loc, direction)
+
+def set_layers(obj, layerlist, additive=False):
+	"""Layer setting function that can take either a list of booleans or a list of ints.
+	In case of booleans, it must be a 32 length list, and we set the bone's layer list to the passed list.
+	In case of ints, enable the layers with the indicies in the passed list.
+	
+	obj can either be a bone or an armature.
+	"""
+	layers = obj.layers[:]
+
+	if not additive:
+		layers = [False]*32
+	
+	for i, e in enumerate(layerlist):
+		if type(e)==bool:
+			assert len(layerlist)==32, f"ERROR: Layer assignment expected a list of 32 booleans, got {len(layerlist)}."
+			layers[i] = e
+		elif type(e)==int:
+			layers[e] = True
+	
+	obj.layers = layers[:]
 
 class EnsureVisible:
 	""" Class to ensure an object is visible, then reset it to how it was before. """

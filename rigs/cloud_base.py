@@ -287,10 +287,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		# We can return a dictionary of key:UILayout elements, in case we want to affect the UI layout of inherited rig elements.
 		return {}
 
-# For testing purposes
-# class Rig(CloudBaseRig):
-# 	pass
-
 def ui_label_with_linebreak(layout, text, context):
 	words = text.split(" ")
 	word_index = 0

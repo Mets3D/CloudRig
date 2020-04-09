@@ -5,7 +5,6 @@ from mathutils import Vector
 from rigify.base_rig import stage
 
 from ..definitions.driver import Driver
-from ..definitions.bone_group import BoneGroup
 from .cloud_utils import make_name, slice_name
 from .cloud_base import CloudBaseRig
 
@@ -19,11 +18,24 @@ class CloudChainRig(CloudBaseRig):
 		super().ensure_bone_groups()
 		print("cloud_chain ensure_bone_groups().")
 		STRETCH = 2
+		BODY_MECH = 8
 		self.group_str = self.generator.bone_groups.ensure(
-			name = 'STR - Stretch Controls'
+			name = 'Body: STR - Stretch Controls'
 			,layers = [STRETCH]
 			,preset = 8
 		)
+		self.group_str_helper = self.generator.bone_groups.ensure(
+			name = 'Body: STR-H - Stretch Helpers'
+			,layers = [BODY_MECH]
+			,preset = 7
+		)
+		if self.params.CR_shape_key_helpers:
+			self.group_sk_helper = self.generator.bone_groups.ensure(
+				name = "SKH/SKP - Shape Key Helper Bones"
+				,layers = [BODY_MECH]
+				,preset = 6
+			)
+
 
 	def initialize(self):
 		super().initialize()
@@ -52,7 +64,7 @@ class CloudChainRig(CloudBaseRig):
 			name = def_bone_2.name.replace("DEF", "SKP"),
 			head = def_bone_1.tail.copy(),
 			tail = def_bone_1.tail + def_bone_1.vec,
-			bone_group = "SKH/SKP - Shape Key Helper Bones",
+			bone_group = self.group_sk_helper,
 			parent = def_bone_1,
 			bbone_width = 0.05,
 			hide_select = self.mch_disable_select
@@ -64,7 +76,7 @@ class CloudChainRig(CloudBaseRig):
 			name = def_bone_2.name.replace("DEF", "SKH"),
 			head = def_bone_2.head.copy(),
 			tail = def_bone_2.tail.copy(),
-			bone_group = "SKH/SKP - Shape Key Helper Bones",
+			bone_group = self.group_sk_helper,
 			parent = skp_bone,
 			bbone_width = 0.03,
 			hide_select = self.mch_disable_select
@@ -162,7 +174,7 @@ class CloudChainRig(CloudBaseRig):
 					name 		 = self.add_prefix_to_name(str_bone.name, "H")
 					,source 	 = str_bone
 					,bbone_width = 1/10
-					,bone_group  = 'Body: STR-H - Stretch Helpers'
+					,bone_group  = self.group_str_helper
 					,parent		 = str_bone.parent
 					,hide_select = self.mch_disable_select
 				)

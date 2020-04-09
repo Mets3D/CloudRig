@@ -1,3 +1,5 @@
+from ..rigs import cloud_utils
+
 # Default BoneGroup color schemes that come with Blender.
 presets = [
 	[(0.6039215922355652, 0.0, 0.0), (0.7411764860153198, 0.06666667014360428, 0.06666667014360428), (0.9686275124549866, 0.03921568766236305, 0.03921568766236305)],
@@ -46,7 +48,7 @@ class BoneGroup:
 		""" Assign a bone to this group. """
 		# If it's already assigned to another group, remove it from there.
 		if boneinfo._bone_group and boneinfo._bone_group != self:
-			boneinfo.bone_group.remove(boneinfo)
+			boneinfo.bone_group.remove_bone(boneinfo)
 		boneinfo._bone_group = self
 		self.bones.append(boneinfo)
 
@@ -64,6 +66,8 @@ class BoneGroup:
 		for boneinfo in self.bones:
 			real_bone = rig.pose.bones.get(boneinfo.name)
 			real_bone.bone_group = bg
+
+			cloud_utils.set_layers(real_bone, self.layers)
 
 class BoneGroupContainer(dict):
 	def ensure(self, name, normal=None, select=None, active=None, layers=None, *, preset=-1):
