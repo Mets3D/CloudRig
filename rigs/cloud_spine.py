@@ -26,6 +26,38 @@ class CloudSpineRig(CloudChainRig):
 			main=[bone.name] + connected_children_names(self.obj, bone.name),
 		)
 
+	def ensure_bone_groups(self):
+		""" Ensure bone groups that this rig needs. """
+		super().ensure_bone_groups()
+		BODY_MECH = 8
+		
+		IK_MAIN = 0
+		IK_SECOND = 16
+		self.group_fk_ctrl = self.generator.bone_groups.ensure(
+			name = "Spine FK Controls"
+			,layers = [IK_MAIN, IK_SECOND]
+			,preset = 1
+		)
+		self.group_ik_ctrl = self.generator.bone_groups.ensure(
+			name = "Spine IK Controls"
+			,layers = [IK_MAIN, IK_SECOND]
+			,preset = 2
+		)
+		self.group_ik_secondary = self.generator.bone_groups.ensure(
+			name = "Spine IK Secondary IK Controls"
+			,layers = [IK_SECOND]
+			,preset = 10
+		)
+		self.group_spine_ik_parents = self.generator.bone_groups.ensure(
+			name = "Spine IK Controls Extra Parents"
+			,layers = [IK_MAIN, IK_SECOND]
+			,preset = 8
+		)
+		self.group_ik_mch = self.generator.bone_groups.ensure(
+			name = "Spine Mechanism"
+			,layers = [BODY_MECH]
+		)
+
 	def initialize(self):
 		"""Gather and validate data about the rig."""
 		super().initialize()
@@ -55,7 +87,7 @@ class CloudSpineRig(CloudChainRig):
 			head 					= self.org_chain[0].center,
 			# tail 					= self.org_chain[0].center + Vector((0, 0, self.scale)),
 			custom_shape 			= self.load_widget("Torso_Master"),
-			bone_group 				= 'Body: Main IK Controls',
+			bone_group 				= self.group_ik_ctrl,
 		)
 
 		# Create master (reverse) hip control
@@ -67,13 +99,13 @@ class CloudSpineRig(CloudChainRig):
 				custom_shape 		= self.load_widget("Hips"),
 				custom_shape_scale 	= 0.7,
 				parent				= self.mstr_torso,
-				bone_group 			= "Body: Main IK Controls"
+				bone_group 			= self.group_ik_ctrl
 		)
 		self.register_parent(self.mstr_torso, "Torso")
 		self.mstr_torso.flatten()
 		if self.params.CR_double_controls:
 			double_mstr_pelvis = self.create_parent_bone(self.mstr_torso)
-			double_mstr_pelvis.bone_group = 'Body: Main IK Controls Extra Parents'
+			double_mstr_pelvis.bone_group = self.group_spine_ik_parents
 
 		self.org_spines = self.org_chain[:self.params.CR_spine_length]
 		self.org_necks = []
@@ -94,7 +126,7 @@ class CloudSpineRig(CloudChainRig):
 				custom_shape 		= self.load_widget("FK_Limb"),
 				custom_shape_scale 	= 0.9 * org_bone.custom_shape_scale,
 				parent				= next_parent,
-				bone_group = "Body: Main FK Controls"
+				bone_group			= self.group_fk_ctrl
 			)
 			next_parent = fk_bone
 
@@ -109,17 +141,17 @@ class CloudSpineRig(CloudChainRig):
 				#fk_bone.flatten()
 
 				# Create a child corrective - Everything that would normally be parented to this FK bone should actually be parented to this child bone.
-				fk_child_bone = self.bone_infos.bone(
-					name = fk_bone.name.replace("FK", "FK-C"),
-					source = fk_bone,
-					custom_shape = fk_bone.custom_shape,
-					custom_shape_scale = fk_bone.custom_shape_scale * 0.9,
-					bone_group = 'Body: FK Helper Bones',
-					parent = fk_bone
-				)
-				# TODO: Add FK-C constraints (4 Transformation Constraints).
-				next_parent = fk_child_bone
-				fk_bone.fk_child = fk_child_bone
+				# fk_child_bone = self.bone_infos.bone(
+				# 	name = fk_bone.name.replace("FK", "FK-C"),
+				# 	source = fk_bone,
+				# 	custom_shape = fk_bone.custom_shape,
+				# 	custom_shape_scale = fk_bone.custom_shape_scale * 0.9,
+				# 	bone_group = 'Body: FK Helper Bones',
+				# 	parent = fk_bone
+				# )
+				# # TODO: Add FK-C constraints (4 Transformation Constraints). # - Commented this part out until this is implemented.
+				# next_parent = fk_child_bone
+				# fk_bone.fk_child = fk_child_bone
 		
 		# Register final spine FK as an available parent.
 		self.register_parent(self.fk_chain[self.params.CR_spine_length-1], "Chest")
@@ -151,12 +183,12 @@ class CloudSpineRig(CloudChainRig):
 				custom_shape 		= self.load_widget("Chest_Master"),
 				custom_shape_scale 	= 0.7,
 				parent				= self.mstr_torso,
-				bone_group 			= "Body: Main IK Controls"
+				bone_group 			= self.group_ik_ctrl
 			)
 
 		if self.params.CR_double_controls:
 			double_mstr_chest = self.create_parent_bone(self.mstr_chest)
-			double_mstr_chest.bone_group = 'Body: Main IK Controls Extra Parents'
+			double_mstr_chest.bone_group = self.group_spine_ik_parents
 		
 		self.mstr_hips.flatten()
 		self.register_parent(self.mstr_hips, "Hips")
@@ -169,7 +201,7 @@ class CloudSpineRig(CloudChainRig):
 				name				= ik_ctr_name, 
 				source				= fk_bone,
 				custom_shape 		= self.load_widget("Oval"),
-				bone_group 			= "Body: IK - Secondary IK Controls"
+				bone_group 			= self.group_ik_secondary
 			)
 			if i >= len(self.org_spines)-2:	
 				# Last two spine controls should be parented to the chest control.
@@ -191,7 +223,7 @@ class CloudSpineRig(CloudChainRig):
 				source 		= fk_bone,
 				tail 		= self.fk_chain[index].head.copy(),
 				parent		= next_parent,
-				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
+				bone_group	= self.group_ik_mch,
 				hide_select	= self.mch_disable_select
 			)
 			next_parent = ik_r_bone
@@ -207,12 +239,12 @@ class CloudSpineRig(CloudChainRig):
 			fk_bone = org_bone.fk_bone
 			ik_name = fk_bone.name.replace("FK", "IK")
 			org_bone.ik_bone = ik_bone = self.bone_infos.bone(
-				name = ik_name,
-				source = fk_bone,
-				head = self.fk_chain[i-1].head.copy() if i>0 else self.def_bones[0].head.copy(),
-				tail = fk_bone.head,
-				parent = next_parent,
-				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
+				name		= ik_name,
+				source		= fk_bone,
+				head		= self.fk_chain[i-1].head.copy() if i>0 else self.def_bones[0].head.copy(),
+				tail		= fk_bone.head,
+				parent		= next_parent,
+				bone_group	= self.group_ik_mch,
 				hide_select	= self.mch_disable_select
 			)
 			self.ik_chain.append(ik_bone)

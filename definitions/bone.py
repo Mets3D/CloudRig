@@ -203,7 +203,7 @@ class BoneInfo(ID):
 					self.parent = source.parent 
 
 		if type(bone_group) != str:
-			self._bone_group = bone_group
+			self.bone_group = bone_group
 		
 		# Apply property values from arbitrary keyword arguments if any were passed.
 		for key, value in kwargs.items():
@@ -431,16 +431,6 @@ class BoneInfo(ID):
 		assert armature.mode != 'EDIT', "Armature cannot be in Edit Mode when writing pose data"
 
 		my_dict = self.__dict__
-
-		# Bone group
-		if self.bone_group and not type(self.bone_group)==str:
-			bone_group = armature.pose.bone_groups.get(self.bone_group.name)
-
-			# If the bone group doesn't already exist, warn about it. It should've been created in cloud_utils.init_bone_groups().
-			if not bone_group:
-				print(f"Warning: Could not find bone group {self.bone_group} for bone {self.name}.")
-			else:
-				pose_bone.bone_group = bone_group
 		
 		# Layers
 		pose_bone.bone.layers = self.layers[:]

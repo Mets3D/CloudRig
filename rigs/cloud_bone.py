@@ -21,8 +21,8 @@ class CloudBoneRig(BaseRig):
 
 	def initialize(self):
 		super().initialize()
-		self.defaults={}
-		self.scale=1
+		self.defaults = {}
+		self.scale = 1
 		self.bone_name = self.base_bone.replace("ORG-", "")
 
 	def copy_constraint(self, from_con, to_bone):
@@ -50,9 +50,6 @@ class CloudBoneRig(BaseRig):
 		
 		return new_con
 
-	def copy_pose_bone(self, from_bone, to_bone):
-		pass
-
 	def generate_bones(self):
 		if self.params.CR_copy_type != "Create": return
 		
@@ -63,20 +60,18 @@ class CloudBoneRig(BaseRig):
 			def_bone = self.get_bone(def_bone_name)
 			def_bone.parent = self.get_bone(self.bones.org)
 
-
 	@stage.configure_bones
 	def modify_bone_group(self):
-		if self.params.CR_copy_type != 'Tweak': return
 		mod_bone = self.get_bone(self.bones.org)
 		meta_bone = self.generator.metarig.pose.bones.get(self.bone_name)
 
 		meta_bg = meta_bone.bone_group
-		if self.params.CR_bone_group:
+		if self.params.CR_copy_type=='Create' or self.params.CR_bone_group:
 			if meta_bg:
 				bg_name = meta_bg.name
 				bg = self.obj.pose.bone_groups.get(bg_name)
 				if not bg:
-					bg = self.obj.pose.bone_groups.new(bg_name)
+					bg = self.obj.pose.bone_groups.new(name=bg_name)
 					bg.color_set = meta_bg.color_set
 					bg.colors.normal = meta_bg.colors.normal[:]
 					bg.colors.active = meta_bg.colors.active[:]

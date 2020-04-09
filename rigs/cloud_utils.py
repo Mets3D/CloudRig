@@ -34,6 +34,7 @@ class CloudUtilities:
 			_max=_max
 		)
 
+	# TODO: Move this to cloud_fk_chain.py?
 	def hinge_setup(self, bone, category, *, 
 		prop_bone, prop_name, default_value=0.0, 
 		parent_bone=None, head_tail=0, 
@@ -61,10 +62,16 @@ class CloudUtilities:
 		self.add_ui_data("fk_hinges", category, limb_name, info, default=default_value)
 
 		# Create Hinge helper bone
+		BODY_MECH = 8
+		hng_group = self.generator.bone_groups.ensure(
+			name = "Hinge Helpers"
+			,layers = [BODY_MECH]
+			,preset = 1
+		)
 		hng_bone = self.bone_infos.bone(
 			name			= hng_name,
 			source			= bone, 
-			bone_group 		= 'Body: FK Helper Bones',
+			bone_group 		= hng_group,
 			hide_select		= self.mch_disable_select
 		)
 
@@ -225,7 +232,11 @@ class CloudUtilities:
 		arm_con_bone = self.create_parent_bone(child_bone)
 		arm_con_bone.name = "Parents_" + child_bone.name
 		arm_con_bone.custom_shape = None
-		arm_con_bone.bone_group = "Body: IK-MCH - IK Mechanism Bones"
+		BODY_MECH = 8
+		arm_con_bone.bone_group = self.generator.bone_groups.ensure(
+			name = "Parent Switching Helpers"
+			,layers = [BODY_MECH]
+		)
 
 		targets = []
 		for pn in parent_names:
@@ -276,6 +287,11 @@ class CloudUtilities:
 	def create_dsp_bone(self, parent, center=False):
 		"""Create a bone to be used as another control's custom_shape_transform."""
 		dsp_name = "DSP-" + parent.name
+		BODY_MECH = 8
+		dsp_group = self.generator.bone_groups.ensure(
+			name = "Display Transform Helpers"
+			,layers = [BODY_MECH]
+		)
 		dsp_bone = self.bone_infos.bone(
 			name = dsp_name, 
 			source = parent,
@@ -283,7 +299,7 @@ class CloudUtilities:
 			only_transform = True,
 			custom_shape = None, 
 			parent = parent,
-			bone_group = 'DSP - Display Transform Helpers',
+			bone_group = dsp_group,
 			hide_select	= self.mch_disable_select
 		)
 		parent.dsp_bone = dsp_bone

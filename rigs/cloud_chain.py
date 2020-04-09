@@ -16,24 +16,22 @@ class CloudChainRig(CloudBaseRig):
 	def ensure_bone_groups(self):
 		""" Ensure bone groups that this rig needs. """
 		super().ensure_bone_groups()
-		print("cloud_chain ensure_bone_groups().")
+		# print("cloud_chain ensure_bone_groups().")	# TODO: This seems to run more times than it should?
 		STRETCH = 2
 		BODY_MECH = 8
 		self.group_str = self.generator.bone_groups.ensure(
-			name = 'Body: STR - Stretch Controls'
+			name = "Stretch Chain Controls"
 			,layers = [STRETCH]
 			,preset = 8
 		)
 		self.group_str_helper = self.generator.bone_groups.ensure(
-			name = 'Body: STR-H - Stretch Helpers'
+			name = "Stretch Chain Helpers"
 			,layers = [BODY_MECH]
-			,preset = 7
 		)
 		if self.params.CR_shape_key_helpers:
 			self.group_sk_helper = self.generator.bone_groups.ensure(
-				name = "SKH/SKP - Shape Key Helper Bones"
+				name = "Stretch Chain Shape Key Helpers"
 				,layers = [BODY_MECH]
-				,preset = 6
 			)
 
 

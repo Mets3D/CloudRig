@@ -1,4 +1,5 @@
 from ..rigs import cloud_utils
+import bpy
 
 # Default BoneGroup color schemes that come with Blender.
 presets = [
@@ -20,13 +21,22 @@ presets = [
 ]
 
 class BoneGroup:
+	# TODO: This should extend list, and self.bones=[] would become that list, remove_bone() would be inherited as remove(), etc.
 	def __init__(self, name="Group", normal=None, select=None, active=None, layers=[0], *, preset=-1):
 		self.name = name
+
+		self.color_set = 'CUSTOM'
+		self.normal = [0, 0, 0]
+		self.select = [0, 0, 0]
+		self.active = [0, 0, 0]
 
 		if len(presets) > preset > -1:
 			self.normal = presets[preset][0]
 			self.select = presets[preset][1]
 			self.active = presets[preset][2]
+		else:
+			if not normal and not select and not active:
+				self.color_set = 'DEFAULT'
 
 		if normal: self.normal = normal
 		if select: self.select = select
@@ -58,7 +68,7 @@ class BoneGroup:
 		bg = bgs.get(self.name)
 		if not bg:
 			bg = bgs.new(name=self.name)
-			bg.color_set = 'CUSTOM'
+			bg.color_set = self.color_set
 			bg.colors.normal = self.normal[:]
 			bg.colors.select = self.select[:]
 			bg.colors.active = self.active[:]
@@ -67,7 +77,7 @@ class BoneGroup:
 			real_bone = rig.pose.bones.get(boneinfo.name)
 			real_bone.bone_group = bg
 
-			cloud_utils.set_layers(real_bone, self.layers)
+			cloud_utils.set_layers(real_bone.bone, self.layers)
 
 class BoneGroupContainer(dict):
 	def ensure(self, name, normal=None, select=None, active=None, layers=None, *, preset=-1):

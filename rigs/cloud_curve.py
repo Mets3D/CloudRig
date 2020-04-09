@@ -13,6 +13,21 @@ class CloudCurveRig(CloudBaseRig):
 
 	description = "Create hook controls for an existing bezier curve."
 
+	def ensure_bone_groups(self):
+		""" Ensure bone groups that this rig needs. """
+		super().ensure_bone_groups()
+		IK_MAIN = 0
+		self.group_hooks = self.generator.bone_groups.ensure(
+			name = "Spline IK Hooks"
+			,layers = [IK_MAIN]
+			,preset = 0
+		)
+		self.group_handles = self.generator.bone_groups.ensure(
+			name = "Spline IK Handles"
+			,layers = [IK_MAIN]
+			,preset = 8
+		)
+
 	def initialize(self):
 		"""Gather and validate data about the rig."""
 		super().initialize()
@@ -28,7 +43,7 @@ class CloudCurveRig(CloudBaseRig):
 		self.root_control = self.bone_infos.bone(
 			name = self.base_bone.replace("ORG", "ROOT"),
 			source = self.org_chain[0],
-			bone_group = "Spline IK Hooks",
+			bone_group = self.group_hooks,
 			use_custom_shape_bone_size = True,
 			custom_shape = self.load_widget("Cube")
 		)
@@ -47,7 +62,7 @@ class CloudCurveRig(CloudBaseRig):
 			head = loc,
 			tail = loc_left,
 			parent = parent,
-			bone_group = "Spline IK Hooks",
+			bone_group = self.group_hooks,
 			use_custom_shape_bone_size = True
 		)
 
@@ -63,7 +78,7 @@ class CloudCurveRig(CloudBaseRig):
 					name		 = f"Hook_L_{hook_name}_{str(i).zfill(2)}",
 					head 		 = loc,
 					tail 		 = loc_left,
-					bone_group 	 = "Spline IK Handles",
+					bone_group 	 = self.group_handles,
 					parent 		 = hook_ctr,
 					custom_shape = self.load_widget("CurveHandle")
 				)
@@ -75,7 +90,7 @@ class CloudCurveRig(CloudBaseRig):
 					name 		 = f"Hook_R_{hook_name}_{str(i).zfill(2)}",
 					head 		 = loc,
 					tail 		 = loc_right,
-					bone_group 	 = "Spline IK Handles",
+					bone_group 	 = self.group_handles,
 					parent 		 = hook_ctr,
 					custom_shape = self.load_widget("CurveHandle")
 				)

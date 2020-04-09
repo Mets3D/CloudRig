@@ -26,7 +26,18 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 	def ensure_bone_groups(self):
 		""" Ensure bone groups that this rig needs. """
-		pass
+		IK_MAIN = 0
+		IK_SECOND = 16
+		self.group_root = self.generator.bone_groups.ensure(
+			name = "Root Control"
+			,layers = [IK_MAIN, IK_SECOND]
+			,preset = 2
+		)
+		self.group_root_parent = self.generator.bone_groups.ensure(
+			name = "Root Control Parent"
+			,layers = [IK_MAIN, IK_SECOND]
+			,preset = 8
+		)
 
 	def initialize(self):
 		super().initialize()
@@ -87,7 +98,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		# Properties bone and Custom Properties
 		self.prop_bone = self.bone_infos.bone(
 			name = "Properties_IKFK", 
-			bone_group = 'Properties',
+			bone_group = self.group_root,
 			custom_shape = self.load_widget("Cogwheel"),
 			head = Vector((0, self.scale*2, 0)),
 			tail = Vector((0, self.scale*4, 0)),
@@ -97,7 +108,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		# Root bone
 		self.root_bone = self.bone_infos.bone(
 			name = "root",
-			bone_group = 'Body: Main IK Controls',
+			bone_group = self.group_root,
 			head = Vector((0, 0, 0)),
 			tail = Vector((0, self.scale*5, 0)),
 			bbone_width = 1/3,
@@ -107,7 +118,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		self.register_parent(self.root_bone, "Root")
 		if self.generator_params.cloudrig_double_root:
 			self.root_parent = self.create_parent_bone(self.root_bone)
-			self.root_parent.bone_group = 'Body: Main IK Controls Extra Parents'
+			self.root_parent.bone_group = self.group_root_parent
 
 		for k in self.obj.data.keys():
 			if k in ['_RNA_UI', 'rig_id']: continue
@@ -166,7 +177,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			bd.write_edit_data(self.obj, edit_bone)
 
 	def configure_bones(self):
-		self.init_bone_groups()
+		# self.init_bone_groups()
 		
 		self.generator.bone_groups.make_real(self.obj)
 

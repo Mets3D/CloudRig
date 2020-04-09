@@ -12,6 +12,22 @@ class CloudFKChainRig(CloudChainRig):
 
 	description = "FK chain with squash and stretch controls."
 
+	def ensure_bone_groups(self):
+		""" Ensure bone groups that this rig needs. """
+		super().ensure_bone_groups()
+		FK_MAIN = 1
+		BODY_MECH = 8
+		self.group_fk_ctrl = self.generator.bone_groups.ensure(
+			name = "FK Chain Controls"
+			,layers = [FK_MAIN]
+			,preset = 1
+		)
+		self.group_fk_extra = self.generator.bone_groups.ensure(
+			name = "FK Chain Helper Bones"
+			,layers = [BODY_MECH]
+			,preset = 1
+		)
+
 	def initialize(self):
 		"""Gather and validate data about the rig."""
 		super().initialize()
@@ -28,7 +44,7 @@ class CloudFKChainRig(CloudChainRig):
 				custom_shape 		= self.load_widget("FK_Limb"),
 				custom_shape_scale 	= org_bone.custom_shape_scale,# * 0.8,
 				parent				= self.bones.parent,
-				bone_group = "Body: Main FK Controls"
+				bone_group			= self.group_fk_ctrl
 			)
 			if i > 0:
 				# Parent FK bone to previous FK bone.

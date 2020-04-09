@@ -14,6 +14,23 @@ class Rig(CloudIKChainRig):
 
 	description = "IK chain with extras for specific limbs, such as foot roll."
 
+	def ensure_bone_groups(self):
+		""" Ensure bone groups that this rig needs. """
+		super().ensure_bone_groups()
+		BODY_MECH = 8
+		
+		IK_MAIN = 0
+		IK_SECOND = 16
+		self.group_ik_mch = self.generator.bone_groups.ensure(
+			name = "Limb IK Mechanism"
+			,layers = [BODY_MECH]
+		)
+		self.group_ik_parents = self.generator.bone_groups.ensure(
+			name = "Limb IK Controls Extra Parents"
+			,layers = [IK_MAIN, IK_SECOND]
+			,preset = 8
+		)
+
 	def initialize(self):
 		super().initialize()
 		"""Gather and validate data about the rig."""
@@ -136,7 +153,7 @@ class Rig(CloudIKChainRig):
 		# Parent control
 		if self.params.CR_double_ik_control:
 			double_control = self.create_parent_bone(self.ik_mstr)
-			double_control.bone_group = 'Body: Main IK Controls Extra Parents'
+			double_control.bone_group = self.group_ik_parents
 			foot_dsp(double_control)
 
 		# IK Foot setup, including Foot Roll
@@ -173,7 +190,7 @@ class Rig(CloudIKChainRig):
 				source = self.org_chain[0],
 				tail = self.ik_mstr.head.copy(),
 				parent = self.limb_root_bone.name,
-				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
+				bone_group = self.group_ik_mch,
 				hide_select = self.mch_disable_select
 			)
 			rolly_stretchy.scale_width(0.4)
@@ -185,7 +202,7 @@ class Rig(CloudIKChainRig):
 				name = master_name,
 				source = self.ik_mstr,
 				parent = self.ik_mstr,
-				bone_group = 'Body: IK-MCH - IK Mechanism Bones'
+				bone_group = self.group_ik_mch
 			)
 			roll_master.constraints.append(self.ik_tgt_bone.constraints[0])
 			self.ik_tgt_bone.clear_constraints()
@@ -200,7 +217,7 @@ class Rig(CloudIKChainRig):
 				tail = ik_foot.head + Vector((0, self.scale/2, self.scale/4)),
 				roll = rad(180),
 				custom_shape = self.load_widget('FootRoll'),
-				bone_group = 'Body: Main IK Controls',
+				bone_group = self.group_ik_ctrl,
 				parent = roll_master
 			)
 
@@ -234,7 +251,7 @@ class Rig(CloudIKChainRig):
 				head = meta_ankle_pivot.head_local,
 				tail = meta_ankle_pivot.tail_local,
 				roll = rad(180),
-				bone_group = 'Body: IK-MCH - IK Mechanism Bones',
+				bone_group = self.group_ik_mch,
 				parent = roll_master,
 				hide_select = self.mch_disable_select
 			)
@@ -258,7 +275,7 @@ class Rig(CloudIKChainRig):
 					tail = b.head.copy(),
 					roll = 0,
 					parent = ankle_pivot,
-					bone_group = 'Body: IK-MCH - IK Mechanism Bones',
+					bone_group = self.group_ik_mch,
 					hide_select = self.mch_disable_select
 				)
 				rik_chain.append(rik_bone)
