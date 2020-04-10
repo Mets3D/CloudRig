@@ -76,6 +76,8 @@ class BoneGroup:
 		
 		for boneinfo in self.bones:
 			real_bone = rig.pose.bones.get(boneinfo.name)
+			if not real_bone: 
+				continue
 			real_bone.bone_group = bg
 
 			cloud_utils.set_layers(real_bone.bone, self.layers)
@@ -90,7 +92,6 @@ class BoneGroupContainer(dict):
 		return self[name]
 
 	def make_real(self, rig):
-		""" Create this bone group and assign the bones where possible. """
-		# TODO: If the metarig has a group with the same name as what we're about to create, we should modify our bone group's colors to be the same as that.
+		""" Create these bone groups and assign the bones where possible. """
 		for bg in self.values():
 			bg.make_real(rig)

@@ -51,7 +51,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 		self.parent_candidates = {}
 
-		if not hasattr(self.generator, "bone_groups"):	# Since the generator object is persistent through different riglets, this code should only run once per generated rig.
+		if not hasattr(self.generator, "bone_groups"):	# Since the generator object is persistent through different riglets, this code should only run once per rig generation.
 			self.generator.bone_groups = BoneGroupContainer()
 			# Wipe any existing bone groups from the generated rig.
 			for bone_group in self.obj.pose.bone_groups:
@@ -175,8 +175,28 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 			bd.write_edit_data(self.obj, edit_bone)
 
-	def configure_bones(self):
+	def create_real_bone_groups(self):
+		bgs = self.generator.bone_groups
+		# If the metarig has a group with the same name as what we're about to create, modify bone group's colors accordingly.
+		for meta_bg in self.generator.metarig.pose.bone_groups:
+			if meta_bg.name in bgs:
+				bgs[meta_bg.name].normal = meta_bg.colors.normal[:]
+				bgs[meta_bg.name].select = meta_bg.colors.select[:]
+				bgs[meta_bg.name].active = meta_bg.colors.active[:]
+	
+		# Create bone groups on the metarig
+		self.generator.bone_groups.make_real(self.generator.metarig)
+
+		# Check for Unified Selected/Active color settings
+		if self.generator.metarig.data.rigify_colors_lock:
+			for bg in bgs.values():
+				bg.select = self.generator.metarig.data.rigify_selection_colors.select[:]
+				bg.active = self.generator.metarig.data.rigify_selection_colors.active[:]
+		
 		self.generator.bone_groups.make_real(self.obj)
+
+	def configure_bones(self):
+		self.create_real_bone_groups()
 
 		for bd in self.bone_infos.bones:
 			pose_bone = None
