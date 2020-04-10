@@ -51,7 +51,7 @@ class BoneGroup:
 	def remove_bone(self, boneinfo):
 		""" Remove a bone from this group. """
 		if boneinfo in self.bones:
-			boneinfo.bone_group = None
+			boneinfo._bone_group = None
 			self.bones.remove(boneinfo)
 
 	def assign_bone(self, boneinfo):
@@ -65,6 +65,7 @@ class BoneGroup:
 	def make_real(self, rig):
 		""" Create this bone group and assign the bones where possible. """
 		bgs = rig.pose.bone_groups
+		# TODO: The bone group should only get created if this bonegroup has any bones?
 		bg = bgs.get(self.name)
 		if not bg:
 			bg = bgs.new(name=self.name)
@@ -90,5 +91,6 @@ class BoneGroupContainer(dict):
 
 	def make_real(self, rig):
 		""" Create this bone group and assign the bones where possible. """
+		# TODO: If the metarig has a group with the same name as what we're about to create, we should modify our bone group's colors to be the same as that.
 		for bg in self.values():
 			bg.make_real(rig)

@@ -6,20 +6,20 @@ import bpy
 from bpy.props import BoolProperty, StringProperty, EnumProperty
 from .operators import regenerate_rigify_rigs
 from .operators import refresh_drivers
+from rigify import ui as rigify_ui
+
+def is_cloud_metarig(rig):
+	if rig.type=='ARMATURE' and 'rig_id' not in rig.data:
+		for b in rig.pose.bones:
+			if 'cloud' in b.rigify_type and b.rigify_type!='cloud_bone':
+				return True
+	return False
 
 def draw_cloud_generator_options(self, context):
 	layout = self.layout
 	obj = context.object
 
-	if obj.mode in {'POSE', 'OBJECT'}:
-		# Check if any bones in the rig are assigned a cloudrig element.
-		found_cloud_type = False
-		for b in obj.pose.bones:
-			if 'cloud' in b.rigify_type and b.rigify_type!='cloud_bone':
-				found_cloud_type = True
-				break
-		if not found_cloud_type: return
-
+	if obj.mode in {'POSE', 'OBJECT'} and is_cloud_metarig(obj):
 		icon = 'TRIA_DOWN' if obj.data.cloudrig_options else 'TRIA_RIGHT'
 		layout.prop(obj.data, "cloudrig_options", toggle=True, icon=icon)
 		if not obj.data.cloudrig_options: return
@@ -41,7 +41,48 @@ def draw_cloud_generator_options(self, context):
 		naming_row.column().prop(obj.data, "cloudrig_prefix_separator", text="")
 		naming_row.column().label(text="Suffix Separator")
 		naming_row.column().prop(obj.data, "cloudrig_suffix_separator", text="")
-		
+
+def draw_cloud_bone_group_options(self, context):
+	""" Hijack Rigify's Bone Group panel and replace it with our own. """
+	obj = context.object
+	# If the current rig doesn't have any cloudrig elements, draw Rigify's UI.
+	if not is_cloud_metarig(obj):
+		bpy.types.DATA_PT_rigify_bone_groups.draw_old(self, context)
+		return
+	
+	# Otherwise we draw our own.
+	layout = self.layout
+	color_row = layout.row(align=True)
+	color_row.prop(obj.data, "rigify_colors_lock", text="Unified Select/Active Colors")
+	if obj.data.rigify_colors_lock:
+		color_row.prop(obj.data.rigify_selection_colors, "select", text="")
+		color_row.prop(obj.data.rigify_selection_colors, "active", text="")
+		# TODO: If possible, we would draw a BoolVectorProperty layer selector for each existing bonegroup in the metarig.
+
+def draw_cloud_layer_names(self, context):
+	""" Hijack Rigify's Layer Names panel and replace it with our own. """
+	obj = context.object
+	# If the current rig doesn't have any cloudrig elements, draw Rigify's UI.
+	if not is_cloud_metarig(obj):
+		bpy.types.DATA_PT_rigify_layer_names.draw_old(self, context)
+		return
+	
+	obj = context.object
+	arm = obj.data
+	layout = self.layout
+
+	# UI
+	main_row = layout.row(align=True).split(factor=0.05)
+	col_number = main_row.column()
+	col_layer = main_row.column()
+	for i in range(28):
+		col_number.label(text=str(i+1) + '.')
+		rigify_layer = arm.rigify_layers[i]
+		row = col_layer.row()
+		icon = 'RESTRICT_VIEW_OFF' if arm.layers[i] else 'RESTRICT_VIEW_ON'
+		row.prop(arm, "layers", index=i, text="", toggle=True, icon=icon)
+		row.prop(rigify_layer, "name", text="")
+		row.prop(rigify_layer, "row", text="UI Row")
 
 # TODO: Not sure how to get Rigify to call our register() and unregister() for us.
 def register():
@@ -102,6 +143,12 @@ def register():
 	refresh_drivers.register()
 
 	bpy.types.DATA_PT_rigify_buttons.append(draw_cloud_generator_options)
+
+	bpy.types.DATA_PT_rigify_bone_groups.draw_old = bpy.types.DATA_PT_rigify_bone_groups.draw
+	bpy.types.DATA_PT_rigify_bone_groups.draw = draw_cloud_bone_group_options
+
+	bpy.types.DATA_PT_rigify_layer_names.draw_old = bpy.types.DATA_PT_rigify_layer_names.draw
+	bpy.types.DATA_PT_rigify_layer_names.draw = draw_cloud_layer_names
 
 def unregister():
 	ArmStore = bpy.types.Armature

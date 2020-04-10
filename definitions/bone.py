@@ -4,7 +4,7 @@ import bpy
 from .id import ID
 from mathutils import Vector
 import copy
-from ..layers import group_defs, set_layers
+from ..rigs import cloud_utils
 
 # Attributes that reference an actual bone ID. These should get special treatment, because we don't want to store said bone ID. 
 # Ideally we would store a BoneInfo, but a string is allowed too.
@@ -231,18 +231,12 @@ class BoneInfo(ID):
 	
 	@bone_group.setter
 	def bone_group(self, value):
-		if type(value) == str:
-			self._bone_group = value
-			# Set layers if specified in the group definition. TODO: deprecate.
-			if value in group_defs:
-				group_def = group_defs[value]
-				if 'layers' in group_def:
-					self.set_layers(group_def['layers'])
-		elif value:
+		# value is expected to be a cloudrig.definitions.bone_group.Bone_Group object.
+		# Let the bone group know that this bone has been assigned to it.
+		if value:
 			value.assign_bone(self)
-		# elif value==None and self._bone_group!=None:
-		# 	self._bone_group.remove_bone(self)
-		# 	self._bone_group = None
+		elif self._bone_group:
+			self._bone_group.remove_bone(self)
 
 	@property
 	def vec(self):
@@ -290,8 +284,7 @@ class BoneInfo(ID):
 		return self.head + self.vec/2
 
 	def set_layers(self, layerlist, additive=False):
-		# We can use the same code for setting bone layers as we do for setting the armature's active layers.
-		set_layers(self, layerlist, additive)
+		cloud_utils.set_layers(self, layerlist, additive)
 
 	def put(self, loc, length=None, width=None, scale_length=None, scale_width=None):
 		offset = loc-self.head
@@ -327,10 +320,10 @@ class BoneInfo(ID):
 				if key in bone_attribs and target_bone:
 					value = target_bone.name
 				else:
-					# EDIT BONE PROPERTIES MUST BE DEEPCOPIED SO THEY AREN'T DESTROYED WHEN LEAVEING EDIT MODE. OTHERWISE IT FAILS SILENTLY!
 					if key in ['layers']:
 						value = list(getattr(edit_bone, key)[:])
 					else:
+						# NOTE: EDIT BONE PROPERTIES MUST BE DEEPCOPIED SO THEY AREN'T DESTROYED WHEN LEAVEING EDIT MODE!
 						value = copy.deepcopy(getattr(edit_bone, key))
 				setattr_safe(self, key, value)
 				skip.append(key)

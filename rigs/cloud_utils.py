@@ -1,6 +1,5 @@
 import bpy
 import os
-from .. import layers
 from ..definitions.driver import Driver
 from ..definitions.custom_props import CustomProp
 
@@ -130,9 +129,6 @@ class CloudUtilities:
 			return self.rigify_parent.get_parent_candidates(candidates)
 		
 		return candidates
-
-	def select_layers(self, layerlist, additive=False):
-		layers.set_layers(self.obj.data, layerlist, additive)
 
 	def load_widget(self, name):
 		""" Load custom shapes by appending them from a blend file, unless they already exist in this file. """
@@ -383,42 +379,6 @@ class CloudUtilities:
 			Y_tgt.bone_target = scale_tgt.bone_target = bi.bbone_custom_handle_end
 			bi.drivers["bbone_easeout"] = my_d.clone()
 
-	def ensure_bone_group(self, name, group_def={}):
-		ensure_bone_group(self.obj, name, group_def)
-
-	def init_bone_groups(self):
-		"""Go through every boneinfo and check for bone groups that don't exist on the rig yet.
-		Check for them on the metarig first. If it exists there, use the colors from there, 
-		otherwise create the bonegroup on both rigs with the default settings found in group_defs.
-		"""
-		return
-		metarig = self.generator.metarig
-		rig = self.obj
-
-		group_defs = layers.group_defs
-
-		for bi in self.bone_infos.bones:
-			bg_name = bi.bone_group
-			if bg_name == "": continue
-
-			group_def = dict()
-			# Find definition for this group.
-			if bg_name in group_defs:
-				group_def = dict(group_defs[bg_name])
-			
-			# Try getting the bone group from the metarig.
-			meta_bg = metarig.pose.bone_groups.get(bg_name)
-			if meta_bg and meta_bg.color_set=='CUSTOM':
-				# If it exists, override the definition.
-				group_def['normal'] = meta_bg.colors.normal.copy()
-				group_def['select'] = meta_bg.colors.select.copy()
-				group_def['active'] = meta_bg.colors.active.copy()
-			else:
-				ensure_bone_group(metarig, bg_name, group_def)
-			
-			# Ensure bone group exists on the generated rig.
-			self.ensure_bone_group(bg_name, group_def)
-
 	def vector_along_bone_chain(self, chain, length=0, index=-1):
 		return vector_along_bone_chain(chain, length, index)
 
@@ -485,19 +445,6 @@ def lock_transforms(obj, loc=True, rot=True, scale=True):
 		obj.lock_scale = scale
 	else:
 		obj.lock_scale = [scale, scale, scale]
-
-def ensure_bone_group(armature, name, group_def={}):
-	"""Find or create and return a bone group on the armature."""
-	bg = armature.pose.bone_groups.get(name)
-	if bg:
-		return bg
-
-	bg = armature.pose.bone_groups.new(name=name)
-	for prop in ['normal', 'select', 'active']:
-		if prop in group_def:
-			bg.color_set='CUSTOM'
-			setattr(bg.colors, prop, group_def[prop][:])
-	return bg
 
 def vector_along_bone_chain(chain, length=0, index=-1):
 	"""On a bone chain, find the point a given length down the chain. Return its position and direction."""

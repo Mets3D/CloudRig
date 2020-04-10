@@ -7,7 +7,6 @@ from rigify.base_rig import BaseRig, stage
 from ..definitions.driver import Driver
 from ..definitions.bone import BoneInfoContainer
 from ..definitions.bone_group import BoneGroupContainer
-from .. import layers
 from .cloud_utils import CloudUtilities
 
 class CloudBaseRig(BaseRig, CloudUtilities):
@@ -177,8 +176,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			bd.write_edit_data(self.obj, edit_bone)
 
 	def configure_bones(self):
-		# self.init_bone_groups()
-		
 		self.generator.bone_groups.make_real(self.obj)
 
 		for bd in self.bone_infos.bones:
@@ -252,11 +249,11 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 				exec(text.as_string(), {})
 
 	def finalize(self):
-		self.select_layers(layers.default_active_layers)
+		self.set_layers(self.obj.data, [0, 16, 1, 17])
 
 		# Set root bone layers
 		root_bone = self.get_bone("root")
-		layers.set_layers(root_bone.bone, [0, 1, 16, 17])
+		self.set_layers(root_bone.bone, [0, 1, 16, 17])
 
 		# Nuke Rigify's generated root bone shape so it cannot be applied.
 		root_shape = bpy.data.objects.get("WGT-"+self.obj.name+"_root")
