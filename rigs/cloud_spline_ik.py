@@ -1,7 +1,6 @@
 import bpy
 from bpy.props import BoolProperty, IntProperty, FloatProperty, StringProperty
 from mathutils import Vector
-from math import pi
 
 from rigify.base_rig import stage
 

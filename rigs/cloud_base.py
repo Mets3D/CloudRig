@@ -27,11 +27,10 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		super().initialize()
 		"""Gather and validate data about the rig."""
 		
+		assert type(self.generator) == cloud_generator.CloudGenerator, "Error: CloudRig has wrong Generator type. CloudRig requires its own Generator class - Perhaps you're using bpy.ops.rigify_generate instead of bpy.ops.cloudrig_generate?"
+
 		self.generator_params = self.generator.metarig.data
-		if not hasattr(self.generator, "bone_groups"):	# Since the generator object is persistent through different riglets, this code should only run once per rig generation.
-			cloud_generator.initialize_generation(self)
-			# TODO: Once we have our own generator, itself can be responsible for, well, initializing itself.
-		
+
 		self.mch_disable_select = not self.generator_params.cloudrig_mechanism_selectable
 		
 		self.meta_base_bone = self.generator.metarig.pose.bones.get(self.base_bone.replace("ORG-", ""))
