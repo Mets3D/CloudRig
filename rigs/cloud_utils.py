@@ -501,52 +501,71 @@ def set_layers(obj, layerlist, additive=False):
 	
 	obj.layers = layers[:]
 
-class EnsureVisible:
-	""" Class to ensure an object is visible, then reset it to how it was before. """
-	is_visible = False
-	temp_coll = None
-	obj_hide = False
-	obj_hide_viewport = False
 
-	@classmethod
-	def ensure(cls, context, obj):
-		# Make temporary collection so we can ensure visibility.
-		if cls.is_visible:
-			print(f"Could not ensure visibility of object {obj.name}. Can only ensure the visibility of one object at a time. Must Run EnsureVisible.restore()!")
-			return
-		
-		if obj.visible_get():
-			return
-		
-		coll_name = "temp_coll"
-		temp_coll = bpy.data.collections.get(coll_name)
-		if not temp_coll:
-			temp_coll = bpy.data.collections.new(coll_name)
-		if coll_name not in context.scene.collection.children:
-			context.scene.collection.children.link(temp_coll)
+def recursive_search_layer_collection(collName, layerColl=None):
+	# Recursivly transverse layer_collection for a particular name
+	# This is the only way to set active collection as of 14-04-2020.
+	if not layerColl:
+		layerColl = bpy.context.view_layer.layer_collection
 	
-		if obj.name not in temp_coll.objects:
-			temp_coll.objects.link(obj)
-			cls.obj_hide = obj.hide_get()
+	found = None
+	if (layerColl.name == collName):
+		return layerColl
+	for layer in layerColl.children:
+		found = recursive_search_layer_collection(collName, layer)
+		if found:
+			return found
+
+
+def set_active_collection(collection):
+	layer_collection = recursive_search_layer_collection(collection.name)
+	bpy.context.view_layer.active_layer_collection = layer_collection
+
+class EnsureVisible:
+	""" Ensure an object is visible, then reset it to how it was before. """
+
+	def __init__(self, obj):
+		""" Ensure an object is visible, and create this small object to manage that object's visibility-ensured-ness. """
+		self.obj_name = obj.name
+		self.obj_hide = obj.hide_get()
+		self.obj_hide_viewport = obj.hide_viewport
+		self.temp_coll = None
+		
+		if not obj.visible_get():
 			obj.hide_set(False)
-			cls.obj_hide_viewport = obj.hide_viewport
 			obj.hide_viewport = False
+
+		if not obj.visible_get():
+			# If the object is still not visible, we need to move it to a visible collection. To not break other scripts though, we should restore the active collection afterwards.
+			active_coll = bpy.context.collection
+
+			coll_name = "temp_visible"
+			temp_coll = bpy.data.collections.get(coll_name)
+			if not temp_coll:
+				temp_coll = bpy.data.collections.new(coll_name)
+			if coll_name not in bpy.context.scene.collection.children:
+				bpy.context.scene.collection.children.link(temp_coll)
 		
-		cls.obj = obj
-		cls.temp_coll = temp_coll
-		
-	@classmethod
-	def restore(cls, obj):
-		# Delete temp collection
-		if not cls.temp_coll:
-			return
-		bpy.data.collections.remove(cls.temp_coll)
-		cls.temp_coll = None
+			if obj.name not in temp_coll.objects:
+				temp_coll.objects.link(obj)
+			
+			self.temp_coll = temp_coll
 
-		obj.hide_set(cls.obj_hide)
-		obj.hide_viewport = cls.obj_hide_viewport
+			set_active_collection(active_coll)
+	
+	def restore(self):
+		""" Restore visibility settings to their original state. """
+		obj = bpy.data.objects.get(self.obj_name)
+		if not obj: return
 
-		cls.obj_hide = False
-		cls.obj_hide_viewport = False
+		obj.hide_set(self.obj_hide)
+		obj.hide_viewport = self.obj_hide_viewport
 
-		cls.is_visible=False
+		# Remove object from temp collection
+		if self.temp_coll and obj.name in self.temp_coll.objects:
+			self.temp_coll.objects.unlink(obj)
+
+			# Delete temp collection if it's empty now.
+			if len(self.temp_coll.objects) == 0:
+				bpy.data.collections.remove(self.temp_coll)
+				self.temp_coll = None
