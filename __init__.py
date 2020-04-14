@@ -5,6 +5,7 @@ rigify_info = {
 from .operators import regenerate_rigify_rigs
 from .operators import refresh_drivers
 from . import ui
+from . import cloud_generator
 
 import bpy, os
 from bpy.props import *
@@ -26,8 +27,15 @@ class DATA_OT_rigify_remove_and_unregister_feature_set(bpy.types.Operator):
 		return context.window_manager.invoke_confirm(self, event)
 
 	def execute(self, context):
+		# First, unregister the feature set, if there is an unregister() in its __init__.py.
+		
+		module = get_module_safe(self.featureset)
+		print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA REMOVING FEATURE SET")
+		if module and hasattr(module, 'unfuck') and callable(module.unfuck):
+			print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA HAS unfuck")
+			module.unfuck()
+
 		addon_prefs = context.preferences.addons['rigify'].preferences
-		print("Hijacked remove featureset operator, WOOHOOO")
 		rigify_config_path = get_install_path()
 		if rigify_config_path:
 			set_path = os.path.join(rigify_config_path, self.featureset)
@@ -39,18 +47,26 @@ class DATA_OT_rigify_remove_and_unregister_feature_set(bpy.types.Operator):
 
 
 # TODO: Not sure how to get Rigify to call our register() and unregister() for us.
+from bpy.utils import register_class
+from bpy.utils import unregister_class
+
 def register():
-	from bpy.utils import register_class
 	regenerate_rigify_rigs.register()
 	refresh_drivers.register()
 	ui.register()
-	# register_class(DATA_OT_rigify_remove_and_unregister_feature_set)
+	cloud_generator.register()
 
-def unregister():
-	from bpy.utils import unregister_class
+	unregister_class(DATA_OT_rigify_remove_feature_set)
+	register_class(DATA_OT_rigify_remove_and_unregister_feature_set)
+
+def unfuck():
+	print("Unregistering CloudRig...")
 	regenerate_rigify_rigs.unregister()
 	refresh_drivers.unregister()
 	ui.unregister()
+	cloud_generator.unregister()
+
 	unregister_class(DATA_OT_rigify_remove_and_unregister_feature_set)
+	register_class(DATA_OT_rigify_remove_feature_set)
 
 register()
