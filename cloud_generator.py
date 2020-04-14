@@ -6,48 +6,83 @@ import bpy
 class CloudGenerator(Generator):
 	def __init__(self, context, metarig):
 		super().__init__(context, metarig)
-		params = metarig.data	# Generator parameters are stored in rig data.
+		self.params = metarig.data	# Generator parameters are stored in rig data.
 		
 		# Initialize BoneGroupContainer.
 		self.bone_groups = BoneGroupContainer()
 
 		# Initialize generator parameters (These are registered in cloudrig/__init__.py)
-		self.prefix_separator = params.cloudrig_prefix_separator
-		self.suffix_separator = params.cloudrig_suffix_separator
+		self.prefix_separator = self.params.cloudrig_prefix_separator
+		self.suffix_separator = self.params.cloudrig_suffix_separator
 		assert self.prefix_separator != self.suffix_separator, "CloudGenerator Error: Prefix and Suffix separators cannot be the same."
 
+	def create_rig_object(self):
+		scene = self.scene
+
+		# Check if the generated rig already exists, so we can
+		# regenerate in the same object.  If not, create a new
+		# object to generate the rig in.
+		print("Find or create rig object.")
+
+		metaname = self.metarig.name
+		rig_name = "RIG" + self.prefix_separator + metaname
+		if "META" in metaname:
+			rig_name = metaname.replace("META", "RIG")
+
+		# Try to find object from the generator parameter.
+		obj = self.params.rigify_target_rig
+		if not obj:
+			# Try to find object in scene.
+			obj = scene.objects.get(rig_name)
+		if not obj:
+			# Try to find object in file.
+			obj = bpy.data.objects.get(rig_name)
+		if not obj:
+			# Object wasn't found anywhere, so create it.
+			obj = bpy.data.objects.new(rig_name, bpy.data.armatures.new(rig_name))
+
+		assert obj, "Error: Failed to find or create object!"
+		obj.data.name = "Data_" + obj.name
+
+		# Ensure rig is in the metarig's collection.
+		if obj.name not in self.collection.objects:
+			self.collection.objects.link(obj)
+
+		self.params.rigify_target_rig = obj
+		obj.data.pose_position = 'POSE'
+
+		self.obj = obj
+		return obj
 	
 	def generate(self):
 		# NOTE: It should be possible to configure the generator options such that this function does nothing beside calling the generation stages of the rig elements.
 		# That is to say, everything in here should be behind an if(generator_parameter) statement.
 		print("CloudRig Generation begin")
-		
-		# # Wipe any existing bone groups from the generated rig.
-		# for bone_group in rig_obj.pose.bone_groups:
-		# 	rig_obj.pose.bone_groups.remove(bone_group)
 
 		# For now we just copy-pasted Rigify's generate(). A lot of this will be modifier later though.
 		# Unfortunately for some reason the Generator class has a lot of name-mangled functions, which makes it unneccessailry ugly to modify... Not sure why that choice was made.
-		
+
 		context = self.context
 		metarig = self.metarig
-		scene = self.scene
-		id_store = self.id_store
-		view_layer = self.view_layer
 		t = Timer()
 
-		self.usable_collections = list_layer_collections(view_layer.layer_collection, selectable=True)
-
-		if self.layer_collection not in self.usable_collections:
-			metarig_collections = filter_layer_collections_by_object(self.usable_collections, self.metarig)
-			self.layer_collection = (metarig_collections + [view_layer.layer_collection])[0]
-			self.collection = self.layer_collection.collection
+		self.collection = context.scene.collection
+		if len(self.metarig.users_collection) > 0:
+			self.collection = self.metarig.users_collection[0]
 
 		bpy.ops.object.mode_set(mode='OBJECT')
 
 		#------------------------------------------
 		# Create/find the rig object and set it up
-		obj = self._Generator__create_rig_object()
+		obj = self.create_rig_object()
+		
+		# Wipe any existing bone groups from the target rig. (TODO: parameter??)
+		if obj.pose:
+			for bone_group in obj.pose.bone_groups:
+				obj.pose.bone_groups.remove(bone_group)
+		
+		# Rename metarig data (TODO: parameter)
+		self.metarig.data.name = "Data_" + self.metarig.name
 
 		# Get rid of anim data in case the rig already existed
 		print("Clear rig animation data.")
@@ -59,7 +94,7 @@ class CloudGenerator(Generator):
 
 		#------------------------------------------
 		# Create Group widget
-		self._Generator__create_widget_group("WGTS_" + obj.name)
+		# self._Generator__create_widget_group("WGTS_" + obj.name)
 
 		t.tick("Create main WGTS: ")
 
@@ -187,7 +222,7 @@ class CloudGenerator(Generator):
 		create_selection_sets(obj, metarig)
 
 		# Create Bone Groups
-		create_bone_groups(obj, metarig, self.layer_group_priorities)
+		# create_bone_groups(obj, metarig, self.layer_group_priorities)
 
 		t.tick("The rest: ")
 
@@ -202,11 +237,6 @@ class CloudGenerator(Generator):
 				mat = child.matrix_world.copy()
 				child.parent_bone = sub_parent
 				child.matrix_world = mat
-
-		#----------------------------------
-		# Restore active collection
-		view_layer.active_layer_collection = self.layer_collection
-
 
 def generate_rig(context, metarig):
 	""" Generates a rig from a metarig.	"""

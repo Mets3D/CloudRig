@@ -99,10 +99,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			if k in ['_RNA_UI', 'rig_id']: continue
 			del self.obj.data[k]
 
-		# TODO: Put this under a generator parameter
-		self.obj.name = self.generator.metarig.name.replace("META", "RIG")
-		self.generator.metarig.data.name = "Data_" + self.generator.metarig.name
-		self.obj.data.name = "Data_" + self.obj.name
+		# TODO: Move to CloudGenerator.
 		self.obj.data['cloudrig'] = self.script_id
 
 		# TODO: Put this under a generator parameter
