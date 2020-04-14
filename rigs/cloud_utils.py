@@ -397,10 +397,10 @@ class CloudUtilities:
 		return self.make_name(*sliced_name)
 
 	def make_name(self, prefixes=[], base="", suffixes=[]):
-		return make_name(prefixes, base, suffixes, self.prefix_separator, self.suffix_separator)
+		return make_name(prefixes, base, suffixes, self.generator.prefix_separator, self.generator.suffix_separator)
 	
 	def slice_name(self, name):
-		return slice_name(name, self.prefix_separator, self.suffix_separator)
+		return slice_name(name, self.generator.prefix_separator, self.generator.suffix_separator)
 	
 	@staticmethod
 	def ensure_visible(obj):

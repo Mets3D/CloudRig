@@ -6,8 +6,8 @@ from rigify.base_rig import BaseRig, stage
 
 from ..definitions.driver import Driver
 from ..definitions.bone import BoneInfoContainer
-from ..definitions.bone_group import BoneGroupContainer
 from .cloud_utils import CloudUtilities
+from .. import cloud_generator
 
 class CloudBaseRig(BaseRig, CloudUtilities):
 	"""Base for all CloudRig rigs."""
@@ -23,39 +23,19 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			main=[bone.name] + connected_children_names(self.obj, bone.name),
 		)
 
-	def ensure_bone_groups(self):
-		""" Ensure bone groups that this rig needs. """
-		IK_MAIN = 0
-		IK_SECOND = 16
-		self.group_root = self.generator.bone_groups.ensure(
-			name = "Root Control"
-			,layers = [IK_MAIN, IK_SECOND]
-			,preset = 2
-		)
-		self.group_root_parent = self.generator.bone_groups.ensure(
-			name = "Root Control Parent"
-			,layers = [IK_MAIN, IK_SECOND]
-			,preset = 8
-		)
-
 	def initialize(self):
 		super().initialize()
 		"""Gather and validate data about the rig."""
-
+		
 		self.generator_params = self.generator.metarig.data
-		self.prefix_separator = self.generator_params.cloudrig_prefix_separator
-		self.suffix_separator = self.generator_params.cloudrig_suffix_separator
-		assert self.prefix_separator != self.suffix_separator, "Error: Prefix and Suffix separators cannot be the same."
-
-		self.meta_base_bone = self.generator.metarig.pose.bones.get(self.base_bone.replace("ORG-", ""))
-
-		self.parent_candidates = {}
-
 		if not hasattr(self.generator, "bone_groups"):	# Since the generator object is persistent through different riglets, this code should only run once per rig generation.
-			self.generator.bone_groups = BoneGroupContainer()
-			# Wipe any existing bone groups from the generated rig.
-			for bone_group in self.obj.pose.bone_groups:
-				self.obj.pose.bone_groups.remove(bone_group)
+			cloud_generator.initialize_generation(self)
+			# TODO: Once we have our own generator, itself can be responsible for, well, initializing itself.
+		
+		self.mch_disable_select = not self.generator_params.cloudrig_mechanism_selectable
+		
+		self.meta_base_bone = self.generator.metarig.pose.bones.get(self.base_bone.replace("ORG-", ""))
+		self.parent_candidates = {}
 		self.ensure_bone_groups()
 
 		self.script_id = bpy.path.basename(bpy.data.filepath).split(".")[0]
@@ -65,9 +45,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 		# Determine rig scale by armature height.
 		self.scale = max(self.generator.metarig.dimensions)/10
-
-		# TODO: Generator parameter.
-		self.mch_disable_select = False
 
 		self.side_suffix = ""
 		self.side_prefix = ""
@@ -134,6 +111,21 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		if list(self.obj.data.layers_protected) == [False]*32:
 			self.obj.data.layers_protected = [True]*32
 
+	def ensure_bone_groups(self):
+		""" Ensure bone groups that this rig needs. """
+		IK_MAIN = 0
+		IK_SECOND = 16
+		self.group_root = self.generator.bone_groups.ensure(
+			name = "Root Control"
+			,layers = [IK_MAIN, IK_SECOND]
+			,preset = 2
+		)
+		self.group_root_parent = self.generator.bone_groups.ensure(
+			name = "Root Control Parent"
+			,layers = [IK_MAIN, IK_SECOND]
+			,preset = 8
+		)
+
 	def prepare_bones(self):
 		self.load_org_bones()
 
@@ -147,7 +139,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 			meta_org_name = eb.name.replace("ORG-", "")
 			meta_org = self.generator.metarig.pose.bones.get(meta_org_name)
-			meta_org.name = meta_org.name.replace("-", self.prefix_separator)
+			meta_org.name = meta_org.name.replace("-", self.generator.prefix_separator)
 
 			org_bi = self.bone_infos.bone(bn, eb, self.obj, hide_select=self.mch_disable_select)
 			

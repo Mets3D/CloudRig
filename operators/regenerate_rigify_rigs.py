@@ -1,5 +1,7 @@
 import bpy
 
+from ..ui import is_cloud_metarig
+
 def safe_generate(context, metarig, target_rig, coll):
 	# Generating requires the metarig to be the active object, and the target rig to be visible.
 	# To achieve this, we create a temporary collection, and link the metarig and target rig in there for generation.
@@ -26,7 +28,10 @@ def safe_generate(context, metarig, target_rig, coll):
 
 	# Generate.
 	context.view_layer.objects.active = metarig
-	bpy.ops.pose.rigify_generate()
+	if is_cloud_metarig(metarig):
+		bpy.ops.pose.cloudrig_generate()
+	else:
+		bpy.ops.pose.rigify_generate()
 
 	# Reset visibility states.
 	metarig.hide_viewport = metarig_disabled
