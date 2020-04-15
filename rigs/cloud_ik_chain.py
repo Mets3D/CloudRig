@@ -176,10 +176,7 @@ class CloudIKChainRig(CloudFKChainRig):
 			"ik_pole"				: self.pole_ctrl.name if self.pole_ctrl else "",
 			"ik_control"			: self.ik_mstr.name
 		}
-		default = 1.0
-		if hasattr(self, "limb_type") and self.limb_type=='ARM':
-			default = 0.0	# TODO: delet this. (arbitrary hardcoded defaults, for CoffeeRun) - Do this with a custom post-generation script.
-		self.add_ui_data("ik_switches", self.category, self.limb_ui_name, info, default=default)
+		self.add_ui_data("ik_switches", self.category, self.limb_ui_name, info, default=1.0)
 
 	def make_ik_chain(self, org_chain, ik_mstr, pole_target, ik_pole_direction=0):
 		""" Based on a chain of ORG bones, create an IK chain, optionally with a pole target."""
