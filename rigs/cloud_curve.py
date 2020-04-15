@@ -192,7 +192,7 @@ class CloudCurveRig(CloudBaseRig):
 
 		curve_ob = bpy.data.objects.get(curve_ob_name)
 		assert curve_ob, f"Error: Curve object {curve_ob_name} doesn't exist for rig: {self.base_bone}"
-		self.ensure_visible(curve_ob)
+		curve_visible = self.ensure_visible(curve_ob)
 		bpy.ops.object.select_all(action='DESELECT')
 		self.obj.select_set(True)
 		bpy.context.view_layer.objects.active = self.obj
@@ -233,7 +233,7 @@ class CloudCurveRig(CloudBaseRig):
 
 		# Reset selection so Rigify can continue execution.
 		bpy.ops.object.mode_set(mode='OBJECT')
-		self.restore_visible(curve_ob)
+		curve_visible.restore()
 		bpy.context.view_layer.objects.active = self.obj
 		self.obj.select_set(True)
 
