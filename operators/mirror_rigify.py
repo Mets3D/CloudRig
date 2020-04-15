@@ -4,7 +4,10 @@ from ..rigs import cloud_utils
 def copy_rigify_params(from_bone, to_bone):
 	to_bone.rigify_type = from_bone.rigify_type
 	for key, value in from_bone.rigify_parameters.items():
-		setattr(to_bone.rigify_parameters, key, value)
+		try:
+			setattr(to_bone.rigify_parameters, key, getattr(from_bone.rigify_parameters, key))
+		except:
+			pass
 
 class MirrorRigifyParameters(bpy.types.Operator):
 	"""Mirror rigify type and parameters of selected bones"""

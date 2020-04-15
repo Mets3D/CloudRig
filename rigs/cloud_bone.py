@@ -21,8 +21,6 @@ class CloudBoneRig(BaseRig):
 
 	def initialize(self):
 		super().initialize()
-		self.defaults = {}
-		self.scale = 1
 		self.bone_name = self.base_bone.replace("ORG-", "")
 
 	def copy_constraint(self, from_con, to_bone):
@@ -52,6 +50,11 @@ class CloudBoneRig(BaseRig):
 
 	def generate_bones(self):
 		if self.params.CR_copy_type != "Create": return
+
+		# Remove ORG- prefix.
+		org_bone = self.get_bone(self.base_bone)
+		org_bone.name = self.base_bone.replace("ORG-", "")
+		self.base_bone = self.bones.org = org_bone.name
 		
 		# Make a copy with DEF- prefix, as our deform bone.
 		if self.params.CR_create_deform_bone: 
@@ -77,8 +80,6 @@ class CloudBoneRig(BaseRig):
 					bg.colors.active = meta_bg.colors.active[:]
 					bg.colors.select = meta_bg.colors.select[:]
 				mod_bone.bone_group = bg
-			else:
-				mod_bone.bone_group = None
 
 	@stage.apply_bones
 	def modify_edit_bone(self):
@@ -98,12 +99,40 @@ class CloudBoneRig(BaseRig):
 		if parent:
 			mod_bone.parent = parent
 
+	def relink_constraint(self, constraint):
+		""" Constraint re-linking is done similarly to Rigify, but without the prefix-only shorthand.
+			Constraint names can contain an @ character which separates the constraint name from the desired target to set when all bones have been generated.
+			Eg. "Transformation@FK-Spine" on meta_bone will result in a constraint on mod_bone called "Transformation" with "FK-Spine" as its subtarget.
+			Armature constraints can have multiple @ targets.
+		"""
+		split_name = constraint.name.split("@")
+		subtargets = split_name[1:]
+
+		if constraint.type=='ARMATURE':
+			for i, t in enumerate(constraint.targets):
+				t.target = self.obj
+				t.subtarget = subtargets[i]	# IndexError is possible - make sure the Armature constraint has the correct number of targets in the metarig!
+			return
+
+		if not constraint.target:
+			constraint.target = self.obj
+		if len(subtargets) > 0:
+			constraint.subtarget = subtargets[0]
+			constraint.name = split_name[0]
+		else:
+			# This is allowed to happen with targetless constraints like Limit Location.
+			pass
+
 	@stage.finalize
 	def modify_pose_bone(self):
-		if self.params.CR_copy_type != 'Tweak': return
 		mod_bone = self.get_bone(self.bone_name)
 		meta_bone = self.generator.metarig.pose.bones.get(self.bone_name)
 		org_bone = self.get_bone(self.base_bone)
+
+		if self.params.CR_copy_type != 'Tweak':
+			for c in mod_bone.constraints:
+				self.relink_constraint(c)
+			return
 
 		mod_bone.bone.use_deform = meta_bone.bone.use_deform
 		
@@ -147,28 +176,10 @@ class CloudBoneRig(BaseRig):
 		if not self.params.CR_constraints_additive:
 			mod_bone.constraints.clear()
 		
-		# Constraint re-linking is done similarly to Rigify, but without the prefix-only shorthand.
-		# Constraint names can contain an @ character which separates the constraint name from the desired target to set when all bones have been generated.
-		# Eg. "Transformation@FK-Spine" on meta_bone will result in a constraint on mod_bone called "Transformation" with "FK-Spine" as its subtarget.
-		# Armature constraints can have multiple @ targets.
 		for org_c in org_bone.constraints:
-			# Create a copy of this constraint on mod_bone
+			# Create a copy of this constraint on mod_bone, then relink it.
 			new_con = self.copy_constraint(org_c, mod_bone)
-			if not new_con.target:
-				new_con.target = self.obj
-			split_name = new_con.name.split("@")
-			subtargets = split_name[1:]
-			if new_con.type=='ARMATURE':
-				for i, t in enumerate(new_con.targets):
-					t.target = self.obj
-					t.subtarget = subtargets[i]	# IndexError is possible and allowed here.
-				continue
-			if len(subtargets) > 0:
-				new_con.subtarget = subtargets[0]
-				new_con.name = split_name[0]
-			else:
-				# This is allowed to happen with targetless constraints like Limit Location.
-				pass
+			self.relink_constraint(new_con)
 		
 		# Copy custom properties
 		if self.params.CR_custom_props and '_RNA_UI' in meta_bone.keys():
