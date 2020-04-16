@@ -14,9 +14,8 @@ class SettlerMouthRig(CloudCurveRig):
 	and also has a target for a mesh to Shrinkwrap to,
 	and adds some custom properties and drivers to control the shrinkwrap strength."""
 
-	def shrinkwrap_bones(self, bones, target_ob_name):
-		target_ob = bpy.data.objects.get(target_ob_name)
-		assert target_ob, f"Error: Could not find shrinkwrap target: {target_ob_name}"
+	def shrinkwrap_bones(self, bones, target_ob):
+		assert target_ob, f"Error: Could not find shrinkwrap target: {target_ob}"
 		
 		for b in bones:
 			hooks = [b]
@@ -38,13 +37,13 @@ class SettlerMouthRig(CloudCurveRig):
 	def prepare_bones(self):
 		super().prepare_bones()
 		self.org_pose = self.obj.data.pose_position
-		if self.params.SETTLERS_shrinkwrap_target!="":
+		if self.params.SETTLERS_shrinkwrap_target:
 			self.obj.data.pose_position = 'REST'
 			self.shrinkwrap_bones(self.hooks, self.params.SETTLERS_shrinkwrap_target)
 
 	def configure_bones(self):
-		if self.params.SETTLERS_target_curve_name !="":
-			self.setup_curve(self.hooks, self.params.SETTLERS_target_curve_name)
+		if self.params.SETTLERS_target_curve:
+			self.setup_curve(self.hooks, self.params.SETTLERS_target_curve)
 
 		super().configure_bones()
 
@@ -61,10 +60,11 @@ class SettlerMouthRig(CloudCurveRig):
 		super().add_parameters(params)
 		
 		params.SETTLERS_mouth_settings = BoolProperty(name="Mouth Rig")
-		params.SETTLERS_target_curve_name = StringProperty(
+		params.SETTLERS_target_curve = PointerProperty(
+			type=bpy.types.Object,
 			name="Curve 2", 
 			description="A second curve that will also be hooked to the hook controls. This should be identical to the first curve, just used for a different purpose")
-		params.SETTLERS_shrinkwrap_target = StringProperty(name="Shrinkwrap Object")
+		params.SETTLERS_shrinkwrap_target = PointerProperty(type=bpy.types.Object, name="Shrinkwrap Object")
 
 	@classmethod
 	def parameters_ui(cls, layout, params):
@@ -76,8 +76,8 @@ class SettlerMouthRig(CloudCurveRig):
 		layout.prop(params, "SETTLERS_mouth_settings", toggle=True, icon=icon)
 		if not params.SETTLERS_mouth_settings: return ui_rows
 
-		layout.prop_search(params, "SETTLERS_target_curve_name", bpy.data, 'objects')
-		layout.prop_search(params, "SETTLERS_shrinkwrap_target", bpy.data, 'objects')
+		layout.prop(params, "SETTLERS_target_curve")
+		layout.prop(params, "SETTLERS_shrinkwrap_target")
 		
 		return ui_rows
 
