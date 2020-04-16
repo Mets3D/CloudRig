@@ -6,15 +6,7 @@ def refresh_drivers(datablock):
 	if not hasattr(datablock, "animation_data"): return
 	if not datablock.animation_data: return
 	for d in datablock.animation_data.drivers:
-		if d.driver.type == 'SCRIPTED':
-			d.driver.expression = d.driver.expression
-		else:
-			if len(d.driver.variables)>0:
-				var = d.driver.variables[0]
-				if var.type=='SINGLE_PROP':
-					var.targets[0].data_path = var.targets[0].data_path
-				else:
-					var.targets[0].id = var.targets[0].id
+		d.driver.type = d.driver.type
 
 class RefreshDrivers(bpy.types.Operator):
 	"""Refresh drivers, ensuring no valid drivers are marked as invalid"""
