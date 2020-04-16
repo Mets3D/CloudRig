@@ -50,11 +50,6 @@ class CloudBoneRig(BaseRig):
 
 	def generate_bones(self):
 		if self.params.CR_copy_type != "Create": return
-
-		# Remove ORG- prefix.
-		org_bone = self.get_bone(self.base_bone)
-		org_bone.name = self.base_bone.replace("ORG-", "")
-		self.base_bone = self.bones.org = org_bone.name
 		
 		# Make a copy with DEF- prefix, as our deform bone.
 		if self.params.CR_create_deform_bone: 
@@ -83,21 +78,22 @@ class CloudBoneRig(BaseRig):
 
 	@stage.apply_bones
 	def modify_edit_bone(self):
-		if self.params.CR_copy_type != 'Tweak': return
 		mod_bone = self.get_bone(self.bones.org)
+
+		if self.params.CR_copy_type != 'Tweak':
+			parent = self.obj.data.edit_bones.get(self.params.CR_custom_bone_parent)
+			if parent:
+				mod_bone.parent = parent
+			return
+
 		org_bone = self.get_bone(self.base_bone)
 		meta_bone = self.generator.metarig.data.bones.get(self.bone_name)
-
 		if self.params.CR_bone_transforms:
 			mod_bone.head = meta_bone.head_local.copy()
 			mod_bone.tail = meta_bone.tail_local.copy()
 			mod_bone.roll = org_bone.roll
 			mod_bone.bbone_x = meta_bone.bbone_x
 			mod_bone.bbone_z = meta_bone.bbone_z
-		
-		parent = self.obj.data.edit_bones.get(self.params.CR_custom_bone_parent)
-		if parent:
-			mod_bone.parent = parent
 
 	def relink_constraint(self, constraint):
 		""" Constraint re-linking is done similarly to Rigify, but without the prefix-only shorthand.
@@ -107,6 +103,7 @@ class CloudBoneRig(BaseRig):
 		"""
 		split_name = constraint.name.split("@")
 		subtargets = split_name[1:]
+		constraint.name = split_name[0]
 
 		if constraint.type=='ARMATURE':
 			for i, t in enumerate(constraint.targets):
@@ -118,22 +115,25 @@ class CloudBoneRig(BaseRig):
 			constraint.target = self.obj
 		if len(subtargets) > 0:
 			constraint.subtarget = subtargets[0]
-			constraint.name = split_name[0]
 		else:
 			# This is allowed to happen with targetless constraints like Limit Location.
 			pass
 
 	@stage.finalize
 	def modify_pose_bone(self):
-		mod_bone = self.get_bone(self.bone_name)
 		meta_bone = self.generator.metarig.pose.bones.get(self.bone_name)
 		org_bone = self.get_bone(self.base_bone)
 
-		if self.params.CR_copy_type != 'Tweak':
-			for c in mod_bone.constraints:
+		if self.params.CR_copy_type == 'Create':
+			for c in org_bone.constraints:
 				self.relink_constraint(c)
+			# Remove ORG- prefix.
+			org_bone = self.get_bone(self.base_bone)
+			org_bone.name = self.bone_name
+			self.base_bone = self.bones.org = org_bone.name
 			return
 
+		mod_bone = self.get_bone(self.bone_name)
 		mod_bone.bone.use_deform = meta_bone.bone.use_deform
 		
 		if self.params.CR_transform_locks:
