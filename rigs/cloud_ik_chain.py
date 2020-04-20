@@ -30,7 +30,6 @@ class CloudIKChainRig(CloudFKChainRig):
 			name = "IK Chain Mechanism"
 			,layers = [BODY_MECH]
 		)
-		
 
 	def initialize(self):
 		"""Gather and validate data about the rig."""
@@ -158,7 +157,7 @@ class CloudIKChainRig(CloudFKChainRig):
 		
 		self.create_dsp_bone(pole_ctrl)
 		return pole_ctrl
-	
+
 	def add_ui_data_ik_fk(self, fk_chain, ik_chain, ik_pole):
 		""" Prepare the data needed to be stored on the armature object for IK/FK snapping. """
 		fk_chain = fk_chain[:self.params.CR_ik_length]
@@ -395,7 +394,7 @@ class CloudIKChainRig(CloudFKChainRig):
 				head_tail  = 0.5,
 				track_axis = 'TRACK_NEGATIVE_Y'
 			)
-	
+
 	def prepare_org_limb(self):
 		# Note: Runs after prepare_org_chain().
 		
@@ -420,7 +419,17 @@ class CloudIKChainRig(CloudFKChainRig):
 			data_path = f'constraints["{ik_ct_name}"].influence'
 			org_bone.drivers[data_path] = drv
 
-	def prepare_parent_switch(self, ik_ctrl):
+	def prepare_bones(self):
+		super().prepare_bones()
+		self.prepare_root_bone()
+		self.prepare_ik_chain()
+		self.prepare_org_limb()
+
+	@stage.prepare_bones
+	def prepare_parent_switch(self, ik_ctrl=None):
+		if not ik_ctrl:
+			ik_ctrl = self.ik_mstr
+
 		if len(self.get_parent_candidates()) == 0:
 			# If this rig has no parent candidates, there's nothing to be done here.
 			return
@@ -489,16 +498,9 @@ class CloudIKChainRig(CloudFKChainRig):
 				follow_var.targets[0].id = self.obj
 				follow_var.targets[0].data_path = f'pose.bones["{self.prop_bone.name}"]["{ik_pole_follow_name}"]'
 
-	def prepare_bones(self):
-		super().prepare_bones()
-		self.prepare_root_bone()
-		self.prepare_ik_chain()
-		self.prepare_org_limb()
-		self.prepare_parent_switch(self.ik_mstr)
-
 	##############################
 	# Parameters
-	
+
 	@classmethod
 	def add_parameters(cls, params):
 		""" Add the parameters of this rig type to the
