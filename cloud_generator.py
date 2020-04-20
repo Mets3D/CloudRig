@@ -239,7 +239,6 @@ class CloudGenerator(Generator):
 		#------------------------------------------
 		bpy.ops.object.mode_set(mode='OBJECT')
 
-		self._Generator__lock_transforms()
 		self._Generator__assign_layers()
 		self._Generator__compute_visible_layers()
 		self._Generator__restore_driver_vars()
