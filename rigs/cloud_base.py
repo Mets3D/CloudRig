@@ -37,11 +37,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		self.parent_candidates = {}
 		self.ensure_bone_groups()
 
-		self.script_id = bpy.path.basename(bpy.data.filepath).split(".")[0]
-		if self.script_id=="":
-			# Default in case the file hasn't been saved yet.
-			self.script_id = "cloudrig"
-
 		# Determine rig scale by armature height.
 		self.scale = max(self.generator.metarig.dimensions)/10
 
@@ -60,7 +55,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			"rotation_mode" : "XYZ",
 			#"use_custom_shape_bone_size" : False#True
 		}
-		# Bone Info container used for storing new bone info created by the script.
+		# Bone Info container used for storing bones created by this rig element.
 		self.bone_infos = BoneInfoContainer(self)
 		
 		# Keep track of created widgets, so we can add them to Rigify-created Widgets collection at the end.
@@ -98,9 +93,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		for k in self.obj.data.keys():
 			if k in ['_RNA_UI', 'rig_id']: continue
 			del self.obj.data[k]
-
-		# TODO: Move to CloudGenerator.
-		self.obj.data['cloudrig'] = self.script_id
 
 		# TODO: Put this under a generator parameter
 		# If no layers are protected, protect all layers. Otherwise, we assume protected layers were set up manually in a previously generated rig, so we don't touch them.
@@ -249,11 +241,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			pb.lock_rotation_w = bd.lock_rotation_w
 			pb.lock_scale = bd.lock_scale
 
-	def execute_custom_script(self):
-		script = self.datablock_from_str(bpy.data.texts, self.generator_params.cloudrig_custom_script)
-		if script:
-			exec(script.as_string(), {})
-
 	def finalize(self):
 		self.set_layers(self.obj.data, [0, 16, 1, 17])
 
@@ -265,8 +252,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		root_shape = bpy.data.objects.get("WGT-"+self.obj.name+"_root")
 		if root_shape:
 			bpy.data.objects.remove(root_shape)
-
-		self.obj.data['script'] = self.load_ui_script()
 
 		# For some god-forsaken reason, this is the earliest point when we can set bbone_x and bbone_z.
 		for b in self.obj.data.bones:
@@ -280,7 +265,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		self.organize_widgets()
 		self.configure_display()
 		self.transform_locks()
-		self.execute_custom_script()
 
 	##############################
 	# Parameters

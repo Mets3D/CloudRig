@@ -1,7 +1,8 @@
+import bpy, os
+from bpy.props import BoolProperty, StringProperty, EnumProperty
 from rigify.generate import *
 from .definitions.bone_group import BoneGroupContainer
-from bpy.props import BoolProperty, StringProperty, EnumProperty
-import bpy
+from .rigs import cloud_utils
 
 class CloudGenerator(Generator):
 	def __init__(self, context, metarig):
@@ -54,6 +55,45 @@ class CloudGenerator(Generator):
 		self.obj = obj
 		return obj
 	
+	def load_ui_script(self):
+		"""Load cloudrig.py (CloudRig UI script) into a text datablock, enable register checkbox and execute it."""
+		
+		# Check if it already exists
+		script_name = "cloudrig.py"
+		text = bpy.data.texts.get(script_name)
+		# If not, create it.
+		if not text:
+			text = bpy.data.texts.new(name=script_name)
+		
+		text.clear()
+		text.use_module = True
+
+		filename = script_name
+		filedir = os.path.dirname(os.path.realpath(__file__))
+		# filedir = os.path.split(filedir)[0]
+
+		readfile = open(os.path.join(filedir, filename), 'r')
+
+		# The script should have a unique identifier that links it to the rigs that were generated in this file - The .blend filename should be sufficient.
+		script_id = bpy.path.basename(bpy.data.filepath).split(".")[0]
+		if script_id=="":
+			# Default in case the file hasn't been saved yet. 
+			# Falling back to this could result in an older version of the rig trying to use a newer version of the rig UI script or vice versa, so it should be avoided.
+			script_id = "cloudrig"
+		
+		self.obj.data['cloudrig'] = script_id
+
+		for line in readfile:
+			if 'SCRIPT_ID' in line:
+				line = line.replace("SCRIPT_ID", script_id)
+			text.write(line)
+		readfile.close()
+
+		# Run UI script
+		exec(text.as_string(), {})
+
+		return text
+
 	def generate(self):
 		# NOTE: It should be possible to configure the generator options such that this function does nothing beside calling the generation stages of the rig elements.
 		# That is to say, everything in here should be behind an if(generator_parameter) statement.
@@ -208,6 +248,14 @@ class CloudGenerator(Generator):
 
 		#------------------------------------------
 		bpy.ops.object.mode_set(mode='OBJECT')
+		
+		# Execute custom script
+		script = cloud_utils.datablock_from_str(bpy.data.texts, self.params.cloudrig_custom_script)
+		if script:
+			exec(script.as_string(), {})
+
+		# Load and execute cloudrig.py rig UI script
+		obj.data['script'] = self.load_ui_script()
 
 		self.invoke_finalize()
 

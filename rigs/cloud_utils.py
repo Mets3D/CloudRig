@@ -175,34 +175,6 @@ class CloudUtilities:
 		
 		return wgt_ob
 
-	def load_ui_script(self):
-		# Check if it already exists
-		script_name = "cloudrig.py"
-		text = bpy.data.texts.get(script_name)
-		# If not, create it.
-		if not text:
-			text = bpy.data.texts.new(name=script_name)
-		
-		text.clear()
-		text.use_module = True
-
-		filename = script_name
-		filedir = os.path.dirname(os.path.realpath(__file__))
-		filedir = os.path.split(filedir)[0]
-
-		readfile = open(os.path.join(filedir, filename), 'r')
-
-		for line in readfile:
-			if 'SCRIPT_ID' in line:
-				line = line.replace("SCRIPT_ID", self.script_id)
-			text.write(line)
-		readfile.close()
-
-		# Run UI script
-		exec(text.as_string(), {})
-
-		return text
-
 	def rig_child(self, child_bone, parent_names, prop_bone, prop_name):
 		""" Rig a child with multiple switchable parents, using Armature constraint and drivers.
 		This requires:
@@ -382,20 +354,13 @@ class CloudUtilities:
 	def vector_along_bone_chain(self, chain, length=0, index=-1):
 		return vector_along_bone_chain(chain, length, index)
 
-	def datablock_from_str(self, collprop, string):
-		""" Workaround to T59106. Using PointerProperty causes error spam in console. """
-		found = collprop.get(string)
-		if found: return found
-
-		while string.startswith(" "):
-			string = string[1:]
-		
-		found = collprop.get(string)
-		if found: return found
+	@staticmethod
+	def datablock_from_str(collprop, string):
+		return datablock_from_str(collprop, string)
 
 	@staticmethod
 	def set_layers(obj, layerlist, additive=False):
-		set_layers(obj, layerlist, additive)
+		return set_layers(obj, layerlist, additive)
 
 	@staticmethod
 	def lock_transforms(obj, loc=True, rot=True, scale=True):
@@ -416,14 +381,21 @@ class CloudUtilities:
 	@staticmethod
 	def ensure_visible(obj):
 		return EnsureVisible(obj)
-
-	@staticmethod
-	def restore_visible(ensure_visible):
-		ensure_visible.restore()
 	
 	@staticmethod
 	def flip_name(from_name, only=True, must_change=False):
 		return flip_name(from_name, only, must_change)
+
+def datablock_from_str(collprop, string):
+	""" Workaround to T59106. Using PointerProperty causes error spam in console. """
+	found = collprop.get(string)
+	if found: return found
+
+	while string.startswith(" "):
+		string = string[1:]
+	
+	found = collprop.get(string)
+	if found: return found
 
 def make_name(prefixes=[], base="", suffixes=[], prefix_separator="-", suffix_separator="."):
 	# In our naming convention, prefixes are separated by dashes and suffixes by periods, eg: DSP-FK-UpperArm_Parent.L.001
