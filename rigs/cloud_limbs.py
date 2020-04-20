@@ -144,7 +144,7 @@ class Rig(CloudIKChainRig):
 				dsp_bone.tail = projected_center + Vector((0, -self.scale/10, 0))
 				dsp_bone.roll = rad(90) * direction
 
-		self.bone_infos.bones.remove(self.fk_chain[-1].custom_shape_transform)
+		self.bone_infos.bones.remove(self.fk_chain[self.params.CR_ik_length-1].custom_shape_transform)
 		self.fk_chain[-1].custom_shape_transform = None
 
 		# Configure IK Master
