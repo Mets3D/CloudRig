@@ -250,11 +250,9 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			pb.lock_scale = bd.lock_scale
 
 	def execute_custom_script(self):
-		script_name = self.generator_params.cloudrig_custom_script
-		if script_name != "":
-			text = bpy.data.texts.get(script_name)
-			if text:
-				exec(text.as_string(), {})
+		script = self.datablock_from_str(bpy.data.texts, self.generator_params.cloudrig_custom_script)
+		if script:
+			exec(script.as_string(), {})
 
 	def finalize(self):
 		self.set_layers(self.obj.data, [0, 16, 1, 17])

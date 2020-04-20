@@ -1,5 +1,5 @@
 import bpy
-from bpy.props import BoolProperty, IntProperty, FloatProperty, StringProperty, PointerProperty
+from bpy.props import BoolProperty, IntProperty, FloatProperty, StringProperty
 from mathutils import Vector, Matrix
 
 from rigify.base_rig import stage
@@ -32,7 +32,7 @@ class CloudCurveRig(CloudBaseRig):
 		"""Gather and validate data about the rig."""
 		super().initialize()
 
-		# assert self.params.CR_target_curve, f"Error: Curve Rig has no target curve object! Base bone: {self.base_bone}" #TODO: Having this here causes assertion for spline IK rigs...
+		# assert self.params.CR_target_curve_name, f"Error: Curve Rig has no target curve object! Base bone: {self.base_bone}" #TODO: Having this here causes assertion for spline IK rigs...
 		
 		self.num_controls = len(self.bones.org.main)
 
@@ -121,8 +121,8 @@ class CloudCurveRig(CloudBaseRig):
 		return hook_ctr
 
 	def create_curve_point_hooks(self):
-		curve_ob = self.params.CR_target_curve
-		assert curve_ob, f"Error: Curve object {self.params.CR_target_curve} not found for curve rig: {self.base_bone}"
+		curve_ob = self.datablock_from_str(bpy.data.objects, self.params.CR_target_curve_name)
+		assert curve_ob, f"Error: Curve object {self.params.CR_target_curve_name} not found for curve rig: {self.base_bone}"
 
 		# Function to convert a location vector in the curve's local space into world space.
 
@@ -181,13 +181,14 @@ class CloudCurveRig(CloudBaseRig):
 			if m.name not in old_modifiers:
 				m.name = boneinfo.name
 
-	def setup_curve(self, hooks, curve_ob):
+	def setup_curve(self, hooks, curve_name):
 		""" Configure the Hook Modifiers for the curve. This requires switching object modes. 
 		hooks: List of BoneInfo objects that were created with create_hooks().
 		curve_ob: The curve object.
 		Only single-spline curve is supported. That one spline must have the same number of control points as the number of hooks."""
 
-		assert curve_ob, f"Error: Curve object {curve_ob.name} doesn't exist for rig: {self.base_bone}"
+		curve_ob = self.datablock_from_str(bpy.data.objects, self.params.CR_target_curve_name)
+		assert curve_ob, f"Error: Curve object {curve_name} doesn't exist for rig: {self.base_bone}"
 		curve_visible = self.ensure_visible(curve_ob)
 		bpy.ops.object.select_all(action='DESELECT')
 		self.obj.select_set(True)
@@ -234,7 +235,7 @@ class CloudCurveRig(CloudBaseRig):
 		self.obj.select_set(True)
 
 	def configure_bones(self):
-		self.setup_curve(self.hooks, self.params.CR_target_curve)
+		self.setup_curve(self.hooks, self.params.CR_target_curve_name)
 
 		super().configure_bones()
 
@@ -270,7 +271,7 @@ class CloudCurveRig(CloudBaseRig):
 			,default	 = False
 		)
 
-		params.CR_target_curve = PointerProperty(type=bpy.types.Object, name="Curve")
+		params.CR_target_curve_name = StringProperty(name="Curve")
 
 	@classmethod
 	def parameters_ui(cls, layout, params):
@@ -284,7 +285,7 @@ class CloudCurveRig(CloudBaseRig):
 
 		target_curve_row = layout.row()
 		ui_rows['target_curve'] = target_curve_row
-		target_curve_row.prop_search(params, "CR_target_curve", bpy.data, 'objects')
+		target_curve_row.prop_search(params, "CR_target_curve_name", bpy.data, 'objects')
 		layout.prop(params, "CR_hook_name")
 		layout.prop(params, "CR_hook_parent")
 		layout.prop(params, "CR_controls_for_handles")

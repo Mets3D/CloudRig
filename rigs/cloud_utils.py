@@ -382,6 +382,17 @@ class CloudUtilities:
 	def vector_along_bone_chain(self, chain, length=0, index=-1):
 		return vector_along_bone_chain(chain, length, index)
 
+	def datablock_from_str(self, collprop, string):
+		""" Workaround to T59106. Using PointerProperty causes error spam in console. """
+		found = collprop.get(string)
+		if found: return found
+
+		while string.startswith(" "):
+			string = string[1:]
+		
+		found = collprop.get(string)
+		if found: return found
+
 	@staticmethod
 	def set_layers(obj, layerlist, additive=False):
 		set_layers(obj, layerlist, additive)
