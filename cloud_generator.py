@@ -7,7 +7,7 @@ class CloudGenerator(Generator):
 	def __init__(self, context, metarig):
 		super().__init__(context, metarig)
 		self.params = metarig.data	# Generator parameters are stored in rig data.
-		
+
 		# Initialize BoneGroupContainer.
 		self.bone_groups = BoneGroupContainer()
 
@@ -114,7 +114,7 @@ class CloudGenerator(Generator):
 		# Add the ORG_PREFIX to the original bones.
 		bpy.ops.object.mode_set(mode='OBJECT')
 
-		# self._Generator__rename_org_bones()
+		self._Generator__rename_org_bones()
 
 		t.tick("Make list of org bones: ")
 

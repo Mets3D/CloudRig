@@ -54,8 +54,12 @@ class CloudCurveRig(CloudBaseRig):
 			parent = self.params.CR_hook_parent
 
 		hook_name = self.params.CR_hook_name if self.params.CR_hook_name!="" else self.base_bone.replace("ORG-", "")
+		suffix = self.side_suffix
+		if suffix!="":
+			suffix = self.generator.suffix_separator + suffix
+		
 		hook_ctr = self.bone_infos.bone(
-			name = f"Hook_{hook_name}_{str(i).zfill(2)}",
+			name = f"Hook_{hook_name}_{str(i).zfill(2)}{suffix}",
 			head = loc,
 			tail = loc_left,
 			parent = parent,
@@ -72,7 +76,7 @@ class CloudCurveRig(CloudBaseRig):
 
 			if (i > 0) or cyclic:				# Skip for first hook. #TODO: Unless circular curve!
 				handle_left_ctr = self.bone_infos.bone(
-					name		 = f"Hook_L_{hook_name}_{str(i).zfill(2)}",
+					name		 = f"Hook_L_{hook_name}_{str(i).zfill(2)}{suffix}",
 					head 		 = loc,
 					tail 		 = loc_left,
 					bone_group 	 = self.group_handles,
@@ -84,7 +88,7 @@ class CloudCurveRig(CloudBaseRig):
 
 			if (i < self.num_controls-1) or cyclic:	# Skip for last hook.
 				handle_right_ctr = self.bone_infos.bone(
-					name 		 = f"Hook_R_{hook_name}_{str(i).zfill(2)}",
+					name 		 = f"Hook_R_{hook_name}_{str(i).zfill(2)}{suffix}",
 					head 		 = loc,
 					tail 		 = loc_right,
 					bone_group 	 = self.group_handles,
@@ -180,6 +184,7 @@ class CloudCurveRig(CloudBaseRig):
 		for m in curve_ob.modifiers:
 			if m.name not in old_modifiers:
 				m.name = boneinfo.name
+				m.show_expanded = False
 
 	def setup_curve(self, hooks, curve_name):
 		""" Configure the Hook Modifiers for the curve. This requires switching object modes. 
