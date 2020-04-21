@@ -59,20 +59,34 @@ class CloudCurveRig(CloudBaseRig):
 			suffix = self.generator.suffix_separator + suffix
 		
 		hook_ctr = self.bone_infos.bone(
-			name = f"Hook_{hook_name}_{str(i).zfill(2)}{suffix}",
-			head = loc,
-			tail = loc_left,
-			parent = parent,
-			bone_group = self.group_hooks,
-			use_custom_shape_bone_size = True
+			name						= f"Hook_{hook_name}_{str(i).zfill(2)}{suffix}",
+			head						= loc,
+			tail						= loc_left,
+			parent						= parent,
+			bone_group					= self.group_hooks,
+			use_custom_shape_bone_size	= True
 		)
 
 		hook_ctr.left_handle_control = None
 		hook_ctr.right_handle_control = None
 		handles = []
-		
+
 		if self.params.CR_controls_for_handles:
 			hook_ctr.custom_shape = self.load_widget("Circle")
+
+			if self.params.CR_separate_radius:
+				radius_control = self.bone_infos.bone(
+					name						= f"Hook_Radius_{hook_name}_{str(i).zfill(2)}{suffix}",
+					source						= hook_ctr,
+					parent						= hook_ctr,
+					bone_group					= self.group_handles,
+					custom_shape				= self.load_widget("Circle"),
+					use_custom_shape_bone_size	= True
+				)
+				radius_control.length *= 0.8
+				self.lock_transforms(radius_control, loc=True, rot=True, scale=[False, True, False])
+				self.lock_transforms(hook_ctr, loc=False, rot=False, scale=[True, False, True])
+				hook_ctr.radius_control = radius_control
 
 			if (i > 0) or cyclic:				# Skip for first hook. #TODO: Unless circular curve!
 				handle_left_ctr = self.bone_infos.bone(
@@ -230,6 +244,9 @@ class CloudCurveRig(CloudBaseRig):
 			var_tgt.transform_space = 'LOCAL_SPACE'
 			var_tgt.transform_type = 'SCALE_X'
 			var_tgt.bone_target = hooks[i].name
+			
+			if self.params.CR_separate_radius:
+				var_tgt.bone_target = hooks[i].radius_control.name
 
 		# Reset selection so Rigify can continue execution.
 		bpy.ops.object.mode_set(mode='OBJECT')
@@ -273,6 +290,11 @@ class CloudCurveRig(CloudBaseRig):
 			,description = "Use a setup which allows handles to be rotated and scaled - Will behave oddly when rotation is done after translation"
 			,default	 = False
 		)
+		params.CR_separate_radius = BoolProperty(
+			 name		 = "Separate Radius Control"
+			,description = "Create a separate control for controlling the curve points' radii, instead of using the hook control's scale"
+			,default	 = False
+		)
 
 		params.CR_target_curve_name = StringProperty(name="Curve")
 
@@ -294,6 +316,7 @@ class CloudCurveRig(CloudBaseRig):
 		layout.prop(params, "CR_controls_for_handles")
 		if params.CR_controls_for_handles:
 			layout.prop(params, "CR_rotatable_handles")
+			layout.prop(params, "CR_separate_radius")
 		
 		return ui_rows
 
