@@ -123,6 +123,9 @@ class CloudBoneRig(BaseRig):
 	def modify_pose_bone(self):
 		meta_bone = self.generator.metarig.pose.bones.get(self.bone_name)
 		org_bone = self.get_bone(self.base_bone)
+		if org_bone.rotation_mode == 'QUATERNION':
+			print(f"Warning: cloud_bone {org_bone.name} was on Quaternion rotation mode. Forcing it to XYZ.")
+			org_bone.rotation_mode = 'XYZ'
 
 		if self.params.CR_copy_type == 'Create':
 			for c in org_bone.constraints:
