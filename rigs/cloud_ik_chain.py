@@ -181,7 +181,6 @@ class CloudIKChainRig(CloudFKChainRig):
 		""" Based on a chain of ORG bones, create an IK chain, optionally with a pole target."""
 		ik_chain = []
 		for i, org_bone in enumerate(org_chain):
-			# org_bone = self.get_bone(bn)
 			ik_name = org_bone.name.replace("ORG", "IK")
 			ik_bone = self.bone_infos.bone(ik_name, org_bone,
 				bone_group = self.group_ik_mch,

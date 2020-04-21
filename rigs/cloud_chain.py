@@ -214,16 +214,14 @@ class CloudChainRig(CloudBaseRig):
 				number = str(i+1) if segments > 1 else ""
 				def_name = make_name(sliced[0], sliced[1] + number, sliced[2])
 
-				org_eb = self.get_bone(org_name)	# TODO: Why doesn't this work with BoneInfo instead of EditBone?
-				org_vec = org_eb.tail-org_eb.head
-				unit = org_vec / segments
+				unit = org_bone.vec / segments
 
 				def_bone = self.bone_infos.bone(
 					name = def_name,
-					source = org_eb,
-					head = org_eb.head + (unit * i),
-					tail = org_eb.head + (unit * (i+1)),
-					roll = org_eb.roll,
+					source = org_bone,
+					head = org_bone.head + (unit * i),
+					tail = org_bone.head + (unit * (i+1)),
+					roll = org_bone.roll,
 					bbone_handle_type_start = 'TANGENT',
 					bbone_handle_type_end = 'TANGENT',
 					bbone_segments = bbone_segments,

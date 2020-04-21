@@ -1,4 +1,5 @@
 import bpy, os
+from mathutils import Matrix
 from bpy.props import BoolProperty, StringProperty, EnumProperty
 from rigify.generate import *
 from .definitions.bone_group import BoneGroupContainer
@@ -115,6 +116,10 @@ class CloudGenerator(Generator):
 		#------------------------------------------
 		# Create/find the rig object and set it up
 		obj = self.create_rig_object()
+
+		# Ensure it's transforms are cleared.
+		backup_matrix = obj.matrix_world.copy()
+		obj.matrix_world = Matrix()
 		
 		# Wipe any existing bone groups from the target rig. (TODO: parameter??)
 		if obj.pose:
@@ -277,6 +282,8 @@ class CloudGenerator(Generator):
 		# Deconfigure
 		bpy.ops.object.mode_set(mode='OBJECT')
 		obj.data.pose_position = 'POSE'
+		# Restore rig object matrix to what it was before generation.
+		obj.matrix_world = backup_matrix
 
 		# Restore parent to bones
 		for child, sub_parent in childs.items():

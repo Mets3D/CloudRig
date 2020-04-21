@@ -127,10 +127,10 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 			meta_org_name = eb.name.replace("ORG-", "")
 			meta_org = self.generator.metarig.pose.bones.get(meta_org_name)
-			meta_org.name = meta_org.name.replace("-", self.generator.prefix_separator)
+			# meta_org.name = meta_org.name.replace("-", self.generator.prefix_separator)
 
 			org_bi = self.bone_infos.bone(bn, eb, self.obj, hide_select=self.mch_disable_select)
-			
+
 			# Rigify discards the bbone scale values from the metarig, but I'd like to keep them for easy visual scaling.
 			org_bi._bbone_x = meta_org.bone.bbone_x
 			org_bi._bbone_z = meta_org.bone.bbone_z
