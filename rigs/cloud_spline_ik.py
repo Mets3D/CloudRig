@@ -25,29 +25,33 @@ class CloudSplineIKRig(CloudCurveRig):
 		self.num_controls = len(self.bones.org.main)+1 if self.params.CR_match_hooks_to_bones else self.params.CR_num_hooks
 
 	def create_curve(self):
-		""" Create the Bezier Curve that will be used by the rig. """
+		""" Find or create the Bezier Curve that will be used by the rig. """
+		
+		curve_ob = self.datablock_from_str(bpy.data.objects, self.params.CR_target_curve_name)
+		if curve_ob:
+			len_curve_points = len(curve_ob.data.splines[0].bezier_points)
+			if len_curve_points != self.num_controls:
+				print(f"WARNING: CURVE CONTROL POINTS ({len_curve_points}) DON'T MATCH NUMBER OF DESIRED HOOK CONTROLS ({self.num_controls}) ON RIG: {self.base_bone}")
+			self.curve_ob_name = curve_ob.name
+			return curve_ob
+			# There is no good way in the python API to delete curve points, so deleting the entire curve is necessary to allow us to generate with fewer controls than a previous generation.
+			bpy.data.objects.remove(curve_ob)	# What's not so cool about this is that if anything in the scene was referencing this curve, that reference gets broken.
+
 		
 		sum_bone_length = sum([b.length for b in self.org_chain])
 		length_unit = sum_bone_length / (self.num_controls-1)
 		handle_length = length_unit / self.params.CR_curve_handle_ratio
 		
-		# Find or create Bezier Curve object for this rig.
 		curve_name = "CUR-" + self.generator.metarig.name.replace("META-", "")
 		curve_name += "_" + (self.params.CR_hook_name if self.params.CR_hook_name!="" else self.base_bone.replace("ORG-", ""))
-		curve_ob = bpy.data.objects.get(curve_name)
-		if curve_ob:
-			# There is no good way in the python API to delete curve points, so deleting the entire curve is necessary to allow us to generate with fewer controls than a previous generation.
-			bpy.data.objects.remove(curve_ob)	# What's not so cool about this is that if anything in the scene was referencing this curve, that reference gets broken.
-
+		
+		# Create and name curve object.
 		org_mode = bpy.context.object.mode
 		bpy.ops.curve.primitive_bezier_curve_add(radius=0.2, location=(0, 0, 0))
 
 		curve_ob = bpy.context.view_layer.objects.active
-		curve_ob.name = curve_name
+		self.meta_base_bone.rigify_parameters.CR_target_curve_name = self.curve_ob_name = curve_ob.name = curve_name
 
-		self.meta_base_bone.rigify_parameters.CR_target_curve_name = curve_ob.name
-
-		self.curve_ob_name = curve_ob.name
 		self.lock_transforms(curve_ob)
 
 		# Place the first and last bezier points to the first and last bone.
@@ -77,7 +81,7 @@ class CloudSplineIKRig(CloudCurveRig):
 		bpy.context.view_layer.objects.active = self.obj
 		self.obj.select_set(True)
 		bpy.ops.object.mode_set(mode=org_mode)
-		
+
 		return curve_ob
 
 	def create_def_chain(self):
@@ -109,27 +113,6 @@ class CloudSplineIKRig(CloudCurveRig):
 					def_bone.parent = self.org_chain[0]
 				
 				self.def_bones.append(def_bone)
-
-	def create_curve_point_hooks(self):		
-		sum_bone_length = sum([b.length for b in self.org_chain])
-		length_unit = sum_bone_length / (self.num_controls-1)
-		handle_length = length_unit / self.params.CR_curve_handle_ratio
-
-		self.hooks = []
-		
-		for i in range(0, self.num_controls):
-			point_along_chain = i * length_unit
-			index = i if self.params.CR_match_hooks_to_bones else -1
-			loc, direction = self.vector_along_bone_chain(self.org_chain, point_along_chain, index)
-
-			self.hooks.append( 
-				self.create_hooks(
-					loc		  = loc, 
-					loc_left  = loc - handle_length * direction, 
-					loc_right = loc + handle_length * direction, 
-					i		  = i
-				)
-			)
 
 	def prepare_bones(self):
 		super().prepare_bones()
@@ -182,7 +165,7 @@ class CloudSplineIKRig(CloudCurveRig):
 			 name="Subdivide bones"
 			,description="For each original bone, create this many deform bones in the spline chain (Bendy Bones do not work well with Spline IK, so we create real bones) NOTE: Spline IK only supports 255 bones in the chain"
 			,default=3
-			,min=3
+			,min=1
 			,max=99
 		)
 
@@ -191,7 +174,6 @@ class CloudSplineIKRig(CloudCurveRig):
 		""" Create the ui for the rig parameters.
 		"""
 		ui_rows = super().parameters_ui(layout, params)
-		ui_rows['target_curve'].enabled=False
 
 		icon = 'TRIA_DOWN' if params.CR_show_spline_ik_settings else 'TRIA_RIGHT'
 		layout.prop(params, "CR_show_spline_ik_settings", toggle=True, icon=icon)

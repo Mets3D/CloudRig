@@ -129,9 +129,7 @@ class CloudCurveRig(CloudBaseRig):
 		assert curve_ob, f"Error: Curve object {self.params.CR_target_curve_name} not found for curve rig: {self.base_bone}"
 
 		# Function to convert a location vector in the curve's local space into world space.
-
 		# For some reason this doesn't work when the curve object is parented to something, and we need it to be parented to the root bone kindof.
-		
 		worldspace = lambda loc: (curve_ob.matrix_world @ Matrix.Translation(loc)).to_translation()
 
 		spline = curve_ob.data.splines[0]	# For now we only support a single spline per curve.
