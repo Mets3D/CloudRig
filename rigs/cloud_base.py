@@ -64,17 +64,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		parent = self.get_bone(self.base_bone).parent
 		self.bones.parent = parent.name if parent else ""
 
-		# TODO: This should get created when attempting to add a Custom Property to it, and no sooner! Ie. it shouldn't get created when it's not being used by the rig.
-		# Properties bone and Custom Properties
-		self.prop_bone = self.bone_infos.bone(
-			name = "Properties_IKFK", 
-			bone_group = self.group_root,
-			custom_shape = self.load_widget("Cogwheel"),
-			head = Vector((0, self.scale*2, 0)),
-			tail = Vector((0, self.scale*4, 0)),
-			bbone_width = 1/8
-		)
-
 		# Root bone
 		self.root_bone = self.bone_infos.bone(
 			name = "root",
@@ -98,6 +87,20 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		# If no layers are protected, protect all layers. Otherwise, we assume protected layers were set up manually in a previously generated rig, so we don't touch them.
 		if list(self.obj.data.layers_protected) == [False]*32:
 			self.obj.data.layers_protected = [True]*32
+
+	@property
+	def prop_bone(self):
+		""" Ensure that a Properties bone exists, and return it. """
+		# This is a @property so that if it's never called(like in the case of very simple rigs), the properties bone is not created.
+		prop_bone = self.bone_infos.bone(
+			name = "Properties_IKFK", # TODO: Rename to just "Properties"... just don't want to do it mid-production.
+			bone_group = self.group_root,
+			custom_shape = self.load_widget("Cogwheel"),
+			head = Vector((0, self.scale*2, 0)),
+			tail = Vector((0, self.scale*4, 0)),
+			bbone_width = 1/8
+		)
+		return prop_bone
 
 	def ensure_bone_groups(self):
 		""" Ensure bone groups that this rig needs. """
