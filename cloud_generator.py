@@ -5,6 +5,8 @@ from rigify.generate import *
 from .definitions.bone_group import BoneGroupContainer
 from .rigs import cloud_utils
 
+from rigify.utils.bones import new_bone
+
 class CloudGenerator(Generator):
 	def __init__(self, context, metarig):
 		super().__init__(context, metarig)
@@ -195,7 +197,13 @@ class CloudGenerator(Generator):
 		bpy.ops.object.mode_set(mode='OBJECT')
 		bpy.ops.object.mode_set(mode='EDIT')
 
-		self._Generator__create_root_bone()
+		# self._Generator__create_root_bone()
+
+		cloudrigs = [rig for rig in self.rig_list if hasattr(rig, "bone_infos")]
+		for rig in cloudrigs:
+			for bd in rig.bone_infos.bones:
+				if (bd.name not in obj.data.edit_bones):
+					new_bone(obj, bd.name)
 
 		self.invoke_generate_bones()
 
@@ -207,7 +215,9 @@ class CloudGenerator(Generator):
 
 		self.invoke_parent_bones()
 
-		self._Generator__parent_bones_to_root()
+		if self.params.cloudrig_create_root:
+			self.root_bone = "root"	# TODO this is obviously not nice...
+			self._Generator__parent_bones_to_root()
 
 		t.tick("Parent bones: ")
 
@@ -235,7 +245,7 @@ class CloudGenerator(Generator):
 		#------------------------------------------
 		bpy.ops.object.mode_set(mode='OBJECT')
 
-		create_root_widget(obj, "root")
+		# create_root_widget(obj, "root")
 
 		self.invoke_generate_widgets()
 
@@ -244,7 +254,7 @@ class CloudGenerator(Generator):
 		#------------------------------------------
 		bpy.ops.object.mode_set(mode='OBJECT')
 
-		self._Generator__assign_layers()
+		# self._Generator__assign_layers()
 		self._Generator__compute_visible_layers()
 		self._Generator__restore_driver_vars()
 

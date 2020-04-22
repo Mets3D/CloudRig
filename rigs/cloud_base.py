@@ -64,20 +64,24 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		parent = self.get_bone(self.base_bone).parent
 		self.bones.parent = parent.name if parent else ""
 
-		# Root bone
-		self.root_bone = self.bone_infos.bone(
-			name = "root",
-			bone_group = self.group_root,
-			head = Vector((0, 0, 0)),
-			tail = Vector((0, self.scale*5, 0)),
-			bbone_width = 1/3,
-			custom_shape = self.load_widget("Root"),
-			custom_shape_scale = 1.5
-		)
-		self.register_parent(self.root_bone, "Root")
-		if self.generator_params.cloudrig_double_root:
-			self.root_parent = self.create_parent_bone(self.root_bone)
-			self.root_parent.bone_group = self.group_root_parent
+		# Root bone TODO: This should be moved to generator code. However, that means the generator should have its own list of bone_infos. And how would that work?
+		# Is that then the only list of bone_infos? That would mean any rig can access any bone as long as it knows its name, which would be interesting...
+		# But it would also mean a rig no longer can differentiate between bones that belong to itself vs random bones from other rigs.
+		# Not a big deal either way... probably worth a shot.
+		if self.generator_params.cloudrig_create_root:
+			self.root_bone = self.bone_infos.bone(
+				name = "root",
+				bone_group = self.group_root,
+				head = Vector((0, 0, 0)),
+				tail = Vector((0, self.scale*5, 0)),
+				bbone_width = 1/3,
+				custom_shape = self.load_widget("Root"),
+				custom_shape_scale = 1.5
+			)
+			self.register_parent(self.root_bone, "Root")
+			if self.generator_params.cloudrig_double_root:
+				self.root_parent = self.create_parent_bone(self.root_bone)
+				self.root_parent.bone_group = self.group_root_parent
 
 		for k in self.obj.data.keys():
 			if k in ['_RNA_UI', 'rig_id']: continue
@@ -143,17 +147,13 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			self.org_chain.append(org_bi)
 
 	def generate_bones(self):
-		for bd in self.bone_infos.bones:
-			if (
-				bd.name not in self.obj.data.edit_bones and
-				bd.name not in self.bones.flatten() and
-				bd.name != 'root'
-			):
-				self.copy_bone("root", bd.name)
-				# self.new_bone(bd.name) # new_bone() is currently bugged and doesn't register the new bone, so we use copy_bone instead.
+		pass
 
 	def parent_bones(self):
 		for bd in self.bone_infos.bones:
+			if bd.name not in self.obj.data.bones:
+				print(f"Warning: BoneInfo {bd.name} in riglet {self.base_bone} doesn't exist, edit data could not be written: ")
+				continue
 			edit_bone = self.get_bone(bd.name)
 
 			bd.write_edit_data(self.obj, edit_bone)
@@ -236,14 +236,15 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	def finalize(self):
 		self.set_layers(self.obj.data, [0, 16, 1, 17])
 
-		# Set root bone layers
-		root_bone = self.get_bone("root")
-		self.set_layers(root_bone.bone, [0, 1, 16, 17])
+		if self.generator_params.cloudrig_create_root:
+			# Set root bone layers
+			root_bone = self.get_bone("root")
+			self.set_layers(root_bone.bone, [0, 1, 16, 17])
 
-		# Nuke Rigify's generated root bone shape so it cannot be applied.
-		root_shape = bpy.data.objects.get("WGT-"+self.obj.name+"_root")
-		if root_shape:
-			bpy.data.objects.remove(root_shape)
+		# # Nuke Rigify's generated root bone shape so it cannot be applied.
+		# root_shape = bpy.data.objects.get("WGT-"+self.obj.name+"_root")
+		# if root_shape:
+		# 	bpy.data.objects.remove(root_shape)
 
 		# For some god-forsaken reason, this is the earliest point when we can set bbone_x and bbone_z.
 		for b in self.obj.data.bones:
