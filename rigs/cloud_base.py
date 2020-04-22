@@ -94,6 +94,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		# This is a @property so that if it's never called(like in the case of very simple rigs), the properties bone is not created.
 		prop_bone = self.bone_infos.bone(
 			name = "Properties_IKFK", # TODO: Rename to just "Properties"... just don't want to do it mid-production.
+			overwrite = False,
 			bone_group = self.group_root,
 			custom_shape = self.load_widget("Cogwheel"),
 			head = Vector((0, self.scale*2, 0)),
