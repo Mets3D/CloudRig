@@ -194,18 +194,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 				bd.custom_shape_scale *= self.scale * bd.bbone_width * 10
 			bd.write_pose_data(pose_bone)
 
-	@stage.apply_bones
-	def unparent_bones(self):
-		# Rigify automatically parents bones that have no parent to the root bone.
-		# This is fine, but we want to undo this when the bone has an Armature constraint, since such bones should never have a parent.
-		# NOTE: This could be done via self.generator.disable_auto_parent(bone_name), but I prefer doing it this way.
-		for eb in self.obj.data.edit_bones:
-			pb = self.obj.pose.bones.get(eb.name)
-			for c in pb.constraints:
-				if c.type=='ARMATURE':
-					eb.parent = None
-					break
-
 	def organize_widgets(self):
 		# Hijack the widget collection automatically created by Rigify.
 		wgt_collection = self.generator.collection.children.get("Widgets")
