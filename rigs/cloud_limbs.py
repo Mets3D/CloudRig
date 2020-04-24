@@ -84,7 +84,13 @@ class Rig(CloudIKChainRig):
 		
 		return(segments, bbone_segments)
 
-	@stage.prepare_bones
+	def prepare_bones(self):
+		super().prepare_bones()
+		self.prepare_fk_limb()
+		self.prepare_str_limb()
+		self.prepare_ik_limb()
+		self.foot_org_tweak()
+
 	def prepare_fk_limb(self):
 		# NOTE: This runs after super().prepare_fk_chain().
 
@@ -116,7 +122,6 @@ class Rig(CloudIKChainRig):
 			limb_name = self.limb_ui_name
 		)
 
-	@stage.prepare_bones
 	def prepare_str_limb(self):
 		# We want to make some changes to the STR chain to make it behave more limb-like.
 		
@@ -128,7 +133,6 @@ class Rig(CloudIKChainRig):
 				continue
 			str_h_bone.constraints[2][1]['mute'] = True	# TODO IMPORTANT: We have no proper way to access already existing constraints (by name, or even type) which is pretty sad. Instead of storing constraints as a (type, attribs) tuple, just store them as a dict, and initialize them a 'name' and 'type' attrib in add_constraint().
 
-	@stage.prepare_bones
 	def prepare_ik_limb(self):
 		# NOTE: This runs after super().prepare_ik_chain()
 
@@ -370,7 +374,6 @@ class Rig(CloudIKChainRig):
 		fk_toe.drivers[data_path1] = drv1
 		fk_toe.drivers[data_path2] = drv2
 
-	@stage.prepare_bones
 	def prepare_parent_switch(self):
 		ik_ctrl = self.ik_mstr
 		if self.params.CR_double_ik_control:
@@ -378,7 +381,6 @@ class Rig(CloudIKChainRig):
 
 		super().prepare_parent_switch(ik_ctrl)
 
-	@stage.prepare_bones
 	def foot_org_tweak(self):
 		# Delete IK constraint and driver from toe bone. It should always use FK.
 		if self.limb_type == 'LEG':

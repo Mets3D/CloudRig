@@ -450,7 +450,7 @@ class CloudIKChainRig(CloudFKChainRig):
 				
 				"operator" : "pose.rigify_switch_parent",
 				"icon" : "COLLAPSEMENU",
-				"parent_names" : parent_names,
+				"parent_names" : parent_names,	# TODO: I think this is unused now.
 				"bones" : bones,
 				}
 			self.add_ui_data("parents", self.category, self.limb_ui_name, info, default=0, _max=len(parent_names)-1)
