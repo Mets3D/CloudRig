@@ -35,8 +35,8 @@ class CloudBoneRig(BaseRig):
 			if key=='targets' and new_con.type=='ARMATURE':
 				for t in from_con.targets:
 					new_t = new_con.targets.new()
-					new_t.target = from_con.target
-					new_t.subtarget = from_con.subtarget
+					new_t.target = t.target
+					new_t.subtarget = t.subtarget
 				continue
 
 			value = getattr(from_con, key)
