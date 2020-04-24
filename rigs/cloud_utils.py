@@ -133,7 +133,7 @@ class CloudUtilities:
 	def load_widget(self, name):
 		""" Load custom shapes by appending them from a blend file, unless they already exist in this file. """
 		# If it's already loaded, return it.
-		wgt_name = "WGT_"+name
+		wgt_name = "WGT-"+name
 		wgt_ob = bpy.data.objects.get(wgt_name)
 		
 		exists = wgt_ob is not None
@@ -160,6 +160,7 @@ class CloudUtilities:
 		new_wgt_ob = bpy.data.objects.get(wgt_name)
 		if not new_wgt_ob:
 			print("WARNING: Failed to load bone shape: " + wgt_name)
+			return
 		elif wgt_ob:
 			# Update original object with new one's data, then delete new object.
 			old_data_name = wgt_ob.data.name
