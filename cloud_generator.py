@@ -51,10 +51,34 @@ class CloudGenerator(Generator):
 			self.collection.objects.link(obj)
 
 		self.params.rigify_target_rig = obj
-		obj.data.pose_position = 'POSE'
+		# obj.data.pose_position = 'POSE'
 
 		self.obj = obj
 		return obj
+	
+	def assign_layers(self):
+		bones = self.obj.data.bones
+
+		bones[self.root_bone].layers = ROOT_LAYER
+
+		# Every bone that has a name starting with "DEF-" make deforming.  All the
+		# others make non-deforming.
+		for bone in bones:
+			name = bone.name
+
+			# bone.use_deform = name.startswith(DEF_PREFIX)
+
+			# Move all the original bones to their layer.
+			if name.startswith(ORG_PREFIX):
+				bone.layers = ORG_LAYER
+			# Move all the bones with names starting with "MCH-" to their layer.
+			elif name.startswith(MCH_PREFIX):
+				bone.layers = MCH_LAYER
+			# Move all the bones with names starting with "DEF-" to their layer.
+			elif name.startswith(DEF_PREFIX):
+				bone.layers = DEF_LAYER
+
+			bone.bbone_x = bone.bbone_z = bone.length * 0.05
 	
 	def load_ui_script(self):
 		"""Load cloudrig.py (CloudRig UI script) into a text datablock, enable register checkbox and execute it."""
@@ -254,7 +278,7 @@ class CloudGenerator(Generator):
 		#------------------------------------------
 		bpy.ops.object.mode_set(mode='OBJECT')
 
-		self._Generator__assign_layers()
+		self.assign_layers()
 		self._Generator__compute_visible_layers()
 		self._Generator__restore_driver_vars()
 

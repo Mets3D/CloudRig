@@ -225,7 +225,8 @@ class CloudChainRig(CloudBaseRig):
 					bbone_handle_type_start = 'TANGENT',
 					bbone_handle_type_end = 'TANGENT',
 					bbone_segments = bbone_segments,
-					hide_select = self.mch_disable_select
+					hide_select = self.mch_disable_select,
+					use_deform = True
 				)
 				if bbone_segments > 1:
 					def_bone.inherit_scale = 'NONE'

@@ -104,7 +104,8 @@ class CloudSplineIKRig(CloudCurveRig):
 					tail = org_bone.head + (unit * (i+1)),
 					roll = org_bone.roll,
 					bbone_width = 0.03,
-					hide_select	= self.mch_disable_select
+					hide_select	= self.mch_disable_select,
+					use_deform = True
 				)
 
 				if len(self.def_bones) > 0:
