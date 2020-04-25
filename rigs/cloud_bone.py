@@ -35,7 +35,7 @@ class CloudBoneRig(BaseRig):
 		else:
 			# If creating a bone, we don't want the ORG- prefix.
 			org_bone.name = self.bone_name
-
+			
 		if self.copy_type == "Create" and self.params.CR_create_deform_bone:
 			# Make a copy with DEF- prefix, as our deform bone.
 			# TODO: Warn if Deform checkbox is enabled on the metarig bone.
@@ -76,8 +76,12 @@ class CloudBoneRig(BaseRig):
 			def_bone = self.get_bone(self.def_bone_name)
 			def_bone.parent = self.get_bone(self.bone_name)
 
-		if self.params.CR_custom_bone_parent != "":
-			mod_bone.parent = self.get_bone(self.params.CR_custom_bone_parent)
+		parent_name = self.params.CR_custom_bone_parent		
+		if parent_name != "":
+			try:
+				mod_bone.parent = self.get_bone(self.params.CR_custom_bone_parent)
+			except:
+				print(f"Warning: Target parent bone {parent_name} not found for rig {self.base_bone}")
 
 		for c in meta_pose_bone.constraints:
 			if c.type in ('CHILD_OF', 'ARMATURE'):
@@ -92,7 +96,7 @@ class CloudBoneRig(BaseRig):
 
 
 	@stage.finalize
-	def modify_pose_bone(self):
+	def modify_pose_bone(self):	
 		meta_bone = self.generator.metarig.pose.bones.get(self.bone_name)
 		mod_bone = self.get_bone(self.bone_name)
 		if mod_bone.rotation_mode == 'QUATERNION':
