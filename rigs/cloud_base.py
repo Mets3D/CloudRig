@@ -129,7 +129,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			eb = self.get_bone(bn)
 			eb.use_connect = False
 
-			meta_org_name = eb.name.replace("ORG-", "")
+			meta_org_name = eb.name[4:]
 			meta_org = self.generator.metarig.pose.bones.get(meta_org_name)
 			# meta_org.name = meta_org.name.replace("-", self.generator.prefix_separator)
 

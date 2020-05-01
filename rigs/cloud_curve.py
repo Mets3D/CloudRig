@@ -232,7 +232,10 @@ class CloudCurveRig(CloudBaseRig):
 				self.add_hook(i, hook_b.right_handle_control, right_handle=True)
 
 			# Add radius driver
-			D = curve_ob.data.driver_add(f"splines[0].bezier_points[{i}].radius")
+			data_path = f"splines[0].bezier_points[{i}].radius"
+			curve_ob.data.driver_remove(data_path)
+			
+			D = curve_ob.data.driver_add(data_path)
 			driver = D.driver
 
 			driver.expression = "var"
@@ -242,7 +245,7 @@ class CloudCurveRig(CloudBaseRig):
 			
 			var_tgt = my_var.targets[0]
 			var_tgt.id = self.obj
-			var_tgt.transform_space = 'LOCAL_SPACE'
+			var_tgt.transform_space = 'WORLD_SPACE'
 			var_tgt.transform_type = 'SCALE_X'
 			var_tgt.bone_target = hooks[i].name
 			
