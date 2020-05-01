@@ -146,6 +146,11 @@ class CloudBoneRig(BaseRig):
 			mod_bone.ik_max_y = meta_bone.ik_max_y
 			mod_bone.ik_min_z = meta_bone.ik_min_z
 			mod_bone.ik_max_z = meta_bone.ik_max_z
+		
+		if self.params.CR_tweak_bbone_props:
+			mod_bone.bone.bbone_segments = meta_bone.bone.bbone_segments
+			mod_bone.bone.bbone_x = meta_bone.bone.bbone_x
+			mod_bone.bone.bbone_z = meta_bone.bone.bbone_z
 
 		if not self.params.CR_constraints_additive:
 			while len(mod_bone.constraints)>1:
@@ -317,6 +322,11 @@ class CloudBoneRig(BaseRig):
 			,description="Copy IK settings from this bone to the generated bone"
 			,default=False
 		)
+		params.CR_tweak_bbone_props = BoolProperty(
+			name="BBone Settings"
+			,description="Copy BBone settings from this bone to the generated bone"
+			,default=False
+		)
 
 
 		# Parameters for copying the bone
@@ -348,6 +358,7 @@ class CloudBoneRig(BaseRig):
 			col1.prop(params, "CR_layers")
 			col1.prop(params, "CR_custom_props")
 			col1.prop(params, "CR_ik_settings")
+			col1.prop(params, "CR_tweak_bbone_props")
 		else:
 			col1.prop(params, "CR_create_deform_bone")
 
