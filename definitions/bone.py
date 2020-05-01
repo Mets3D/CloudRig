@@ -460,6 +460,8 @@ class BoneInfo(ID):
 						for prop in copy:
 							if prop in tinfo:
 								setattr_safe(target, prop, tinfo[prop])
+				if con_type == 'STRETCH_TO':
+					c.rest_length = 0
 				elif(hasattr(c, key)):
 					setattr_safe(c, key, value)
 		
