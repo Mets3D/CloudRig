@@ -73,7 +73,8 @@ class CloudSpineRig(CloudChainRig):
 		segments = self.params.CR_deform_segments
 		bbone_segments = self.params.CR_bbone_segments
 		
-		if (org_i == len(chain)-1):
+		if (org_i == len(chain)-1) and len(self.bones.org) > self.params.CR_spine_length:
+			# If there are more bones in the chain than the length of the spine(ie. when there is a head bone) the last bone(ie the head bone) should not be a bendy bone.
 			return (1, 1)
 		
 		return (segments, bbone_segments)
@@ -352,15 +353,20 @@ class CloudSpineRig(CloudChainRig):
 			if i == 0:
 				# First STR bone should by owned by the hips.
 				org_bone.parent = self.mstr_hips
-			elif i > len(self.org_chain)-2:
-				# Last two STR bones should both be owned by the last FK bone (usually the head)
+			elif self.org_head and i == len(self.org_chain)-1:
+				# Last ORG bone should be owned by the head, if there is one.
 				org_bone.parent = self.fk_chain[-1]
 			elif hasattr(self.fk_chain[i-1], 'fk_child'):
-				# Every other STR bone should be owned by the FK bone of one lower index.
+				# Otherwise, every ORG bone should be owned by the FK bone of one lower index.
 				org_bone.parent = self.fk_chain[i-1].fk_child
 			else:
 				print("This shouldn't happen?")	# TODO This does happen
 				org_bone.parent = self.fk_chain[i-1]
+		
+		if not self.org_head:
+			# If there is no head, we need to parent the last ORG- bone to the last FK bone so any child rigs parented to this rig will behave as expected.
+			self.org_chain[-1].parent = self.fk_chain[-1]
+			self.str_bones[-2].parent = self.fk_chain[-2]
 		
 		# Change any ORG- children of the final spine bone to be owned by the neck bone instead. This is needed because of the index shift described above.
 		new_parent = self.org_head
