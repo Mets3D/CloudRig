@@ -22,35 +22,36 @@ class CloudBoneRig(BaseRig):
 
 	def initialize(self):
 		super().initialize()
-		self.bone_name = self.base_bone.replace("ORG-", "")
+		self.bone_name = self.base_bone	# Dynamic value, should always be the name of the bone that we are operating on... And because of how messy this solution is, this changes quite a lot.
+		self.orgless_name = self.base_bone.replace("ORG-", "")
 		self.copy_type = self.params.CR_copy_type
 
 	def generate_bones(self):
 		org_bone = self.get_bone(self.bones.org)
+		meta_bone = self.generator.metarig.pose.bones.get(self.orgless_name)
 		self.roll = org_bone.roll
 		if self.copy_type == "Tweak":
 			# Delete the Tweak ORG- bone. We will be copying stuff from the metarig bone instead.
 			self.obj.data.edit_bones.remove(org_bone)
-			self.params = self.generator.metarig.pose.bones.get(self.bone_name).rigify_parameters
-		else:
-			# If creating a bone, we don't want the ORG- prefix.
-			org_bone.name = self.bone_name
-			
-		if self.copy_type == "Create" and self.params.CR_create_deform_bone:
+			self.bone_name = self.orgless_name
+
+			self.params = meta_bone.rigify_parameters
+		elif self.copy_type == "Create" and self.params.CR_create_deform_bone:
 			# Make a copy with DEF- prefix, as our deform bone.
-			# TODO: Warn if Deform checkbox is enabled on the metarig bone.
-			def_bone_name = "DEF-" + self.bone_name
-			self.def_bone_name = self.copy_bone(self.bone_name, def_bone_name)
+			if meta_bone.bone.use_deform:
+				print(f"Warning: Creating deform bone for {self.orgless_name} that's already set to use_deform=True.")
+			def_bone_name = "DEF-" + self.orgless_name
+			self.def_bone_name = self.copy_bone(org_bone.name, def_bone_name)
 
 	@stage.configure_bones
 	def modify_bone_group(self):
 		mod_bone = self.get_bone(self.bone_name)
 		if self.copy_type == 'Tweak':
-			# Since the ORG- bone got deleted during generate_bones, rename it to that name and then back, to move any references from that ORG- bone over to the real bone.
+			# Since the ORG- bone got deleted during generate_bones, rename it to that name, to move any references from that ORG- bone over to the real bone.
 			mod_bone.name = "ORG-"+mod_bone.name
-			mod_bone.name = mod_bone.name[4:]
+			self.bone_name = self.base_bone
 
-		meta_bone = self.generator.metarig.pose.bones.get(self.bone_name)
+		meta_bone = self.generator.metarig.pose.bones.get(self.orgless_name)
 
 		meta_bg = meta_bone.bone_group
 		if self.copy_type=='Create' or self.params.CR_bone_group:
@@ -67,14 +68,15 @@ class CloudBoneRig(BaseRig):
 
 	@stage.apply_bones
 	def modify_edit_bone(self):
-		meta_pose_bone = self.generator.metarig.pose.bones.get(self.bone_name)
-		meta_bone = self.generator.metarig.data.bones.get(self.bone_name)
+		meta_pose_bone = self.generator.metarig.pose.bones.get(self.orgless_name)
+		meta_bone = self.generator.metarig.data.bones.get(self.orgless_name)
 
 		mod_bone = self.get_bone(self.bone_name)
 
 		if hasattr(self, "def_bone_name"):
+			# TODO: Would this fail if I put it in generate_bones stage? I feel like that's where it started, and it would fail, but I don't really get why.
 			def_bone = self.get_bone(self.def_bone_name)
-			def_bone.parent = self.get_bone(self.bone_name)
+			def_bone.parent = mod_bone
 
 		parent_name = self.params.CR_custom_bone_parent		
 		if parent_name != "":
@@ -93,11 +95,13 @@ class CloudBoneRig(BaseRig):
 			mod_bone.roll = self.roll
 			mod_bone.bbone_x = meta_bone.bbone_x
 			mod_bone.bbone_z = meta_bone.bbone_z
-
+		
+		# Rename the bone to its final name, without the ORG- prefix.
+		self.bone_name = mod_bone.name = self.orgless_name
 
 	@stage.finalize
 	def modify_pose_bone(self):	
-		meta_bone = self.generator.metarig.pose.bones.get(self.bone_name)
+		meta_bone = self.generator.metarig.pose.bones.get(self.orgless_name)
 		mod_bone = self.get_bone(self.bone_name)
 		if mod_bone.rotation_mode == 'QUATERNION':
 			print(f"Warning: cloud_bone {meta_bone.name} was on Quaternion rotation mode. Forcing it to XYZ.")
