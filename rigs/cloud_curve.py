@@ -32,7 +32,10 @@ class CloudCurveRig(CloudBaseRig):
 		"""Gather and validate data about the rig."""
 		super().initialize()
 		
-		self.num_controls = len(self.bones.org.main)
+		curve_ob = self.get_curve()
+		assert curve_ob, f"Error: Curve object {self.params.CR_target_curve_name} not found for curve rig: {self.base_bone}"
+		assert curve_ob.type=='CURVE', f"Error: Curve target {self.params.CR_target_curve_name} is not a curve for rig: {self.base_bone}"
+		self.num_controls = len(curve_ob.data.splines[0].bezier_points)
 
 	def create_root(self):
 		self.root_control = self.bone_infos.bone(
@@ -86,7 +89,7 @@ class CloudCurveRig(CloudBaseRig):
 				self.lock_transforms(hook_ctr, loc=False, rot=False, scale=[True, False, True])
 				hook_ctr.radius_control = radius_control
 
-			if (i > 0) or cyclic:				# Skip for first hook. #TODO: Unless circular curve!
+			if (i != 0) or cyclic:				# Skip for first hook unless cyclic.
 				handle_left_ctr = self.bone_infos.bone(
 					name		 = f"Hook_L_{hook_name}_{str(i).zfill(2)}{suffix}",
 					head 		 = loc,
@@ -98,7 +101,7 @@ class CloudCurveRig(CloudBaseRig):
 				hook_ctr.left_handle_control = handle_left_ctr
 				handles.append(handle_left_ctr)
 
-			if (i < self.num_controls-1) or cyclic:	# Skip for last hook.
+			if (i != self.num_controls-1) or cyclic:	# Skip for last hook unless cyclic.
 				handle_right_ctr = self.bone_infos.bone(
 					name 		 = f"Hook_R_{hook_name}_{str(i).zfill(2)}{suffix}",
 					head 		 = loc,
@@ -138,7 +141,6 @@ class CloudCurveRig(CloudBaseRig):
 
 	def create_curve_point_hooks(self):
 		curve_ob = self.get_curve()
-		assert curve_ob, f"Error: Curve object {self.params.CR_target_curve_name} not found for curve rig: {self.base_bone}"
 
 		# Function to convert a location vector in the curve's local space into world space.
 		# For some reason this doesn't work when the curve object is parented to something, and we need it to be parented to the root bone kindof.
