@@ -74,24 +74,25 @@ class CloudIKChainRig(CloudFKChainRig):
 		self.register_parent(self.limb_root_bone, self.limb_ui_name)
 
 	def calculate_ik_info(self):
+		""" Calculate pole angle, pole control direction and distance. """
 		meta_first_name = self.org_chain[0].name.replace("ORG-", "")
 		meta_first = self.meta_bone(meta_first_name, pose=True)
 
 		meta_last_name = self.org_chain[1].name.replace("ORG-", "")
 		meta_last = self.meta_bone(meta_last_name, pose=True)
 
-		self.chain_vector = meta_last.bone.tail_local - meta_first.bone.head_local
+		chain_vector = meta_last.bone.tail_local - meta_first.bone.head_local
 
-		tail = meta_first.bone.tail_local
+		first_tail = meta_first.bone.tail_local
 		last_tail = meta_last.bone.tail_local
-		
+
 		# Calculate the distances of the four points to the tail of the last bone.
 		# These four points are in the four directions of the bone around the bone's tail.
-		x_pos_distance = ((tail+meta_first.x_axis) - last_tail).length
-		x_neg_distance = ((tail-meta_first.x_axis) - last_tail).length
+		x_pos_distance = ((first_tail+meta_first.x_axis) - last_tail).length
+		x_neg_distance = ((first_tail-meta_first.x_axis) - last_tail).length
 
-		z_pos_distance = ((tail+meta_first.z_axis) - last_tail).length
-		z_neg_distance = ((tail-meta_first.z_axis) - last_tail).length
+		z_pos_distance = ((first_tail+meta_first.z_axis) - last_tail).length
+		z_neg_distance = ((first_tail-meta_first.z_axis) - last_tail).length
 
 		# Store those distances in a dictionary where they are matched with a tuple describing (the main axis of rotation, IK constraint pole_angle), that should be used, when that distance is the lowest.
 		axis_dict = {
@@ -111,12 +112,12 @@ class CloudIKChainRig(CloudFKChainRig):
 			vector_flipper = -1
 		if rotation_axis[1] == "Z":
 			perpendicular_axis = meta_first.z_axis
-		
+
 		# Find the vector that is perpendicular to a plane defined by the chain vector and the main rotation axis.
-		self.pole_vector = self.chain_vector.cross(perpendicular_axis).normalized() * vector_flipper * self.chain_vector.length
+		self.pole_vector = chain_vector.cross(perpendicular_axis).normalized() * vector_flipper * chain_vector.length
 
 		# We want the pole control to be offset from the first bone's tail by that vector.
-		self.pole_location = tail + self.pole_vector
+		self.pole_location = first_tail + self.pole_vector
 
 	def create_pole_control(self):
 		# Create IK Pole Control
@@ -124,7 +125,7 @@ class CloudIKChainRig(CloudFKChainRig):
 			name			   = self.make_name(["IK", "POLE"], self.limb_name, [self.side_suffix]),
 			bbone_width		   = 0.1,
 			head			   = self.pole_location,
-			tail			   = self.pole_location + self.pole_vector.normalized() * self.chain_vector.length/5,
+			tail			   = self.pole_location + self.flat_vector(self.pole_vector) * 0.2,
 			roll			   = 0,
 			custom_shape	   = self.load_widget('ArrowHead'),
 			custom_shape_scale = 0.5,
@@ -187,7 +188,7 @@ class CloudIKChainRig(CloudFKChainRig):
 				hide_select = self.mch_disable_select
 			)
 			ik_chain.append(ik_bone)
-			
+
 			if i == 0:
 				# Parent first bone to the limb root
 				ik_bone.parent = self.limb_root_bone.name
@@ -212,7 +213,7 @@ class CloudIKChainRig(CloudFKChainRig):
 				)
 				# Parent this one to the IK master.
 				ik_bone.parent = ik_mstr
-				
+
 				if self.params.CR_world_aligned_controls:
 					fk_bone = self.fk_chain[i]
 					fk_name = fk_bone.name
@@ -225,9 +226,9 @@ class CloudIKChainRig(CloudFKChainRig):
 						parent	   = fk_bone,
 						bone_group = self.group_fk_extra
 					)
-					
+
 					fk_bone.flatten()
-					
+
 					ik_mstr.flatten()
 		
 		# Add IK/FK Snapping to the UI.
@@ -246,7 +247,7 @@ class CloudIKChainRig(CloudFKChainRig):
 			hide_select = self.mch_disable_select
 		)
 		stretch_bone.scale_width(0.4)
-		
+
 		# Bone responsible for giving stretch_bone the target position to stretch to.
 		self.stretch_target_bone = self.bone_infos.bone(
 			name		= ik_org_bone.name.replace("ORG", "IK-STR-TGT"), 
@@ -255,7 +256,7 @@ class CloudIKChainRig(CloudFKChainRig):
 			bone_group	= self.group_ik_mch,
 			hide_select = self.mch_disable_select
 		)
-		
+
 		chain_length = 0
 		for ikb in self.ik_chain[:self.params.CR_ik_length-1]:	# TODO: Support IK at tail of chain.
 			chain_length += ikb.length
@@ -277,7 +278,7 @@ class CloudIKChainRig(CloudFKChainRig):
 		var.targets[0].data_path = f'pose.bones["{self.prop_bone.name}"]["{self.ik_stretch_name}"]'
 
 		data_path = 'constraints["Limit Scale"].influence'
-		
+
 		stretch_bone.drivers[data_path] = str_drv
 
 		# Store info for UI
@@ -303,7 +304,7 @@ class CloudIKChainRig(CloudFKChainRig):
 
 	def main_str_transform_setup(self, stretch_bone, chain_length):
 		""" Set up transformation constraint to mid-limb STR bone that ensures that it stays in between the root of the limb and the IK master control during IK stretching. """
-		
+
 		cum_length = self.org_chain[0].length
 		for i, main_str_bone in enumerate(self.main_str_bones):
 			if i == 0: continue
@@ -396,7 +397,7 @@ class CloudIKChainRig(CloudFKChainRig):
 
 	def prepare_org_limb(self):
 		# Note: Runs after prepare_org_chain().
-		
+
 		# Add Copy Transforms constraints to the ORG bones to copy the IK bones.
 		# Put driver on the influence to be able to disable IK.
 
@@ -435,7 +436,7 @@ class CloudIKChainRig(CloudFKChainRig):
 
 		# Try to rig the IK control's parent switcher, searching for these parent candidates.
 		ik_parents_prop_name = "ik_parents_" + self.limb_name_props
-		
+
 		parent_names = self.rig_child(ik_ctrl, self.ik_parents, self.prop_bone, ik_parents_prop_name)
 		if len(parent_names) > 0:
 			bones = [ik_ctrl.name]
@@ -454,7 +455,7 @@ class CloudIKChainRig(CloudFKChainRig):
 				"bones" : bones,
 				}
 			self.add_ui_data("parents", self.category, self.limb_ui_name, info, default=0, _max=len(parent_names)-1)
-		
+
 		### IK Pole Follow
 		if self.params.CR_use_pole_target:
 			# Rig the IK Pole control's parent switcher.

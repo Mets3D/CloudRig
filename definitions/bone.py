@@ -264,21 +264,6 @@ class BoneInfo(ID):
 		assert value > 0, "Length cannot be 0!"
 		self.tail = self.head + self.vec.normalized() * value
 
-	def flatten(self):
-		"""Make bone world-aligned on its longest axis."""
-		vec = self.tail - self.head
-		maxabs = 0
-		max_index = 0
-		for i, x in enumerate(vec):
-			if abs(x) > maxabs:
-				maxabs = abs(x)
-				max_index = i
-
-		for i in range(0, len(self.tail)):
-			if i != max_index:
-				self.tail[i] = self.head[i]
-		self.roll = 0
-	
 	@property
 	def center(self):
 		return self.head + self.vec/2
@@ -299,6 +284,9 @@ class BoneInfo(ID):
 			self.scale_length(scale_length)
 		if scale_width:
 			self.scale_width(scale_width)
+	
+	def flatten(self):
+		self.vec = cloud_utils.flat(self.vec)
 	
 	def copy_info(self, bone_info):
 		"""Called from __init__ to initialize using existing BoneInfo."""

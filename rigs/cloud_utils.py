@@ -386,6 +386,10 @@ class CloudUtilities:
 	@staticmethod
 	def flip_name(from_name, only=True, must_change=False):
 		return flip_name(from_name, only, must_change)
+	
+	@staticmethod
+	def flat_vector(vec):
+		return flat(vec)
 
 def datablock_from_str(collprop, string):
 	""" Workaround to T59106. Using PointerProperty causes error spam in console. """
@@ -563,6 +567,23 @@ def flip_name(from_name, only=True, must_change=False):
 		assert new_name != from_name, "Failed to flip string: " + from_name
 	
 	return new_name
+
+def flat(vec):
+	""" Return a copy of a vector with its two absolute lowest values set to 0. Useful for making vectors world-aligned. """
+	new_vec = vec.copy()
+
+	maxabs = 0
+	max_index = 0
+	for i, val in enumerate(vec):
+		if abs(val) > maxabs:
+			maxabs = abs(val)
+			max_index = i
+
+	for i in range(0, len(vec)):
+		if i != max_index:
+			new_vec[i] = 0
+
+	return new_vec
 
 class EnsureVisible:
 	""" Ensure an object is visible, then reset it to how it was before. """
