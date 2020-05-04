@@ -594,14 +594,14 @@ class IKFK_Toggle(bpy.types.Operator):
 		# Try compensating for the rotation difference in both directions
 		pv1 = Matrix.Rotation(angle, 4, ikv) @ pv
 		set_pole(pv1)
-		ang1 = self.rotation_difference(ik_first.matrix, match_bone.matrix)
+		tail_dist1 = (ik_first.tail - match_bone.tail).length
 
 		pv2 = Matrix.Rotation(-angle, 4, ikv) @ pv
 		set_pole(pv2)
-		ang2 = self.rotation_difference(ik_first.matrix, match_bone.matrix)
+		tail_dist2 = (ik_first.tail - match_bone.tail).length
 
 		# Do the one with the smaller angle
-		if ang1 < ang2:
+		if tail_dist1 < tail_dist2:
 			set_pole(pv1)
 
 class Reset_Rig_Colors(bpy.types.Operator):
