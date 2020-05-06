@@ -11,6 +11,81 @@ from rna_prop_ui import rna_idprop_quote_path
 
 script_id = "SCRIPT_ID"
 
+def get_rigs():
+	""" Find all cloudrig armatures in the file."""
+	return [o for o in bpy.data.objects if o.type=='ARMATURE' and 'cloudrig' in o.data]
+
+def get_rig():
+	"""If the active object is a cloudrig, return it."""
+	o = bpy.context.pose_object or bpy.context.object
+	if o and o.type == 'ARMATURE' and 'cloudrig' in o.data and o.data['cloudrig']==script_id:
+		return o
+
+def get_char_bone(rig):
+	for b in rig.pose.bones:
+		if b.name.startswith("Properties_Character"):
+			return b
+
+def get_bones(rig, names):
+	""" Return a list of pose bones from a string of bone names separated by ", ". """
+	return list(filter(None, map(rig.pose.bones.get, json.loads(names))))
+
+def draw_rig_settings(layout, rig, ui_area, label=""):
+	""" Draw UI settings in the layout, if info for those settings can be found in the rig's data. 
+	Parameters read from the rig data:
+
+	prop_bone: Name of the pose bone that holds the custom property.
+	prop_id: Name of the custom property on aforementioned bone. This is the property that gets drawn in the UI as a slider.
+
+	texts: Optional list of strings to display alongside the property name on the slider, chosen based on the current value of the property.
+	operator: Optional parameter to specify an operator to draw next to the slider.
+	icon: Optional prameter to override the icon of the operator. Defaults to 'FILE_REFRESH'.
+
+	Arbitrary arguments will be passed on to the operator.
+	"""
+
+	if ui_area not in rig.data: return
+
+	if label!="":
+		layout.label(text=label)
+
+	settings = rig.data[ui_area].to_dict()
+	for row_name in settings.keys():
+		col_name = settings[row_name]
+		row = layout.row()
+		for entry_name in col_name.keys():
+			info = col_name[entry_name]
+			assert 'prop_bone' in info and 'prop_id' in info, f"ERROR: Limb definition lacks properties bone or ID: {row_name}, {info}"
+			prop_bone = rig.pose.bones.get(info['prop_bone'])
+			prop_id = info['prop_id']
+			assert prop_bone and prop_id in prop_bone, f"ERROR: Properties bone or property does not exist: {info}"
+
+			col = row.column()
+			sub_row = col.row(align=True)
+
+			text = entry_name
+			if 'texts' in info:
+				prop_value = prop_bone[prop_id]
+				cur_text = info['texts'][int(prop_value)]
+				text = entry_name + ": " + cur_text
+
+			sub_row.prop(prop_bone, '["' + prop_id + '"]', slider=True, text=text)
+
+			# Draw an operator if provided.
+			if 'operator' in info:
+				icon = 'FILE_REFRESH'
+				if 'icon' in info:
+					icon = info['icon']
+
+				switch = sub_row.operator(info['operator'], text="", icon=icon)
+				# Fill the operator's parameters where provided.
+				for param in info.keys():
+					if hasattr(switch, param):
+						value = info[param]
+						if type(value) in [list, dict]:
+							value = json.dumps(value)
+						setattr(switch, param, value)
+
 class Snap_Simple(bpy.types.Operator):
 	bl_idname = "pose.snap_simple"
 	bl_label = "Snap Simple"
@@ -300,25 +375,6 @@ class POSE_OT_rigify_switch_parent(Snap_Simple):
 			return context.window_manager.invoke_props_popup(self, event)
 		else:
 			return self.execute(context)
-
-def get_rigs():
-	""" Find all cloudrig armatures in the file."""
-	return [o for o in bpy.data.objects if o.type=='ARMATURE' and 'cloudrig' in o.data]
-
-def get_rig():
-	"""If the active object is a cloudrig, return it."""
-	o = bpy.context.pose_object or bpy.context.object
-	if o and o.type == 'ARMATURE' and 'cloudrig' in o.data and o.data['cloudrig']==script_id:
-		return o
-
-def get_char_bone(rig):
-	for b in rig.pose.bones:
-		if b.name.startswith("Properties_Character"):
-			return b
-
-def get_bones(rig, names):
-	""" Return a list of pose bones from a string of bone names separated by ", ". """
-	return list(filter(None, map(rig.pose.bones.get, json.loads(names))))
 
 class Snap_Mapped(Snap_Simple):
 	"""Toggle a custom property and snap some bones to some other bones."""
@@ -709,7 +765,7 @@ class Rig_Properties(bpy.types.PropertyGroup):
 		options	= {"LIBRARY_EDITABLE"} # Make it not animatable.
 	)
 
-class RigUI(bpy.types.Panel):
+class CLOUDRIG_PT_main(bpy.types.Panel):
 	bl_space_type = 'VIEW_3D'
 	bl_region_type = 'UI'
 	bl_category = 'CloudRig'
@@ -721,7 +777,7 @@ class RigUI(bpy.types.Panel):
 	def draw(self, context):
 		layout = self.layout
 
-class RigUI_Outfits(RigUI):
+class CLOUDRIG_PT_Outfits(CLOUDRIG_PT_main):
 	bl_idname = "OBJECT_PT_rig_ui_properties_" + script_id
 	bl_label = "Outfits"
 
@@ -779,7 +835,7 @@ class RigUI_Outfits(RigUI):
 		if( outfit_properties_bone != None ):
 			add_props(outfit_properties_bone)
 
-class RigUI_Layers(RigUI):
+class CLOUDRIG_PT_Layers(CLOUDRIG_PT_main):
 	bl_idname = "OBJECT_PT_rig_ui_layers_" + script_id
 	bl_label = "Layers"
 
@@ -834,7 +890,7 @@ class RigUI_Layers(RigUI):
 			death_row.prop(data, 'layers', index=30, toggle=True, text='Properties')
 			death_row.prop(data, 'layers', index=31, toggle=True, text='Black Box')
 
-class RigUI_Settings(RigUI):
+class CLOUDRIG_PT_Settings(CLOUDRIG_PT_main):
 	bl_idname = "OBJECT_PT_rig_ui_settings_" + script_id
 	bl_label = "Settings"
 
@@ -846,63 +902,7 @@ class RigUI_Settings(RigUI):
 		if 'render_modifiers' in rig.data:
 			layout.row().prop(rig.data, 'render_modifiers', text='Enable Modifiers', toggle=True)
 
-def draw_rig_settings(layout, rig, ui_area, label=""):
-	""" Draw UI settings in the layout, if info for those settings can be found in the rig's data. 
-	Parameters read from the rig data:
-
-	prop_bone: Name of the pose bone that holds the custom property.
-	prop_id: Name of the custom property on aforementioned bone. This is the property that gets drawn in the UI as a slider.
-
-	texts: Optional list of strings to display alongside the property name on the slider, chosen based on the current value of the property.
-	operator: Optional parameter to specify an operator to draw next to the slider.
-	icon: Optional prameter to override the icon of the operator. Defaults to 'FILE_REFRESH'.
-
-	Arbitrary arguments will be passed on to the operator.
-	"""
-
-	if ui_area not in rig.data: return
-
-	if label!="":
-		layout.label(text=label)
-
-	settings = rig.data[ui_area].to_dict()
-	for row_name in settings.keys():
-		col_name = settings[row_name]
-		row = layout.row()
-		for entry_name in col_name.keys():
-			info = col_name[entry_name]
-			assert 'prop_bone' in info and 'prop_id' in info, f"ERROR: Limb definition lacks properties bone or ID: {row_name}, {info}"
-			prop_bone = rig.pose.bones.get(info['prop_bone'])
-			prop_id = info['prop_id']
-			assert prop_bone and prop_id in prop_bone, f"ERROR: Properties bone or property does not exist: {info}"
-
-			col = row.column()
-			sub_row = col.row(align=True)
-
-			text = entry_name
-			if 'texts' in info:
-				prop_value = prop_bone[prop_id]
-				cur_text = info['texts'][int(prop_value)]
-				text = entry_name + ": " + cur_text
-
-			sub_row.prop(prop_bone, '["' + prop_id + '"]', slider=True, text=text)
-
-			# Draw an operator if provided.
-			if 'operator' in info:
-				icon = 'FILE_REFRESH'
-				if 'icon' in info:
-					icon = info['icon']
-
-				switch = sub_row.operator(info['operator'], text="", icon=icon)
-				# Fill the operator's parameters where provided.
-				for param in info.keys():
-					if hasattr(switch, param):
-						value = info[param]
-						if type(value) in [list, dict]:
-							value = json.dumps(value)
-						setattr(switch, param, value)
-
-class RigUI_Settings_FKIK(RigUI):
+class CLOUDRIG_PT_Settings_FKIK(CLOUDRIG_PT_main):
 	bl_idname = "OBJECT_PT_rig_ui_ikfk_" + script_id
 	bl_label = "FK/IK Switch"
 	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
@@ -919,7 +919,7 @@ class RigUI_Settings_FKIK(RigUI):
 
 		draw_rig_settings(layout, rig, "ik_switches")
 
-class RigUI_Settings_IK(RigUI):
+class CLOUDRIG_PT_Settings_IK(CLOUDRIG_PT_main):
 	bl_idname = "OBJECT_PT_rig_ui_ik_" + script_id
 	bl_label = "IK Settings"
 	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
@@ -944,7 +944,7 @@ class RigUI_Settings_IK(RigUI):
 		draw_rig_settings(layout, rig, "ik_hinges", label="IK Hinge")
 		draw_rig_settings(layout, rig, "ik_pole_follows", label="IK Pole Follow")
 
-class RigUI_Settings_FK(RigUI):
+class CLOUDRIG_PT_Settings_FK(CLOUDRIG_PT_main):
 	bl_idname = "OBJECT_PT_rig_ui_fk_" + script_id
 	bl_label = "FK Settings"
 	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
@@ -966,7 +966,7 @@ class RigUI_Settings_FK(RigUI):
 
 		draw_rig_settings(layout, rig, "fk_hinges", label='FK Hinge')
 
-class RigUI_Settings_Face(RigUI):
+class CLOUDRIG_PT_Settings_Face(CLOUDRIG_PT_main):
 	bl_idname = "OBJECT_PT_rig_ui_face_" + script_id
 	bl_label = "Face Settings"
 	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
@@ -996,7 +996,7 @@ class RigUI_Settings_Face(RigUI):
 			eye_parents = ['Root', 'Torso', 'Torso_Loc', 'Head']
 			row.prop(face_props, '["eye_target_parents"]',  text=eye_parents[face_props["eye_target_parents"]], slider=True)
 
-class RigUI_Settings_Misc(RigUI):
+class CLOUDRIG_PT_Settings_Misc(CLOUDRIG_PT_main):
 	bl_idname = "OBJECT_PT_rig_ui_misc_" + script_id
 	bl_label = "Misc"
 	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
@@ -1019,7 +1019,7 @@ class RigUI_Settings_Misc(RigUI):
 			row.prop(ikfk_props, '["grab_parent_left"]',  text="Left Hand [" + grab_parents[ikfk_props["grab_parent_left"]] + "]", slider=True)
 			row.prop(ikfk_props, '["grab_parent_right"]',  text="Right Hand [" + grab_parents[ikfk_props["grab_parent_right"]] + "]", slider=True)
 
-class RigUI_Viewport_Display(RigUI):
+class CLOUDRIG_PT_Viewport_Display(CLOUDRIG_PT_main):
 	bl_idname = "OBJECT_PT_rig_ui_viewport_display_" + script_id
 	bl_label = "Viewport Display"
 
@@ -1043,17 +1043,17 @@ classes = (
 	Snap_Simple,
 	Rig_ColorProperties,
 	Rig_Properties,
-	RigUI_Outfits,
-	RigUI_Layers,
+	CLOUDRIG_PT_Outfits,
+	CLOUDRIG_PT_Layers,
 	IKFK_Toggle,
 	Reset_Rig_Colors,
-	RigUI_Settings,
-	RigUI_Settings_FKIK,
-	RigUI_Settings_IK,
-	RigUI_Settings_FK,
-	RigUI_Settings_Face,
-	RigUI_Settings_Misc,
-	RigUI_Viewport_Display,
+	CLOUDRIG_PT_Settings,
+	CLOUDRIG_PT_Settings_FKIK,
+	CLOUDRIG_PT_Settings_IK,
+	CLOUDRIG_PT_Settings_FK,
+	CLOUDRIG_PT_Settings_Face,
+	CLOUDRIG_PT_Settings_Misc,
+	CLOUDRIG_PT_Viewport_Display,
 )
 
 from bpy.utils import register_class
