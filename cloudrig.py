@@ -12,11 +12,11 @@ from rna_prop_ui import rna_idprop_quote_path
 script_id = "SCRIPT_ID"
 
 def get_rigs():
-	""" Find all cloudrig armatures in the file."""
+	""" Find all cloudrig armatures in the file. """
 	return [o for o in bpy.data.objects if o.type=='ARMATURE' and 'cloudrig' in o.data]
 
-def get_rig():
-	"""If the active object is a cloudrig, return it."""
+def active_cloudrig():
+	""" If the active object is a cloudrig, return it. """
 	o = bpy.context.pose_object or bpy.context.object
 	if o and o.type == 'ARMATURE' and 'cloudrig' in o.data and o.data['cloudrig']==script_id:
 		return o
@@ -27,7 +27,7 @@ def get_char_bone(rig):
 			return b
 
 def get_bones(rig, names):
-	""" Return a list of pose bones from a string of bone names separated by ", ". """
+	""" Return a list of pose bones from a string of bone names in json format. """
 	return list(filter(None, map(rig.pose.bones.get, json.loads(names))))
 
 def draw_rig_settings(layout, rig, ui_area, label=""):
@@ -86,11 +86,11 @@ def draw_rig_settings(layout, rig, ui_area, label=""):
 							value = json.dumps(value)
 						setattr(switch, param, value)
 
-class Snap_Simple(bpy.types.Operator):
+class CLOUDRIG_OT_snap_simple(bpy.types.Operator):
+	bl_description = "Toggle a custom property while ensuring that some bones stay in place"
 	bl_idname = "pose.snap_simple"
 	bl_label = "Snap Simple"
 	bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
-	bl_description = "Toggle a custom property while ensuring that some bones stay in place"
 
 	bones:		  StringProperty(name="Control Bone")
 	prop_bone:	  StringProperty(name="Property Bone")
@@ -310,77 +310,11 @@ class Snap_Simple(bpy.types.Operator):
 				no_loc=no_loc, no_rot=no_rot, no_scale=no_scale
 			)
 
-class POSE_OT_rigify_switch_parent(Snap_Simple):
-	bl_idname = "pose.rigify_switch_parent"
-	bl_label = "Switch Parent (Keep Transform)"
-	bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
-	bl_description = "Switch parent, preserving the bone position and orientation"
-
-	bones:		  StringProperty(name="Control Bone")
-	prop_bone:	  StringProperty(name="Property Bone")
-	prop_id:	  StringProperty(name="Property")
-
-	select_bones: BoolProperty(name="Select Affected Bones", default=True)
-
-	parent_names: StringProperty(name="Parent Names")
-	locks:		  BoolVectorProperty(name="Locked", size=3, default=[False,False,False])
-
-	parent_items = [('0','None','None')]
-
-	selected:	  EnumProperty(
-		name='Selected Parent',
-		items=lambda s,c: POSE_OT_rigify_switch_parent.parent_items
-	)
-
-	def apply_frame_state(self, context, rig, old_matrices, bone_names):
-		# Change the parent
-		self.set_custom_property_value(
-			rig, self.prop_bone, self.prop_id, int(self.selected),
-			keyflags=self.keyflags_switch
-		)
-
-		context.view_layer.update()
-
-		# Set the transforms to restore position
-		for i, bone_name in enumerate(bone_names):
-			old_matrix = old_matrices[i]
-			self.set_transform_from_matrix(
-				rig, bone_name, old_matrix, keyflags=self.keyflags,
-				no_loc=self.locks[0], no_rot=self.locks[1], no_scale=self.locks[2]
-			)
-
-	def draw(self, _context):
-		col = self.layout.column()
-		col.prop(self, 'selected', expand=True)
-
-	def invoke(self, context, event):
-		rig = context.pose_object or context.active_object
-		pose = rig.pose
-
-		if (not pose or not self.parent_names
-			#or self.bone not in pose.bones
-			or self.prop_bone not in pose.bones
-			or self.prop_id not in pose.bones[self.prop_bone]):
-			self.report({'ERROR'}, "Invalid parameters")
-			return {'CANCELLED'}
-
-		parents = json.loads(self.parent_names)
-		pitems = [(str(i), name, name) for i, name in enumerate(parents)]
-
-		POSE_OT_rigify_switch_parent.parent_items = pitems
-
-		self.selected = str(pose.bones[self.prop_bone][self.prop_id])
-
-		if hasattr(self, 'draw'):
-			return context.window_manager.invoke_props_popup(self, event)
-		else:
-			return self.execute(context)
-
-class Snap_Mapped(Snap_Simple):
-	"""Toggle a custom property and snap some bones to some other bones."""
+class CLOUDRIG_OT_snap_mapped(CLOUDRIG_OT_snap_simple):
+	bl_description = "Toggle a custom property and snap some bones to some other bones"
 	bl_idname = "pose.snap_mapped"
 	bl_label = "Snap Bones"
-	bl_options = {'REGISTER', 'UNDO'}
+	bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
 
 	prop_bone:	  StringProperty(name="Property Bone")
 	prop_id:	  StringProperty(name="Property")
@@ -449,8 +383,76 @@ class Snap_Mapped(Snap_Simple):
 
 		return {'FINISHED'}
 
-class IKFK_Toggle(bpy.types.Operator):
-	"Toggle between IK and FK, and snap the controls accordingly. This will NOT place any keyframes, but it will select the affected bones"
+class CLOUDRIG_OT_switch_parent(CLOUDRIG_OT_snap_simple):
+	bl_description = "Switch parent, preserving the bone position and orientation"
+	bl_idname = "pose.rigify_switch_parent"
+	bl_label = "Switch Parent (Keep Transform)"
+	bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
+
+	bones:		  StringProperty(name="Control Bone")
+	prop_bone:	  StringProperty(name="Property Bone")
+	prop_id:	  StringProperty(name="Property")
+
+	select_bones: BoolProperty(name="Select Affected Bones", default=True)
+
+	parent_names: StringProperty(name="Parent Names")
+	locks:		  BoolVectorProperty(name="Locked", size=3, default=[False,False,False])
+
+	parent_items = [('0','None','None')]
+
+	selected:	  EnumProperty(
+		name='Selected Parent',
+		items=lambda s,c: CLOUDRIG_OT_switch_parent.parent_items
+	)
+
+	def apply_frame_state(self, context, rig, old_matrices, bone_names):
+		# Change the parent
+		self.set_custom_property_value(
+			rig, self.prop_bone, self.prop_id, int(self.selected),
+			keyflags=self.keyflags_switch
+		)
+
+		context.view_layer.update()
+
+		# Set the transforms to restore position
+		for i, bone_name in enumerate(bone_names):
+			old_matrix = old_matrices[i]
+			self.set_transform_from_matrix(
+				rig, bone_name, old_matrix, keyflags=self.keyflags,
+				no_loc=self.locks[0], no_rot=self.locks[1], no_scale=self.locks[2]
+			)
+
+	def draw(self, _context):
+		col = self.layout.column()
+		col.prop(self, 'selected', expand=True)
+
+	def invoke(self, context, event):
+		rig = context.pose_object or context.active_object
+		pose = rig.pose
+
+		if (
+			not pose or not self.parent_names
+			#or self.bone not in pose.bones
+			or self.prop_bone not in pose.bones
+			or self.prop_id not in pose.bones[self.prop_bone]
+			):
+				self.report({'ERROR'}, "Invalid parameters")
+				return {'CANCELLED'}
+
+		parents = json.loads(self.parent_names)
+		pitems = [(str(i), name, name) for i, name in enumerate(parents)]
+
+		CLOUDRIG_OT_switch_parent.parent_items = pitems
+
+		self.selected = str(pose.bones[self.prop_bone][self.prop_id])
+
+		if hasattr(self, 'draw'):
+			return context.window_manager.invoke_props_popup(self, event)
+		else:
+			return self.execute(context)
+
+class CLOUDRIG_OT_ikfk_toggle(bpy.types.Operator):
+	bl_description = "Toggle between IK and FK, and snap the controls accordingly. This will NOT place any keyframes, but it will select the affected bones"
 	bl_idname = "armature.ikfk_toggle"
 	bl_label = "Toggle IK/FK"
 	bl_options = {'REGISTER', 'UNDO'}
@@ -660,8 +662,8 @@ class IKFK_Toggle(bpy.types.Operator):
 		if tail_dist1 < tail_dist2:
 			set_pole(pv1)
 
-class Reset_Rig_Colors(bpy.types.Operator):
-	"""Reset rig color properties to their stored default."""
+class CLOUDRIG_OT_reset_colors(bpy.types.Operator):
+	bl_description = "Reset rig color properties to their stored default"
 	bl_idname = "object.reset_rig_colors"
 	bl_label = "Reset Rig Colors"
 	bl_options = {'REGISTER', 'UNDO'}
@@ -677,7 +679,7 @@ class Reset_Rig_Colors(bpy.types.Operator):
 			cp.color = cp.default
 		return {'FINISHED'}
 
-class Rig_ColorProperties(bpy.types.PropertyGroup):
+class CloudRig_ColorProperties(bpy.types.PropertyGroup):
 	""" Store a ColorProperty that can be used to drive colors on the rig, and then be controlled even when the rig is linked. """
 	default: FloatVectorProperty(
 		name='Default',
@@ -696,21 +698,20 @@ class Rig_ColorProperties(bpy.types.PropertyGroup):
 		options={'LIBRARY_EDITABLE'}
 	)
 
-class Rig_Properties(bpy.types.PropertyGroup):
-	""" PropertyGroup for storing fancy custom properties in.
-		Character and Outfit specific properties will still be stored in their relevant Properties bones (eg. Properties_Outfit_Rain).
-	"""
+class CloudRig_Properties(bpy.types.PropertyGroup):
+	""" PropertyGroup for storing fancy custom properties in. """
 
 	def get_rig(self):
 		""" Find the armature object that is using this instance (self). """
 
 		for rig in get_rigs():
-			if(rig.rig_properties == self):
+			if rig.rig_properties == self:
 				return rig
 
-	def outfits(self, context):
-		""" Callback function for finding the list of available outfits for the outfit enum.
-			Based on naming convention. Bones storing an outfit's properties must be named "Properties_Outfit_OutfitName".
+	def items_outfit(self, context):
+		""" Items callback for outfits EnumProperty.
+			Build and return a list of outfit names based on a bone naming convention.
+			Bones storing an outfit's properties must be named "Properties_Outfit_OutfitName".
 		"""
 		rig = self.get_rig()
 		if not rig: return [(('0', 'Default', 'Default'))]
@@ -726,19 +727,19 @@ class Rig_Properties(bpy.types.PropertyGroup):
 			items.append((outfit, outfit, outfit, i))	# Identifier, name, description, can all be the outfit name.
 
 		# If no outfits were found, don't return an empty list so the console doesn't spam "'0' matches no enum" warnings.
-		if(items==[]):
+		if items==[]:
 			return [(('0', 'Default', 'Default'))]
 
 		return items
 
 	def change_outfit(self, context):
-		""" Update callback of outfit enum. """
+		""" Update callback of outfits EnumProperty. """
 
 		rig = self.get_rig()
 		if not rig: return
 
-		if( (self.outfit == '') ):
-			self.outfit = self.outfits(context)[0][0]
+		if self.outfit == '':
+			self.outfit = self.items_outfit(context)[0][0]
 
 		outfit_bone = rig.pose.bones.get("Properties_Outfit_"+self.outfit)
 
@@ -757,10 +758,10 @@ class Rig_Properties(bpy.types.PropertyGroup):
 
 		context.evaluated_depsgraph_get().update()
 
-	# TODO: This could be implemented like an operator instead, just like parent switching. But maybe this way is better?
+	# TODO: This should be implemented as an operator instead, just like parent switching.
 	outfit: EnumProperty(
 		name	= "Outfit",
-		items	= outfits,
+		items	= items_outfit,
 		update	= change_outfit,
 		options	= {"LIBRARY_EDITABLE"} # Make it not animatable.
 	)
@@ -772,25 +773,25 @@ class CLOUDRIG_PT_main(bpy.types.Panel):
 
 	@classmethod
 	def poll(cls, context):
-		return get_rig() is not None
+		return active_cloudrig() is not None
 
 	def draw(self, context):
 		layout = self.layout
 
 class CLOUDRIG_PT_character(CLOUDRIG_PT_main):
-	bl_idname = "OBJECT_PT_rig_ui_properties_" + script_id
-	bl_label = "Outfits"
+	bl_idname = "CLOUDRIG_PT_character_" + script_id
+	bl_label = "Character"
 
 	@classmethod
 	def poll(cls, context):
-		if(not super().poll(context)):
+		if not super().poll(context):
 			return False
 
 		# Only display this panel if there is either an outfit with options, multiple outfits, or character options.
-		rig = get_rig()
+		rig = active_cloudrig()
 		if not rig: return
 		rig_props = rig.rig_properties
-		multiple_outfits = len(rig_props.outfits(context)) > 1
+		multiple_outfits = len(rig_props.items_outfit(context)) > 1
 		outfit_properties_bone = rig.pose.bones.get("Properties_Outfit_"+rig_props.outfit)
 		char_bone = get_char_bone(rig)
 
@@ -816,23 +817,23 @@ class CLOUDRIG_PT_character(CLOUDRIG_PT_main):
 					return text
 
 			for prop_id in prop_owner.keys():
-				if( prop_id.startswith("_") ): continue
+				if prop_id.startswith("_"): continue
 				# Int Props
-				if(type(prop_owner[prop_id]) in [int, float] ):
+				if type(prop_owner[prop_id]) in [int, float]:
 					layout.prop(prop_owner, '["'+prop_id+'"]', slider=True, 
 						text = get_text(prop_id, prop_owner[prop_id])
 					)
 
 		# Add character properties to the UI, if any.
 		char_bone = get_char_bone(rig)
-		if( char_bone ):
+		if char_bone:
 			add_props(char_bone)
 			layout.separator()
 
-		# Add outfit properties to the UI, if any. Always add outfit selector.
+		# Add outfit properties to the UI, if any.
 		outfit_properties_bone = rig.pose.bones.get("Properties_Outfit_"+rig_props.outfit)
-		layout.prop(rig_props, 'outfit')
-		if( outfit_properties_bone != None ):
+		if outfit_properties_bone:
+			layout.prop(rig_props, 'outfit')
 			add_props(outfit_properties_bone)
 
 class CLOUDRIG_PT_layers(CLOUDRIG_PT_main):
@@ -841,7 +842,7 @@ class CLOUDRIG_PT_layers(CLOUDRIG_PT_main):
 
 	def draw(self, context):
 		layout = self.layout
-		rig = get_rig()
+		rig = active_cloudrig()
 		if not rig: return
 		data = rig.data
 
@@ -866,7 +867,7 @@ class CLOUDRIG_PT_layers(CLOUDRIG_PT_main):
 		layout.row().prop(data, 'layers', index=7, toggle=True, text='Clothes')
 
 		# Draw secret layers
-		if('dev' in rig and rig['dev']==1):
+		if 'dev' in rig and rig['dev']==1:
 			layout.separator()
 			layout.prop(rig, '["dev"]', text="Secret Layers")
 			layout.label(text="Body")
@@ -896,7 +897,7 @@ class CLOUDRIG_PT_settings(CLOUDRIG_PT_main):
 
 	def draw(self, context):
 		layout = self.layout
-		rig = get_rig()
+		rig = active_cloudrig()
 		if not rig: return
 
 		if 'render_modifiers' in rig.data:
@@ -905,16 +906,16 @@ class CLOUDRIG_PT_settings(CLOUDRIG_PT_main):
 class CLOUDRIG_PT_fkik(CLOUDRIG_PT_main):
 	bl_idname = "CLOUDRIG_PT_fkik_" + script_id
 	bl_label = "FK/IK Switch"
-	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
+	bl_parent_id = "CLOUDRIG_PT_settings_" + script_id
 
 	@classmethod
 	def poll(cls, context):
-		rig = get_rig()
+		rig = active_cloudrig()
 		return rig and "ik_switches" in rig.data
 
 	def draw(self, context):
 		layout = self.layout
-		rig = get_rig()
+		rig = active_cloudrig()
 		if not rig: return
 
 		draw_rig_settings(layout, rig, "ik_switches")
@@ -922,11 +923,11 @@ class CLOUDRIG_PT_fkik(CLOUDRIG_PT_main):
 class CLOUDRIG_PT_ik(CLOUDRIG_PT_main):
 	bl_idname = "CLOUDRIG_PT_ik_" + script_id
 	bl_label = "IK Settings"
-	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
+	bl_parent_id = "CLOUDRIG_PT_settings_" + script_id
 
 	@classmethod
 	def poll(cls, context):
-		rig = get_rig()
+		rig = active_cloudrig()
 		if not rig: return False
 		ik_settings = ['ik_stretches', 'ik_hinges', 'parents', 'ik_pole_follows']
 		for ik_setting in ik_settings:
@@ -936,7 +937,7 @@ class CLOUDRIG_PT_ik(CLOUDRIG_PT_main):
 
 	def draw(self, context):
 		layout = self.layout
-		rig = get_rig()
+		rig = active_cloudrig()
 		if not rig: return
 
 		draw_rig_settings(layout, rig, "ik_stretches", label="IK Stretch")
@@ -947,11 +948,11 @@ class CLOUDRIG_PT_ik(CLOUDRIG_PT_main):
 class CLOUDRIG_PT_fk(CLOUDRIG_PT_main):
 	bl_idname = "CLOUDRIG_PT_fk_" + script_id
 	bl_label = "FK Settings"
-	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
+	bl_parent_id = "CLOUDRIG_PT_settings_" + script_id
 
 	@classmethod
 	def poll(cls, context):
-		rig = get_rig()
+		rig = active_cloudrig()
 		if not rig: return False
 		fk_settings = ['fk_hinges']
 		for fk_setting in fk_settings:
@@ -961,7 +962,7 @@ class CLOUDRIG_PT_fk(CLOUDRIG_PT_main):
 
 	def draw(self, context):
 		layout = self.layout
-		rig = get_rig()
+		rig = active_cloudrig()
 		if not rig: return
 
 		draw_rig_settings(layout, rig, "fk_hinges", label='FK Hinge')
@@ -969,16 +970,16 @@ class CLOUDRIG_PT_fk(CLOUDRIG_PT_main):
 class CLOUDRIG_PT_face(CLOUDRIG_PT_main):
 	bl_idname = "CLOUDRIG_PT_face_" + script_id
 	bl_label = "Face Settings"
-	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
+	bl_parent_id = "CLOUDRIG_PT_settings_" + script_id
 
 	@classmethod
 	def poll(cls, context):
-		rig = get_rig()
+		rig = active_cloudrig()
 		return rig and "face_settings" in rig.data
 
 	def draw(self, context):
 		layout = self.layout
-		rig = get_rig()
+		rig = active_cloudrig()
 		if not rig: return
 		face_props = rig.pose.bones.get('Properties_Face')
 
@@ -999,16 +1000,16 @@ class CLOUDRIG_PT_face(CLOUDRIG_PT_main):
 class CLOUDRIG_PT_misc(CLOUDRIG_PT_main):
 	bl_idname = "CLOUDRIG_PT_misc_" + script_id
 	bl_label = "Misc"
-	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
+	bl_parent_id = "CLOUDRIG_PT_settings_" + script_id
 
 	@classmethod
 	def poll(cls, context):
-		rig = get_rig()
+		rig = active_cloudrig()
 		return rig and "misc_settings" in rig.data
 
 	def draw(self, context):
 		layout = self.layout
-		rig = get_rig()
+		rig = active_cloudrig()
 		if not rig: return
 		ikfk_props = rig.pose.bones.get('Properties_IKFK')
 
@@ -1025,27 +1026,27 @@ class CLOUDRIG_PT_viewport(CLOUDRIG_PT_main):
 
 	@classmethod
 	def poll(cls, context):
-		rig = get_rig()
+		rig = active_cloudrig()
 		return rig and hasattr(rig, "rig_colorproperties") and len(rig.rig_colorproperties)>0
 
 	def draw(self, context):
 		layout = self.layout
-		rig = get_rig()
+		rig = active_cloudrig()
 		if not rig: return
-		layout.operator(Reset_Rig_Colors.bl_idname, text="Reset Colors")
+		layout.operator(CLOUDRIG_OT_reset_colors.bl_idname, text="Reset Colors")
 		layout.separator()
 		for cp in rig.rig_colorproperties:
 			layout.prop(cp, "color", text=cp.name)
 
 classes = (
-	POSE_OT_rigify_switch_parent,
-	Snap_Mapped,
-	Snap_Simple,
-	IKFK_Toggle,
-	Reset_Rig_Colors,
-	
-	Rig_ColorProperties,
-	Rig_Properties,
+	CLOUDRIG_OT_switch_parent,
+	CLOUDRIG_OT_snap_mapped,
+	CLOUDRIG_OT_snap_simple,
+	CLOUDRIG_OT_ikfk_toggle,
+	CLOUDRIG_OT_reset_colors,
+
+	CloudRig_ColorProperties,
+	CloudRig_Properties,
 
 	CLOUDRIG_PT_character,
 	CLOUDRIG_PT_layers,
@@ -1063,8 +1064,8 @@ def register():
 	for c in classes:
 		register_class(c)
 
-	bpy.types.Object.rig_properties = PointerProperty(type=Rig_Properties)
-	bpy.types.Object.rig_colorproperties = CollectionProperty(type=Rig_ColorProperties)
+	bpy.types.Object.rig_properties = PointerProperty(type=CloudRig_Properties)
+	bpy.types.Object.rig_colorproperties = CollectionProperty(type=CloudRig_ColorProperties)
 
 def unregister():
 	from bpy.utils import unregister_class
@@ -1073,3 +1074,5 @@ def unregister():
 
 	del bpy.types.Object.rig_properties
 	del bpy.types.Object.rig_colorproperties
+
+register()
