@@ -1,5 +1,5 @@
 import bpy, os
-from bpy.props import BoolProperty, FloatProperty
+from bpy.props import BoolProperty, FloatProperty, StringProperty, BoolVectorProperty
 from mathutils import Vector
 
 from rigify.base_rig import BaseRig, stage
@@ -9,10 +9,25 @@ from ..definitions.bone import BoneInfoContainer
 from .cloud_utils import CloudUtilities
 from .. import cloud_generator
 
+# TODO: layers for each bonegroup should be exposed as BoolVectorProperty, and defaults should be stored somewhere where they can't be messed with.
+IK_MAIN = 0
+IK_SECOND = 16
+
+class BoneGroupParameter:
+	def __init__(self, prop_name, ui_name="Group", layers=[0], default_group=None):
+		self.prop_name = prop_name
+		self.ui_name = ui_name
+		self.layers = layers
+		self.default_group = default_group
+		if not default_group:
+			self.default_group = ui_name
+
 class CloudBaseRig(BaseRig, CloudUtilities):
 	"""Base for all CloudRig rigs."""
 
 	description = "CloudRig Element (no description)"
+
+	bone_groups = {}
 
 	def find_org_bones(self, bone):
 		"""Populate self.bones.org."""
@@ -105,8 +120,12 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 	def ensure_bone_groups(self):
 		""" Ensure bone groups that this rig needs. """
-		IK_MAIN = 0
-		IK_SECOND = 16
+		# TODO: This should just be a for loop using self.__class__.bone_groups, creating properties on self such as "group_"+bg.prop_name
+		# Although that can result in bad things if we change the prop_name string... fairly dark magic way of doing things, changing a string shouldn't break the code.
+		# Actually, forget that, it should be using self.params for the group name and the layers...
+		# Instead of referring to bone groups as self.group_whatever, we should have a self.bone_groups.get("whatever").
+
+		# Now my only concern is, where do we get the preset from? It could be stored in cls.bone_groups...
 		self.group_root = self.generator.bone_groups.ensure(
 			name = "Root Control"
 			,layers = [IK_MAIN, IK_SECOND]
@@ -250,17 +269,67 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	# Parameters
 
 	@classmethod
+	def add_bone_group_param(cls, params, group_name, ui_name=None, default_group="Group", default_layers=[0]):
+		setattr(params, "CR_BG_" + group_name.replace(" ", "_"), StringProperty(default=default_group))
+		setattr(params, "CR_BG_LAYERS_" + group_name.replace(" ", "_"), BoolVectorProperty(size=32))
+		cls.bone_groups[group_name] = BoneGroupParameter(group_name, "Root Control", default_layers)
+		return cls.bone_groups[group_name]
+
+	@classmethod
+	def add_bone_group_params(cls, params):
+		""" Create parameters for this rig's bone groups. """
+		params.CR_show_bone_groups = BoolProperty(name="Bone Groups")
+
+		cls.add_bone_group_param(params, "root", "Root Control")
+		cls.add_bone_group_param(params, "root_parent", "Root Control Parent")
+
+	@classmethod
 	def add_parameters(cls, params):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
 		"""
-		pass
+		cls.add_bone_group_params(params)
+
+	@classmethod
+	def bone_layers_ui(cls, layout, params, group_name):
+		layer_param = "CR_BG_LAYERS_"+group_name
+		
+		col = main_row.column(align=True)
+		row = col.row(align=True)
+		for i in range(8):
+			row.prop(params, layer_param, index=i, toggle=True, text="")
+
+		row = col.row(align=True)
+		for i in range(16,24):
+			row.prop(params, layer_param, index=i, toggle=True, text="")
+
+		main_row.column(align=True)
+		col = main_row.column(align=True)
+		row = col.row(align=True)
+
+		for i in range(8,16):
+			row.prop(params, layer_param, index=i, toggle=True, text="")
+
+		row = col.row(align=True)
+		for i in range(24,32):
+			row.prop(params, layer_param, index=i, toggle=True, text="")
+
+	@classmethod
+	def bone_groups_ui(cls, layout, params):
+		icon = 'TRIA_DOWN' if params.CR_show_bone_groups else 'TRIA_RIGHT'
+		layout.prop(params, "CR_show_bone_groups", toggle=True, icon=icon)
+		if not params.CR_show_bone_groups: return
+
+		for group_name in cls.bone_groups.keys():
+			layout.prop_search(params, "CR_BG_"+group_name, bpy.context.object.pose, "bone_groups", text=cls.bone_groups[group_name].ui_name)
+			cls.bone_layers_ui(layout, params, group_name)
 
 	@classmethod
 	def parameters_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
 		ui_label_with_linebreak(layout, cls.description, bpy.context)
+		cls.bone_groups_ui(layout, params)
 
 		# We can return a dictionary of key:UILayout elements, in case we want to affect the UI layout of inherited rig elements.
 		return {}
@@ -273,7 +342,9 @@ def ui_label_with_linebreak(layout, text, context):
 	line_index = 0
 
 	cur_line_length = 0
-	max_line_length = context.area.width/6	# Try to determine maximum allowed characters in this line, based on pixel width of the area. Not a great solution, but a start.
+	# Try to determine maximum allowed characters in this line, based on pixel width of the area. 
+	# Not a great solution, but better than nothing.
+	max_line_length = context.area.width/6
 
 	while word_index < len(words):
 		word = words[word_index]
