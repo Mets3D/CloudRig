@@ -777,7 +777,7 @@ class CLOUDRIG_PT_main(bpy.types.Panel):
 	def draw(self, context):
 		layout = self.layout
 
-class CLOUDRIG_PT_Outfits(CLOUDRIG_PT_main):
+class CLOUDRIG_PT_character(CLOUDRIG_PT_main):
 	bl_idname = "OBJECT_PT_rig_ui_properties_" + script_id
 	bl_label = "Outfits"
 
@@ -835,8 +835,8 @@ class CLOUDRIG_PT_Outfits(CLOUDRIG_PT_main):
 		if( outfit_properties_bone != None ):
 			add_props(outfit_properties_bone)
 
-class CLOUDRIG_PT_Layers(CLOUDRIG_PT_main):
-	bl_idname = "OBJECT_PT_rig_ui_layers_" + script_id
+class CLOUDRIG_PT_layers(CLOUDRIG_PT_main):
+	bl_idname = "CLOUDRIG_PT_layers_" + script_id
 	bl_label = "Layers"
 
 	def draw(self, context):
@@ -890,8 +890,8 @@ class CLOUDRIG_PT_Layers(CLOUDRIG_PT_main):
 			death_row.prop(data, 'layers', index=30, toggle=True, text='Properties')
 			death_row.prop(data, 'layers', index=31, toggle=True, text='Black Box')
 
-class CLOUDRIG_PT_Settings(CLOUDRIG_PT_main):
-	bl_idname = "OBJECT_PT_rig_ui_settings_" + script_id
+class CLOUDRIG_PT_settings(CLOUDRIG_PT_main):
+	bl_idname = "CLOUDRIG_PT_settings_" + script_id
 	bl_label = "Settings"
 
 	def draw(self, context):
@@ -902,8 +902,8 @@ class CLOUDRIG_PT_Settings(CLOUDRIG_PT_main):
 		if 'render_modifiers' in rig.data:
 			layout.row().prop(rig.data, 'render_modifiers', text='Enable Modifiers', toggle=True)
 
-class CLOUDRIG_PT_Settings_FKIK(CLOUDRIG_PT_main):
-	bl_idname = "OBJECT_PT_rig_ui_ikfk_" + script_id
+class CLOUDRIG_PT_fkik(CLOUDRIG_PT_main):
+	bl_idname = "CLOUDRIG_PT_fkik_" + script_id
 	bl_label = "FK/IK Switch"
 	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
 
@@ -919,8 +919,8 @@ class CLOUDRIG_PT_Settings_FKIK(CLOUDRIG_PT_main):
 
 		draw_rig_settings(layout, rig, "ik_switches")
 
-class CLOUDRIG_PT_Settings_IK(CLOUDRIG_PT_main):
-	bl_idname = "OBJECT_PT_rig_ui_ik_" + script_id
+class CLOUDRIG_PT_ik(CLOUDRIG_PT_main):
+	bl_idname = "CLOUDRIG_PT_ik_" + script_id
 	bl_label = "IK Settings"
 	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
 
@@ -944,8 +944,8 @@ class CLOUDRIG_PT_Settings_IK(CLOUDRIG_PT_main):
 		draw_rig_settings(layout, rig, "ik_hinges", label="IK Hinge")
 		draw_rig_settings(layout, rig, "ik_pole_follows", label="IK Pole Follow")
 
-class CLOUDRIG_PT_Settings_FK(CLOUDRIG_PT_main):
-	bl_idname = "OBJECT_PT_rig_ui_fk_" + script_id
+class CLOUDRIG_PT_fk(CLOUDRIG_PT_main):
+	bl_idname = "CLOUDRIG_PT_fk_" + script_id
 	bl_label = "FK Settings"
 	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
 
@@ -966,8 +966,8 @@ class CLOUDRIG_PT_Settings_FK(CLOUDRIG_PT_main):
 
 		draw_rig_settings(layout, rig, "fk_hinges", label='FK Hinge')
 
-class CLOUDRIG_PT_Settings_Face(CLOUDRIG_PT_main):
-	bl_idname = "OBJECT_PT_rig_ui_face_" + script_id
+class CLOUDRIG_PT_face(CLOUDRIG_PT_main):
+	bl_idname = "CLOUDRIG_PT_face_" + script_id
 	bl_label = "Face Settings"
 	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
 
@@ -996,8 +996,8 @@ class CLOUDRIG_PT_Settings_Face(CLOUDRIG_PT_main):
 			eye_parents = ['Root', 'Torso', 'Torso_Loc', 'Head']
 			row.prop(face_props, '["eye_target_parents"]',  text=eye_parents[face_props["eye_target_parents"]], slider=True)
 
-class CLOUDRIG_PT_Settings_Misc(CLOUDRIG_PT_main):
-	bl_idname = "OBJECT_PT_rig_ui_misc_" + script_id
+class CLOUDRIG_PT_misc(CLOUDRIG_PT_main):
+	bl_idname = "CLOUDRIG_PT_misc_" + script_id
 	bl_label = "Misc"
 	bl_parent_id = "OBJECT_PT_rig_ui_settings_" + script_id
 
@@ -1019,8 +1019,8 @@ class CLOUDRIG_PT_Settings_Misc(CLOUDRIG_PT_main):
 			row.prop(ikfk_props, '["grab_parent_left"]',  text="Left Hand [" + grab_parents[ikfk_props["grab_parent_left"]] + "]", slider=True)
 			row.prop(ikfk_props, '["grab_parent_right"]',  text="Right Hand [" + grab_parents[ikfk_props["grab_parent_right"]] + "]", slider=True)
 
-class CLOUDRIG_PT_Viewport_Display(CLOUDRIG_PT_main):
-	bl_idname = "OBJECT_PT_rig_ui_viewport_display_" + script_id
+class CLOUDRIG_PT_viewport(CLOUDRIG_PT_main):
+	bl_idname = "CLOUDRIG_PT_viewport_" + script_id
 	bl_label = "Viewport Display"
 
 	@classmethod
@@ -1041,24 +1041,35 @@ classes = (
 	POSE_OT_rigify_switch_parent,
 	Snap_Mapped,
 	Snap_Simple,
-	Rig_ColorProperties,
-	Rig_Properties,
-	CLOUDRIG_PT_Outfits,
-	CLOUDRIG_PT_Layers,
 	IKFK_Toggle,
 	Reset_Rig_Colors,
-	CLOUDRIG_PT_Settings,
-	CLOUDRIG_PT_Settings_FKIK,
-	CLOUDRIG_PT_Settings_IK,
-	CLOUDRIG_PT_Settings_FK,
-	CLOUDRIG_PT_Settings_Face,
-	CLOUDRIG_PT_Settings_Misc,
-	CLOUDRIG_PT_Viewport_Display,
+	
+	Rig_ColorProperties,
+	Rig_Properties,
+
+	CLOUDRIG_PT_character,
+	CLOUDRIG_PT_layers,
+	CLOUDRIG_PT_settings,
+	CLOUDRIG_PT_fkik,
+	CLOUDRIG_PT_ik,
+	CLOUDRIG_PT_fk,
+	CLOUDRIG_PT_face,
+	CLOUDRIG_PT_misc,
+	CLOUDRIG_PT_viewport,
 )
 
-from bpy.utils import register_class
-for c in classes:
-	register_class(c)
+def register():
+	from bpy.utils import register_class
+	for c in classes:
+		register_class(c)
 
-bpy.types.Object.rig_properties = PointerProperty(type=Rig_Properties)
-bpy.types.Object.rig_colorproperties = CollectionProperty(type=Rig_ColorProperties)
+	bpy.types.Object.rig_properties = PointerProperty(type=Rig_Properties)
+	bpy.types.Object.rig_colorproperties = CollectionProperty(type=Rig_ColorProperties)
+
+def unregister():
+	from bpy.utils import unregister_class
+	for c in classes:
+		unregister_class(c)
+
+	del bpy.types.Object.rig_properties
+	del bpy.types.Object.rig_colorproperties
