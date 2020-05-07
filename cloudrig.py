@@ -1,13 +1,16 @@
+# This file is executed and loaded into a self-registering text datablock when a CloudRig is generated.
+# It's currently responsible for drawing rig UI
+
+# The only change made by the generator is replacing SCRIPT_ID with the name of the blend file.
+# This is used to allow multiple characters generated with different versions of CloudRig
+# to co-exist in the same scene.
+# So each rig uses the script that belongs to it, and not another, potentially newer or older version.
+
 import bpy, traceback, json
 from bpy.props import StringProperty, BoolProperty, BoolVectorProperty, EnumProperty, FloatVectorProperty, PointerProperty, CollectionProperty
 from mathutils import Vector, Matrix
 from math import radians, acos
 from rna_prop_ui import rna_idprop_quote_path
-
-# During rig generation, SCRIPT_ID is replaced with the name of the blend file in which the rig was generated.
-# The same value is saved in the generated rig's 'cloudrig' property, which allows matching UI scripts to the rigs that were generated with them
-# This is useful when linking multiple characters that were generated at different times with different versions, into a single scene.
-# So that each rig would use the script that belongs to it.
 
 script_id = "SCRIPT_ID"
 
@@ -30,31 +33,41 @@ def get_bones(rig, names):
 	""" Return a list of pose bones from a string of bone names in json format. """
 	return list(filter(None, map(rig.pose.bones.get, json.loads(names))))
 
-def draw_rig_settings(layout, rig, ui_area, label=""):
-	""" Draw UI settings in the layout, if info for those settings can be found in the rig's data. 
-	Parameters read from the rig data:
+def draw_rig_settings(layout, rig, dict_name, label=""):
+	""" 
+	dict_name is the name of the custom property dictionary that we expect to find in the rig.
+	Everything stored in a single dictionary is drawn in one call of this function.
+	These dictionaries are created during rig generation.
 
-	prop_bone: Name of the pose bone that holds the custom property.
-	prop_id: Name of the custom property on aforementioned bone. This is the property that gets drawn in the UI as a slider.
+	For an example dictionary, select an existing CloudRig, and put this in the PyConsole:
+	>>> import json
+	>>> print(json.dumps(C.object.data['ik_stretches'].to_dict(), indent=4))
 
-	texts: Optional list of strings to display alongside the property name on the slider, chosen based on the current value of the property.
-	operator: Optional parameter to specify an operator to draw next to the slider.
-	icon: Optional prameter to override the icon of the operator. Defaults to 'FILE_REFRESH'.
+	Parameters expected to be found in the dictionary:
+		prop_bone: Name of the pose bone that holds the custom property.
+		prop_id: Name of the custom property on aforementioned bone. This is the property that gets drawn in the UI as a slider.
 
-	Arbitrary arguments will be passed on to the operator.
+	Further optional parameters:
+		texts: List of strings to display alongside an integer property slider.
+		operator: Specify an operator to draw next to the slider.
+		icon: Override the icon of the operator. If not specified, default to 'FILE_REFRESH'.
+		Any other arbitrary parameters will be passed on to the operator as kwargs.
 	"""
 
-	if ui_area not in rig.data: return
+	if dict_name not in rig.data: return
 
-	if label!="":
+	if label != "":
 		layout.label(text=label)
 
-	settings = rig.data[ui_area].to_dict()
-	for row_name in settings.keys():
-		col_name = settings[row_name]
+	main_dict = rig.data[dict_name].to_dict()
+	# Each top-level dictionary within the main dictionary defines a row.
+	for row_name in main_dict.keys():
 		row = layout.row()
-		for entry_name in col_name.keys():
-			info = col_name[entry_name]
+		# Each second-level dictionary within that defines a slider (and operator, if given).
+		# If there is more than one, they will be drawn next to each other, since they're in the same row.
+		row_entries = main_dict[row_name]
+		for entry_name in row_entries.keys():
+			info = row_entries[entry_name]		# This is the lowest level dictionary that contains the parameters for the slider and its operator, if given.
 			assert 'prop_bone' in info and 'prop_id' in info, f"ERROR: Limb definition lacks properties bone or ID: {row_name}, {info}"
 			prop_bone = rig.pose.bones.get(info['prop_bone'])
 			prop_id = info['prop_id']
@@ -63,13 +76,13 @@ def draw_rig_settings(layout, rig, ui_area, label=""):
 			col = row.column()
 			sub_row = col.row(align=True)
 
-			text = entry_name
+			slider_text = entry_name
 			if 'texts' in info:
 				prop_value = prop_bone[prop_id]
 				cur_text = info['texts'][int(prop_value)]
-				text = entry_name + ": " + cur_text
+				slider_text = entry_name + ": " + cur_text
 
-			sub_row.prop(prop_bone, '["' + prop_id + '"]', slider=True, text=text)
+			sub_row.prop(prop_bone, '["' + prop_id + '"]', slider=True, text=slider_text)
 
 			# Draw an operator if provided.
 			if 'operator' in info:
@@ -77,14 +90,15 @@ def draw_rig_settings(layout, rig, ui_area, label=""):
 				if 'icon' in info:
 					icon = info['icon']
 
-				switch = sub_row.operator(info['operator'], text="", icon=icon)
-				# Fill the operator's parameters where provided.
+				operator = sub_row.operator(info['operator'], text="", icon=icon)
+				# Pass on any paramteres to the operator that it will accept.
 				for param in info.keys():
-					if hasattr(switch, param):
+					if hasattr(operator, param):
 						value = info[param]
+						# Lists and Dicts cannot be passed to blender operators, so we must convert them to a string.
 						if type(value) in [list, dict]:
 							value = json.dumps(value)
-						setattr(switch, param, value)
+						setattr(operator, param, value)
 
 class CLOUDRIG_OT_snap_simple(bpy.types.Operator):
 	bl_description = "Toggle a custom property while ensuring that some bones stay in place"
@@ -381,8 +395,6 @@ class CLOUDRIG_OT_snap_mapped(CLOUDRIG_OT_snap_simple):
 		for b in unhide_bones:
 			b.bone.hide = False
 
-		return {'FINISHED'}
-
 class CLOUDRIG_OT_switch_parent(CLOUDRIG_OT_snap_simple):
 	bl_description = "Switch parent, preserving the bone position and orientation"
 	bl_idname = "pose.rigify_switch_parent"
@@ -675,27 +687,33 @@ class CLOUDRIG_OT_reset_colors(bpy.types.Operator):
 
 	def execute(self, context):
 		rig = context.pose_object or context.object
-		for cp in rig.rig_colorproperties:
-			cp.color = cp.default
+		for cp in rig.cloud_colors:
+			cp.current = cp.default
 		return {'FINISHED'}
 
 class CloudRig_ColorProperties(bpy.types.PropertyGroup):
-	""" Store a ColorProperty that can be used to drive colors on the rig, and then be controlled even when the rig is linked. """
+	""" Store a color property that can be used to drive colors on the rig, and then be controlled even when the rig is linked. """
+	# Currently, a generated rig won't create any customproperties for itself.
+	# You would have to create these for yourself with a separate python script.
+	# C.object.data.cloud_colors.new()
+
+	# The reset colors operator will reset all color properties to this default. 
+	# Nothing's stopping you from changing this default, but it's not exposed in the UI, so it shouldn't be easy to accidently mess up.
 	default: FloatVectorProperty(
 		name='Default',
 		description='',
 		subtype='COLOR',
 		min=0,
 		max=1,
-		options={'LIBRARY_EDITABLE'}
+		options={'LIBRARY_EDITABLE'}	# Make it not animatable.
 	)
-	color: FloatVectorProperty(
+	current: FloatVectorProperty(
 		name='Color',
 		description='',
 		subtype='COLOR',
 		min=0,
 		max=1,
-		options={'LIBRARY_EDITABLE'}
+		options={'LIBRARY_EDITABLE'}	# Make it not animatable.
 	)
 
 class CloudRig_Properties(bpy.types.PropertyGroup):
@@ -705,7 +723,7 @@ class CloudRig_Properties(bpy.types.PropertyGroup):
 		""" Find the armature object that is using this instance (self). """
 
 		for rig in get_rigs():
-			if rig.rig_properties == self:
+			if rig.cloud_rig == self:
 				return rig
 
 	def items_outfit(self, context):
@@ -790,7 +808,7 @@ class CLOUDRIG_PT_character(CLOUDRIG_PT_main):
 		# Only display this panel if there is either an outfit with options, multiple outfits, or character options.
 		rig = active_cloudrig()
 		if not rig: return
-		rig_props = rig.rig_properties
+		rig_props = rig.cloud_rig
 		multiple_outfits = len(rig_props.items_outfit(context)) > 1
 		outfit_properties_bone = rig.pose.bones.get("Properties_Outfit_"+rig_props.outfit)
 		char_bone = get_char_bone(rig)
@@ -801,7 +819,7 @@ class CLOUDRIG_PT_character(CLOUDRIG_PT_main):
 		layout = self.layout
 		rig = context.pose_object or context.object
 
-		rig_props = rig.rig_properties
+		rig_props = rig.cloud_rig
 
 		def add_props(prop_owner):
 			def get_text(prop_id, value):
@@ -1027,7 +1045,7 @@ class CLOUDRIG_PT_viewport(CLOUDRIG_PT_main):
 	@classmethod
 	def poll(cls, context):
 		rig = active_cloudrig()
-		return rig and hasattr(rig, "rig_colorproperties") and len(rig.rig_colorproperties)>0
+		return rig and hasattr(rig, "cloud_colors") and len(rig.cloud_colors)>0
 
 	def draw(self, context):
 		layout = self.layout
@@ -1035,12 +1053,12 @@ class CLOUDRIG_PT_viewport(CLOUDRIG_PT_main):
 		if not rig: return
 		layout.operator(CLOUDRIG_OT_reset_colors.bl_idname, text="Reset Colors")
 		layout.separator()
-		for cp in rig.rig_colorproperties:
-			layout.prop(cp, "color", text=cp.name)
+		for cp in rig.cloud_colors:
+			layout.prop(cp, "current", text=cp.name)
 
 classes = (
 	CLOUDRIG_OT_switch_parent,
-	CLOUDRIG_OT_snap_mapped,
+	CLOUDRIG_OT_snap_mapped,	# NOTE: For some reason, if the operators inheriting from snap_simple aren't registered before it, blender complains.
 	CLOUDRIG_OT_snap_simple,
 	CLOUDRIG_OT_ikfk_toggle,
 	CLOUDRIG_OT_reset_colors,
@@ -1064,15 +1082,17 @@ def register():
 	for c in classes:
 		register_class(c)
 
-	bpy.types.Object.rig_properties = PointerProperty(type=CloudRig_Properties)
-	bpy.types.Object.rig_colorproperties = CollectionProperty(type=CloudRig_ColorProperties)
+	# We store everything in Object rather than Armature because Armature data cannot be accessed on proxy armatures.
+	bpy.types.Object.cloud_rig = PointerProperty(type=CloudRig_Properties)
+	# TODO: move this inside cloud_rig.colors?
+	bpy.types.Object.cloud_colors = CollectionProperty(type=CloudRig_ColorProperties)
 
 def unregister():
 	from bpy.utils import unregister_class
 	for c in classes:
 		unregister_class(c)
 
-	del bpy.types.Object.rig_properties
-	del bpy.types.Object.rig_colorproperties
+	del bpy.types.Object.cloud_rig
+	del bpy.types.Object.cloud_colors
 
 register()
