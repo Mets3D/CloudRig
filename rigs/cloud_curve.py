@@ -13,21 +13,6 @@ class CloudCurveRig(CloudBaseRig):
 
 	description = "Create hook controls for an existing bezier curve."
 
-	def ensure_bone_groups(self):
-		""" Ensure bone groups that this rig needs. """
-		super().ensure_bone_groups()
-		IK_MAIN = 0
-		self.group_hooks = self.generator.bone_groups.ensure(
-			name = "Spline IK Hooks"
-			,layers = [IK_MAIN]
-			,preset = 0
-		)
-		self.group_handles = self.generator.bone_groups.ensure(
-			name = "Spline IK Handles"
-			,layers = [IK_MAIN]
-			,preset = 8
-		)
-
 	def initialize(self):
 		"""Gather and validate data about the rig."""
 		super().initialize()
@@ -39,11 +24,12 @@ class CloudCurveRig(CloudBaseRig):
 
 	def create_root(self):
 		self.root_control = self.bone_infos.bone(
-			name = self.base_bone.replace("ORG", "ROOT"),
-			source = self.org_chain[0],
-			bone_group = self.group_hooks,
-			use_custom_shape_bone_size = True,
-			custom_shape = self.load_widget("Cube")
+			name						= self.base_bone.replace("ORG", "ROOT")
+			,source						= self.org_chain[0]
+			,bone_group					= self.bone_groups["Spline IK Hooks"]
+			,layers						= self.bone_layers["Spline IK Hooks"]
+			,custom_shape				= self.load_widget("Cube")
+			,use_custom_shape_bone_size = True
 		)
 		self.org_chain[0].parent = self.root_control
 
@@ -60,12 +46,13 @@ class CloudCurveRig(CloudBaseRig):
 			suffix = self.generator.suffix_separator + suffix
 		
 		hook_ctr = self.bone_infos.bone(
-			name						= f"Hook_{hook_name}_{str(i).zfill(2)}{suffix}",
-			head						= loc,
-			tail						= loc_left,
-			parent						= parent,
-			bone_group					= self.group_hooks,
-			use_custom_shape_bone_size	= True
+			name						= f"Hook_{hook_name}_{str(i).zfill(2)}{suffix}"
+			,head						= loc
+			,tail						= loc_left
+			,parent						= parent
+			,bone_group					= self.bone_groups["Spline IK Hooks"]
+			,layers						= self.bone_layers["Spline IK Hooks"]
+			,use_custom_shape_bone_size	= True
 		)
 
 		hook_ctr.left_handle_control = None
@@ -77,12 +64,13 @@ class CloudCurveRig(CloudBaseRig):
 
 			if self.params.CR_separate_radius:
 				radius_control = self.bone_infos.bone(
-					name						= f"Hook_Radius_{hook_name}_{str(i).zfill(2)}{suffix}",
-					source						= hook_ctr,
-					parent						= hook_ctr,
-					bone_group					= self.group_handles,
-					custom_shape				= self.load_widget("Circle"),
-					use_custom_shape_bone_size	= True
+					name						= f"Hook_Radius_{hook_name}_{str(i).zfill(2)}{suffix}"
+					,source						= hook_ctr
+					,parent						= hook_ctr
+					,bone_group	 				= self.bone_groups["Spline IK Handles"]
+					,layers		 				= self.bone_layers["Spline IK Handles"]
+					,custom_shape				= self.load_widget("Circle")
+					,use_custom_shape_bone_size	= True
 				)
 				radius_control.length *= 0.8
 				self.lock_transforms(radius_control, loc=True, rot=True, scale=[False, True, False])
@@ -91,24 +79,26 @@ class CloudCurveRig(CloudBaseRig):
 
 			if (i != 0) or cyclic:				# Skip for first hook unless cyclic.
 				handle_left_ctr = self.bone_infos.bone(
-					name		 = f"Hook_L_{hook_name}_{str(i).zfill(2)}{suffix}",
-					head 		 = loc,
-					tail 		 = loc_left,
-					bone_group 	 = self.group_handles,
-					parent 		 = hook_ctr,
-					custom_shape = self.load_widget("CurveHandle")
+					name		  = f"Hook_L_{hook_name}_{str(i).zfill(2)}{suffix}"
+					,head 		  = loc
+					,tail		  = loc_left
+					,bone_group	  = self.bone_groups["Spline IK Handles"]
+					,layers		  = self.bone_layers["Spline IK Handles"]
+					,parent		  = hook_ctr
+					,custom_shape = self.load_widget("CurveHandle")
 				)
 				hook_ctr.left_handle_control = handle_left_ctr
 				handles.append(handle_left_ctr)
 
 			if (i != self.num_controls-1) or cyclic:	# Skip for last hook unless cyclic.
 				handle_right_ctr = self.bone_infos.bone(
-					name 		 = f"Hook_R_{hook_name}_{str(i).zfill(2)}{suffix}",
-					head 		 = loc,
-					tail 		 = loc_right,
-					bone_group 	 = self.group_handles,
-					parent 		 = hook_ctr,
-					custom_shape = self.load_widget("CurveHandle")
+					name 		  = f"Hook_R_{hook_name}_{str(i).zfill(2)}{suffix}"
+					,head 		  = loc
+					,tail 		  = loc_right
+					,bone_group	  = self.bone_groups["Spline IK Handles"]
+					,layers		  = self.bone_layers["Spline IK Handles"]
+					,parent 	  = hook_ctr
+					,custom_shape = self.load_widget("CurveHandle")
 				)
 				hook_ctr.right_handle_control = handle_right_ctr
 				handles.append(handle_right_ctr)
@@ -269,6 +259,16 @@ class CloudCurveRig(CloudBaseRig):
 	# Parameters
 
 	@classmethod
+	def add_bone_sets(cls, params):
+		""" Create parameters for this rig's bone groups. """
+		params.CR_show_bone_sets = BoolProperty(name="Bone Sets")
+
+		cls.add_bone_set(params, "Spline IK Hooks", preset=0, default_layers=[0])
+		cls.add_bone_set(params, "Spline IK Handles", preset=8, default_layers=[0])
+
+		super().add_bone_sets(params)
+
+	@classmethod
 	def add_parameters(cls, params):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
@@ -305,18 +305,30 @@ class CloudCurveRig(CloudBaseRig):
 		params.CR_target_curve_name = StringProperty(name="Curve")
 
 	@classmethod
+	def bone_set_ui(cls, params, layout, set_info, ui_rows):
+		# We only want to draw Spline IK Handles bone set UI if the option for it is enabled.
+		if set_info['name'] != "Spline IK Handles" or params.CR_controls_for_handles:
+			super().bone_set_ui(params, layout, set_info, ui_rows)
+
+	@classmethod
 	def parameters_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
 		ui_rows = super().parameters_ui(layout, params)
 
+		curve_ob = cls.datablock_from_str(bpy.data.objects, params.CR_target_curve_name)
+		no_curve = params.CR_target_curve_name=="" or curve_ob==None or curve_ob.type!='CURVE'
+
 		icon = 'TRIA_DOWN' if params.CR_show_curve_rig_settings else 'TRIA_RIGHT'
-		layout.prop(params, "CR_show_curve_rig_settings", toggle=True, icon=icon)
+		row = layout.row()
+		row.alert = no_curve
+		row.prop(params, "CR_show_curve_rig_settings", toggle=True, icon=icon)
 		if not params.CR_show_curve_rig_settings: return ui_rows
 
 		target_curve_row = layout.row()
+		icon = 'ERROR' if no_curve else 'OUTLINER_OB_CURVE'
 		ui_rows['target_curve'] = target_curve_row
-		target_curve_row.prop_search(params, "CR_target_curve_name", bpy.data, 'objects')
+		target_curve_row.prop_search(params, "CR_target_curve_name", bpy.data, 'objects', icon=icon)
 		layout.prop(params, "CR_hook_name")
 		layout.prop(params, "CR_hook_parent")
 		layout.prop(params, "CR_controls_for_handles")

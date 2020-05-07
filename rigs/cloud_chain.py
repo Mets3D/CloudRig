@@ -289,6 +289,8 @@ class CloudChainRig(CloudBaseRig):
 		cls.add_bone_set(params, "Shape Key Helpers", default_layers=[BODY_MECH])
 		cls.add_bone_set(params, "Deform Bones", default_layers=[DEFORM])
 
+		super().add_bone_sets(params)
+
 	@classmethod
 	def add_parameters(cls, params):
 		""" Add the parameters of this rig type to the
