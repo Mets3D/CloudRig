@@ -260,9 +260,7 @@ class CloudCurveRig(CloudBaseRig):
 
 	@classmethod
 	def add_bone_sets(cls, params):
-		""" Create parameters for this rig's bone groups. """
-		params.CR_show_bone_sets = BoolProperty(name="Bone Sets")
-
+		""" Create parameters for this rig's bone sets. """
 		cls.add_bone_set(params, "Spline IK Hooks", preset=0, default_layers=[0])
 		cls.add_bone_set(params, "Spline IK Handles", preset=8, default_layers=[0])
 
@@ -273,7 +271,6 @@ class CloudCurveRig(CloudBaseRig):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
 		"""
-		super().add_parameters(params)
 		
 		params.CR_show_curve_rig_settings = BoolProperty(name="Curve Rig")
 		params.CR_hook_name = StringProperty(
@@ -303,6 +300,8 @@ class CloudCurveRig(CloudBaseRig):
 		)
 
 		params.CR_target_curve_name = StringProperty(name="Curve")
+
+		super().add_parameters(params)
 
 	@classmethod
 	def bone_set_ui(cls, params, layout, set_info, ui_rows):

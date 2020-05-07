@@ -69,13 +69,19 @@ class CloudFKChainRig(CloudChainRig):
 
 	##############################
 	# Parameters
-	
+
+	@classmethod
+	def add_bone_sets(cls, params):
+		""" Create parameters for this rig's bone sets. """
+		cls.add_bone_set(params, "FK Controls", preset=1, default_layers=[FK_MAIN])
+
+		super().add_bone_sets(params)
+
 	@classmethod
 	def add_parameters(cls, params):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
 		"""
-		super().add_parameters(params)
 
 		params.CR_show_fk_settings = BoolProperty(name="FK Rig")
 		params.CR_counter_rotate_str = BoolProperty(
@@ -89,14 +95,8 @@ class CloudFKChainRig(CloudChainRig):
 			,default	 = False
 		)
 
-	@classmethod
-	def add_bone_sets(cls, params):
-		""" Create parameters for this rig's bone groups. """
-		params.CR_show_bone_sets = BoolProperty(name="Bone Sets")
+		super().add_parameters(params)
 
-		cls.add_bone_set(params, "FK Controls", preset=1, default_layers=[FK_MAIN])
-
-		super().add_bone_sets(params)
 
 	@classmethod
 	def parameters_ui(cls, layout, params):

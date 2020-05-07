@@ -314,7 +314,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 	@classmethod
 	def add_bone_sets(cls, params):
-		""" Create parameters for this rig's bone groups. """
+		""" Create parameters for this rig's bone sets. """
 		params.CR_show_bone_sets = BoolProperty(name="Bone Sets")
 
 		cls.add_bone_set(params, "Root Control", preset=2)
@@ -342,6 +342,9 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		layout.prop(params, "CR_show_bone_sets", toggle=True, icon=icon)
 		if not params.CR_show_bone_sets: return
 
+		# print(f"bone sets for {cls}")
+		# import json
+		# print(json.dumps(cls.bone_sets, indent=2))
 		for ui_name in cls.bone_sets.keys():
 			set_info = cls.bone_sets[ui_name]
 			cls.bone_set_ui(params, layout, set_info, ui_rows)
