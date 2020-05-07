@@ -7,30 +7,15 @@ from rigify.base_rig import stage
 from ..definitions.driver import Driver
 from .cloud_utils import make_name, slice_name
 from .cloud_base import CloudBaseRig
+		
+STRETCH = 2
+BODY_MECH = 8
+DEFORM = 29
 
 class CloudChainRig(CloudBaseRig):
 	"""CloudRig stretchy BBone chain."""
 
 	description = "Stretchy chain for pure squash and stretch."
-
-	def ensure_bone_groups(self):
-		""" Ensure bone groups that this rig needs. """
-		super().ensure_bone_groups()
-		# print("cloud_chain ensure_bone_groups().")	# TODO: This seems to run more times than it should?
-		STRETCH = 2
-		BODY_MECH = 8
-		self.group_str = self.generator.bone_groups.ensure(
-			name = "Stretch Chain Controls"
-			,preset = 8
-		)
-		self.group_str_helper = self.generator.bone_groups.ensure(
-			name = "Stretch Chain Helpers"
-		)
-		if self.params.CR_shape_key_helpers:
-			self.group_sk_helper = self.generator.bone_groups.ensure(
-				name = "Stretch Chain Shape Key Helpers"
-			)
-
 
 	def initialize(self):
 		super().initialize()
@@ -56,25 +41,27 @@ class CloudChainRig(CloudBaseRig):
 		"""
 
 		skp_bone = self.bone_infos.bone(
-			name = def_bone_2.name.replace("DEF", "SKP"),
-			head = def_bone_1.tail.copy(),
-			tail = def_bone_1.tail + def_bone_1.vec,
-			bone_group = self.group_sk_helper,
-			parent = def_bone_1,
-			bbone_width = 0.05,
-			hide_select = self.mch_disable_select
+			name		 = def_bone_2.name.replace("DEF", "SKP")
+			,head		 = def_bone_1.tail.copy()
+			,tail		 = def_bone_1.tail + def_bone_1.vec
+			,bone_group  = self.bone_groups["Shape Key Helpers"]
+			,layers		 = self.bone_layers["Shape Key Helpers"]
+			,parent		 = def_bone_1
+			,bbone_width = 0.05
+			,hide_select = self.mch_disable_select
 		)
 		skp_bone.scale_length(0.3)
 		skp_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=def_bone_1.name, use_bbone_shape=True, head_tail=1)
 
 		skh_bone = self.bone_infos.bone(
-			name = def_bone_2.name.replace("DEF", "SKH"),
-			head = def_bone_2.head.copy(),
-			tail = def_bone_2.tail.copy(),
-			bone_group = self.group_sk_helper,
-			parent = skp_bone,
-			bbone_width = 0.03,
-			hide_select = self.mch_disable_select
+			name		 = def_bone_2.name.replace("DEF", "SKH")
+			,head		 = def_bone_2.head.copy()
+			,tail		 = def_bone_2.tail.copy()
+			,bone_group  = self.bone_groups["Shape Key Helpers"]
+			,layers		 = self.bone_layers["Shape Key Helpers"]
+			,parent		 = skp_bone
+			,bbone_width = 0.03
+			,hide_select = self.mch_disable_select
 		)
 		skh_bone.scale_length(0.4)
 		skh_bone.add_constraint(self.obj, 'COPY_TRANSFORMS', true_defaults=True, target=self.obj, subtarget=def_bone_2.name, use_bbone_shape=True, head_tail=0)
@@ -83,16 +70,16 @@ class CloudChainRig(CloudBaseRig):
 		if not name:
 			name = def_bone.name.replace("DEF", "STR")
 		str_bone = self.bone_infos.bone(
-			name = name,
-			source = def_bone,
-			bone_group = self.group_str,
-			head = def_bone.head,
-			tail = def_bone.tail,
-			roll = def_bone.roll,
-			custom_shape = self.load_widget("Sphere"),
-			#use_custom_shape_bone_size = True,
-			custom_shape_scale = 0.3,
-			parent = org_bone,
+			name				= name
+			,source				= def_bone
+			,bone_group 		= self.bone_groups["Stretch Controls"]
+			,layers				= self.bone_layers["Stretch Controls"]
+			,head				= def_bone.head
+			,tail				= def_bone.tail
+			,roll				= def_bone.roll
+			,custom_shape		= self.load_widget("Sphere")
+			,custom_shape_scale = 0.3
+			,parent				= org_bone
 		)
 		str_bone.scale_length(0.3)
 		self.str_bones.append(str_bone)
@@ -169,7 +156,8 @@ class CloudChainRig(CloudBaseRig):
 					name 		 = self.add_prefix_to_name(str_bone.name, "H")
 					,source 	 = str_bone
 					,bbone_width = 1/10
-					,bone_group  = self.group_str_helper
+					,bone_group  = self.bone_groups["Stretch Controls"]
+					,layers		 = self.bone_layers["Stretch Controls"]
 					,parent		 = str_bone.parent
 					,hide_select = self.mch_disable_select
 				)
@@ -214,16 +202,18 @@ class CloudChainRig(CloudBaseRig):
 				unit = org_bone.vec / segments
 
 				def_bone = self.bone_infos.bone(
-					name = def_name,
-					source = org_bone,
-					head = org_bone.head + (unit * i),
-					tail = org_bone.head + (unit * (i+1)),
-					roll = org_bone.roll,
-					bbone_handle_type_start = 'TANGENT',
-					bbone_handle_type_end = 'TANGENT',
-					bbone_segments = bbone_segments,
-					hide_select = self.mch_disable_select,
-					use_deform = True
+					name					 = def_name
+					,source					 = org_bone
+					,head					 = org_bone.head + (unit * i)
+					,tail					 = org_bone.head + (unit * (i+1))
+					,roll					 = org_bone.roll
+					,bone_group				 = self.bone_groups["Deform Bones"]
+					,layers					 = self.bone_layers["Deform Bones"]
+					,bbone_handle_type_start = 'TANGENT'
+					,bbone_handle_type_end	 = 'TANGENT'
+					,bbone_segments			 = bbone_segments
+					,hide_select			 = self.mch_disable_select
+					,use_deform				 = True
 				)
 				if bbone_segments > 1:
 					def_bone.inherit_scale = 'NONE'
@@ -290,6 +280,16 @@ class CloudChainRig(CloudBaseRig):
 	# Parameters
 
 	@classmethod
+	def add_bone_sets(cls, params):
+		""" Create parameters for this rig's bone groups. """
+		params.CR_show_bone_sets = BoolProperty(name="Bone Sets")
+
+		cls.add_bone_set(params, "Stretch Controls", preset=8, default_layers=[STRETCH])
+		cls.add_bone_set(params, "Stretch Helpers", default_layers=[BODY_MECH])
+		cls.add_bone_set(params, "Shape Key Helpers", default_layers=[BODY_MECH])
+		cls.add_bone_set(params, "Deform Bones", default_layers=[DEFORM])
+
+	@classmethod
 	def add_parameters(cls, params):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
@@ -326,6 +326,12 @@ class CloudChainRig(CloudBaseRig):
 			,default	 = True
 		)
 
+	@classmethod
+	def bone_set_ui(cls, params, layout, set_info, ui_rows):
+		# We only want to draw Shape Key Helpers bone set UI if the option for it is enabled.
+		if set_info['name'] != "Shape Key Helpers" or params.CR_shape_key_helpers:
+			super().bone_set_ui(params, layout, set_info, ui_rows)
+	
 	@classmethod
 	def parameters_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.

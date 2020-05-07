@@ -12,6 +12,7 @@ from .. import cloud_generator
 # TODO: These defaults should be stored somewhere where they can get garbage collected after rig generation.
 IK_MAIN = 0
 IK_SECOND = 16
+ORG = 31
 
 def prop_string(string):
 	return string.replace(" ", "_").lower()
@@ -76,14 +77,14 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 		# Root bone
 		self.root_bone = self.bone_infos.bone(
-			name = "root",
-			bone_group = self.bone_groups['Root Control'],
-			layers = self.bone_layers['Root Control'],
-			head = Vector((0, 0, 0)),
-			tail = Vector((0, self.scale*5, 0)),
-			bbone_width = 1/3,
-			custom_shape = self.load_widget("Root"),
-			custom_shape_scale = 1.5
+			name				= "root"
+			,bone_group			= self.bone_groups['Root Control']
+			,layers				= self.bone_layers['Root Control']
+			,head				= Vector((0, 0, 0))
+			,tail				= Vector((0, self.scale*5, 0))
+			,bbone_width		= 1/3
+			,custom_shape		= self.load_widget("Root")
+			,custom_shape_scale = 1.5
 		)
 		self.register_parent(self.root_bone, "Root")
 		if self.generator_params.cloudrig_double_root:
@@ -122,7 +123,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		
 		self.bone_groups = {}
 		self.bone_layers = {}
-		
+
 		class_sets = type(self).bone_sets
 		for ui_name in class_sets.keys():
 			set_info = class_sets[ui_name]
@@ -150,7 +151,13 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			meta_org = self.generator.metarig.pose.bones.get(meta_org_name)
 			# meta_org.name = meta_org.name.replace("-", self.generator.prefix_separator)
 
-			org_bi = self.bone_infos.bone(bn, eb, self.obj, hide_select=self.mch_disable_select)
+			org_bi = self.bone_infos.bone(
+				name		 = bn
+				,source		 = eb
+				,hide_select = self.mch_disable_select
+				,bone_group	 = self.bone_groups["Original Bones"]
+				,layers		 = self.bone_layers["Original Bones"]
+			)
 
 			# Rigify discards the bbone scale values from the metarig, but I'd like to keep them for easy visual scaling.
 			org_bi._bbone_x = meta_org.bone.bbone_x
@@ -297,6 +304,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		)
 		
 		cls.bone_sets[ui_name] = {
+			'name' : ui_name,
 			'preset' : preset,					# Bone Group color preset to use in case the bone group doesn't already exist.
 			'param' : param_name,				# Name of the bone group name parameter
 			'layer_param' : layer_param_name	# Name of the bone layers parameter
@@ -310,6 +318,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 		cls.add_bone_set(params, "Root Control", preset=2)
 		cls.add_bone_set(params, "Root Control Parent", preset=8)
+		cls.add_bone_set(params, "Original Bones", default_layers=[ORG])
 
 	@classmethod
 	def add_parameters(cls, params):
@@ -318,28 +327,36 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		"""
 		cls.add_bone_sets(params)
 
+	
 	@classmethod
-	def bone_sets_ui(cls, layout, params):
+	def bone_set_ui(cls, params, layout, set_info, ui_rows):
+		ui_rows[set_info['param']] = col = layout.column()
+		col.prop_search(params, set_info['param'], bpy.context.object.pose, "bone_groups", text=set_info['name'])
+		col.prop(params, set_info['layer_param'], text="")
+		layout.separator()
+
+	@classmethod
+	def bone_sets_ui(cls, layout, params, ui_rows):
 		icon = 'TRIA_DOWN' if params.CR_show_bone_sets else 'TRIA_RIGHT'
 		layout.prop(params, "CR_show_bone_sets", toggle=True, icon=icon)
 		if not params.CR_show_bone_sets: return
 
 		for ui_name in cls.bone_sets.keys():
 			set_info = cls.bone_sets[ui_name]
-			col = layout.column()
-			col.prop_search(params, set_info['param'], bpy.context.object.pose, "bone_groups", text=ui_name)
-			col.prop(params, set_info['layer_param'], text="")
-			layout.separator()
+			cls.bone_set_ui(params, layout, set_info, ui_rows)
+		
+		return ui_rows
 
 	@classmethod
 	def parameters_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
+		ui_rows = {}
 		ui_label_with_linebreak(layout, cls.description, bpy.context)
-		cls.bone_sets_ui(layout, params)
+		cls.bone_sets_ui(layout, params, ui_rows)
 
 		# We can return a dictionary of key:UILayout elements, in case we want to affect the UI layout of inherited rig elements.
-		return {}
+		return ui_rows
 
 def ui_label_with_linebreak(layout, text, context):
 	words = text.split(" ")

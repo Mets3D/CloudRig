@@ -76,7 +76,7 @@ class BoneInfoContainer(ID):
 				return bd
 		return None
 
-	def bone(self, name="Bone", source=None, armature=None, overwrite=True, **kwargs):
+	def bone(self, name="Bone", source=None, overwrite=True, bone_group=None, **kwargs):
 		"""Define a bone and add it to the list of bones. If it already exists, return or re-define it depending on overwrite param."""
 
 		bi = self.find(name)
@@ -85,7 +85,7 @@ class BoneInfoContainer(ID):
 		elif bi:
 			self.bones.remove(bi)
 
-		bi = BoneInfo(self, name, source, armature, **kwargs)
+		bi = BoneInfo(self, name, source, bone_group, **kwargs)
 		self.bones.append(bi)
 		return bi
 	
@@ -94,7 +94,7 @@ class BoneInfoContainer(ID):
 
 class BoneInfo(ID):
 	"""Container of all info relating to a Bone."""
-	def __init__(self, container, name="Bone", source=None, armature=None, bone_group=None, **kwargs):
+	def __init__(self, container, name="Bone", source=None, bone_group=None, **kwargs):
 		""" 
 		container: Need a reference to what BoneInfoContainer this BoneInfo belongs to.
 		source:	Bone to take transforms from (head, tail, roll, bbone_x, bbone_z).
