@@ -14,23 +14,6 @@ class Rig(CloudIKChainRig):
 
 	description = "IK chain with extras for specific limbs, such as foot roll."
 
-	def ensure_bone_groups(self):
-		""" Ensure bone groups that this rig needs. """
-		super().ensure_bone_groups()
-		BODY_MECH = 8
-		
-		IK_MAIN = 0
-		IK_SECOND = 16
-		self.group_ik_mch = self.generator.bone_groups.ensure(
-			name = "Limb IK Mechanism"
-			,layers = [BODY_MECH]
-		)
-		self.group_ik_parents = self.generator.bone_groups.ensure(
-			name = "Limb IK Controls Extra Parents"
-			,layers = [IK_MAIN, IK_SECOND]
-			,preset = 8
-		)
-
 	def initialize(self):
 		super().initialize()
 		"""Gather and validate data about the rig."""
@@ -160,7 +143,8 @@ class Rig(CloudIKChainRig):
 		# Parent control
 		if self.params.CR_double_ik_control:
 			double_control = self.create_parent_bone(self.ik_mstr)
-			double_control.bone_group = self.group_ik_parents
+			double_control.bone_group = self.bone_groups["IK Parent Controls"]
+			double_control.layers = self.bone_layers["IK Parent Controls"]
 			foot_dsp(double_control)
 
 		# IK Foot setup, including Foot Roll
@@ -193,12 +177,13 @@ class Rig(CloudIKChainRig):
 		# Create ROLL control behind the foot (Limit Rotation, lock other transforms)
 		if self.params.CR_use_foot_roll:	# TODO: Don't like this big if block. Maybe toe part should be moved out of this function, and the if check put before calling of this function, and then this function can be renamed to prepare_footroll.
 			rolly_stretchy = self.bone_infos.bone(
-				name = self.org_chain[0].name.replace("ORG", "IK-STR-ROLL"),
-				source = self.org_chain[0],
-				tail = self.ik_mstr.head.copy(),
-				parent = self.limb_root_bone.name,
-				bone_group = self.group_ik_mch,
-				hide_select = self.mch_disable_select
+				name		 = self.org_chain[0].name.replace("ORG", "IK-STR-ROLL")
+				,source		 = self.org_chain[0]
+				,tail		 = self.ik_mstr.head.copy()
+				,parent		 = self.limb_root_bone.name
+				,bone_group	 = self.bone_groups["IK Mechanism"]
+				,layers		 = self.bone_layers["IK Mechanism"]
+				,hide_select = self.mch_disable_select
 			)
 			rolly_stretchy.scale_width(0.4)
 			rolly_stretchy.add_constraint(self.obj, 'STRETCH_TO', subtarget=self.ik_chain[-2].name)
@@ -206,10 +191,11 @@ class Rig(CloudIKChainRig):
 			sliced_name = self.slice_name(ik_foot.name)
 			master_name = self.make_name(["ROLL", "MSTR"], sliced_name[1], sliced_name[2])
 			roll_master = self.bone_infos.bone(
-				name = master_name,
-				source = self.ik_mstr,
-				parent = self.ik_mstr,
-				bone_group = self.group_ik_mch
+				name		 = master_name
+				,source		 = self.ik_mstr
+				,parent		 = self.ik_mstr
+				,bone_group	 = self.bone_groups["IK Mechanism"]
+				,layers		 = self.bone_layers["IK Mechanism"]
 			)
 			roll_master.constraints.append(self.ik_tgt_bone.constraints[0])
 			self.ik_tgt_bone.clear_constraints()
@@ -218,24 +204,25 @@ class Rig(CloudIKChainRig):
 			
 			roll_name = self.make_name(["ROLL"], sliced_name[1], sliced_name[2])
 			roll_ctrl = self.bone_infos.bone(
-				name = roll_name,
-				bbone_width = 1/18,
-				head = ik_foot.head + Vector((0, self.scale, self.scale/4)),
-				tail = ik_foot.head + Vector((0, self.scale/2, self.scale/4)),
-				roll = rad(180),
-				custom_shape = self.load_widget('FootRoll'),
-				bone_group = self.group_ik_ctrl,
-				parent = roll_master
+				name		  = roll_name
+				,bbone_width  = 1/18
+				,head		  = ik_foot.head + Vector((0, self.scale, self.scale/4))
+				,tail		  = ik_foot.head + Vector((0, self.scale/2, self.scale/4))
+				,roll		  = rad(180)
+				,custom_shape = self.load_widget('FootRoll')
+				,bone_group	  = self.bone_groups["IK Control"]
+				,layers		  = self.bone_layers["IK Control"]
+				,parent		  = roll_master
 			)
 
-			roll_ctrl.add_constraint(self.obj, 'LIMIT_ROTATION', 
-				use_limit_x=True,
-				min_x = rad(-90),
-				max_x = rad(130),
-				use_limit_y=True,
-				use_limit_z=True,
-				min_z = rad(-90),
-				max_z = rad(90),
+			roll_ctrl.add_constraint(self.obj, 'LIMIT_ROTATION'
+				,use_limit_x=True
+				,min_x = rad(-90)
+				,max_x = rad(130)
+				,use_limit_y=True
+				,use_limit_z=True
+				,min_z = rad(-90)
+				,max_z = rad(90)
 			)
 
 			# Create bone to use as pivot point when rolling back. This is read from the metarig and should be placed at the heel of the shoe, pointing forward.
@@ -253,14 +240,15 @@ class Rig(CloudIKChainRig):
 				self.ik_mstr.parent._bbone_z = meta_ankle_pivot.bbone_z
 
 			ankle_pivot = self.bone_infos.bone(
-				name = "IK-RollBack." + self.side_suffix,
-				bbone_width = self.org_chain[-1].bbone_width,
-				head = meta_ankle_pivot.head_local,
-				tail = meta_ankle_pivot.tail_local,
-				roll = rad(180),
-				bone_group = self.group_ik_mch,
-				parent = roll_master,
-				hide_select = self.mch_disable_select
+				name		  = "IK-RollBack" + self.generator.suffix_separator + self.side_suffix
+				,bbone_width  = self.org_chain[-1].bbone_width
+				,head		  = meta_ankle_pivot.head_local
+				,tail		  = meta_ankle_pivot.tail_local
+				,roll		  = rad(180)
+				,bone_group	  = self.bone_groups["IK Mechanism"]
+				,layers		  = self.bone_layers["IK Mechanism"]
+				,parent		  = roll_master
+				,hide_select  = self.mch_disable_select
 			)
 
 			ankle_pivot.add_constraint(self.obj, 'TRANSFORM',
@@ -276,64 +264,65 @@ class Rig(CloudIKChainRig):
 			rik_chain = []
 			for i, b in reversed(list(enumerate(org_chain))):
 				rik_bone = self.bone_infos.bone(
-					name = b.name.replace("ORG", "RIK"),
-					source = b,
-					head = b.tail.copy(),
-					tail = b.head.copy(),
-					roll = 0,
-					parent = ankle_pivot,
-					bone_group = self.group_ik_mch,
-					hide_select = self.mch_disable_select
+					name		 = b.name.replace("ORG", "RIK")
+					,source		 = b
+					,head		 = b.tail.copy()
+					,tail		 = b.head.copy()
+					,roll		 = 0
+					,parent		 = ankle_pivot
+					,bone_group	 = self.bone_groups["IK Mechanism"]
+					,layers		 = self.bone_layers["IK Mechanism"]
+					,hide_select = self.mch_disable_select
 				)
 				rik_chain.append(rik_bone)
 				ik_chain[i].parent = rik_bone
 
 				if i == 1:
-					rik_bone.add_constraint(self.obj, 'TRANSFORM',
-						subtarget = roll_ctrl.name,
-						map_from = 'ROTATION',
-						map_to = 'ROTATION',
-						from_min_x_rot = rad(90),
-						from_max_x_rot = rad(166),
-						to_min_x_rot   = rad(0),
-						to_max_x_rot   = rad(169),
-						from_min_z_rot = rad(-60),
-						from_max_z_rot = rad(60),
-						to_min_z_rot   = rad(10),
-						to_max_z_rot   = rad(-10)
+					rik_bone.add_constraint(self.obj, 'TRANSFORM'
+						,subtarget		= roll_ctrl.name
+						,map_from		= 'ROTATION'
+						,map_to			= 'ROTATION'
+						,from_min_x_rot	= rad(90)
+						,from_max_x_rot	= rad(166)
+						,to_min_x_rot   = rad(0)
+						,to_max_x_rot   = rad(169)
+						,from_min_z_rot	= rad(-60)
+						,from_max_z_rot	= rad(60)
+						,to_min_z_rot   = rad(10)
+						,to_max_z_rot   = rad(-10)
 					)
 				
 				if i == 0:
-					rik_bone.add_constraint(self.obj, 'COPY_LOCATION',
-						true_defaults = True,
-						target = self.obj,
-						subtarget = rik_chain[-2].name,
-						head_tail = 1,
+					rik_bone.add_constraint(self.obj, 'COPY_LOCATION'
+						,true_defaults	= True
+						,target			= self.obj
+						,subtarget		= rik_chain[-2].name
+						,head_tail		= 1
 					)
 
-					rik_bone.add_constraint(self.obj, 'TRANSFORM',
-						name = "Transformation Roll",
-						subtarget = roll_ctrl.name,
-						map_from = 'ROTATION',
-						map_to = 'ROTATION',
-						from_min_x_rot = rad(0),
-						from_max_x_rot = rad(135),
-						to_min_x_rot   = rad(0),
-						to_max_x_rot   = rad(118),
-						from_min_z_rot = rad(-45),
-						from_max_z_rot = rad(45),
-						to_min_z_rot   = rad(25),
-						to_max_z_rot   = rad(-25)
+					rik_bone.add_constraint(self.obj, 'TRANSFORM'
+						,name = "Transformation Roll"
+						,subtarget = roll_ctrl.name
+						,map_from = 'ROTATION'
+						,map_to = 'ROTATION'
+						,from_min_x_rot = rad(0)
+						,from_max_x_rot = rad(135)
+						,to_min_x_rot   = rad(0)
+						,to_max_x_rot   = rad(118)
+						,from_min_z_rot = rad(-45)
+						,from_max_z_rot = rad(45)
+						,to_min_z_rot   = rad(25)
+						,to_max_z_rot   = rad(-25)
 					)
-					rik_bone.add_constraint(self.obj, 'TRANSFORM',
-						name = "Transformation CounterRoll",
-						subtarget = roll_ctrl.name,
-						map_from = 'ROTATION',
-						map_to = 'ROTATION',
-						from_min_x_rot = rad(90),
-						from_max_x_rot = rad(135),
-						to_min_x_rot   = rad(0),
-						to_max_x_rot   = rad(-31.8)
+					rik_bone.add_constraint(self.obj, 'TRANSFORM'
+						,name = "Transformation CounterRoll"
+						,subtarget = roll_ctrl.name
+						,map_from = 'ROTATION'
+						,map_to = 'ROTATION'
+						,from_min_x_rot = rad(90)
+						,from_max_x_rot = rad(135)
+						,to_min_x_rot   = rad(0)
+						,to_max_x_rot   = rad(-31.8)
 					)
 				
 			# Change the subtarget of the constraints on main_str_bones from the old stretchy bone to the new one, that accounts for footroll.
