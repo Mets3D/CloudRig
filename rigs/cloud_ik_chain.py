@@ -499,14 +499,13 @@ class CloudIKChainRig(CloudFKChainRig):
 	# Parameters
 	@classmethod
 	def add_bone_sets(cls, params):
+		super().add_bone_sets(params)
 		""" Create parameters for this rig's bone sets. """
 		cls.add_bone_set(params, "IK Controls", preset=2, default_layers=[IK_MAIN])
 		cls.add_bone_set(params, "IK Parent Controls", preset=8, default_layers=[IK_SECOND])
 		cls.add_bone_set(params, "IK Mechanism", default_layers=[BODY_MECH])
 		if params.CR_world_aligned_controls:
 			cls.add_bone_set(params, "FK Helpers", default_layers=[BODY_MECH])
-
-		super().add_bone_sets(params)
 
 	@classmethod
 	def add_parameters(cls, params):

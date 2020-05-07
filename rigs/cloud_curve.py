@@ -261,10 +261,9 @@ class CloudCurveRig(CloudBaseRig):
 	@classmethod
 	def add_bone_sets(cls, params):
 		""" Create parameters for this rig's bone sets. """
+		super().add_bone_sets(params)
 		cls.add_bone_set(params, "Spline IK Hooks", preset=0, default_layers=[0])
 		cls.add_bone_set(params, "Spline IK Handles", preset=8, default_layers=[0])
-
-		super().add_bone_sets(params)
 
 	@classmethod
 	def add_parameters(cls, params):

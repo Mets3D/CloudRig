@@ -315,6 +315,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	@classmethod
 	def add_bone_sets(cls, params):
 		""" Create parameters for this rig's bone sets. """
+		cls.bone_sets = OrderedDict()
 		params.CR_show_bone_sets = BoolProperty(name="Bone Sets")
 
 		cls.add_bone_set(params, "Root Control", preset=2)
