@@ -9,16 +9,19 @@ from ..definitions.bone import BoneInfoContainer
 from .cloud_utils import CloudUtilities
 from .. import cloud_generator
 
-# TODO: layers for each bonegroup should be exposed as BoolVectorProperty, and defaults should be stored somewhere where they can't be messed with.
+# TODO: These defaults should be stored somewhere where they can get garbage collected after rig generation.
 IK_MAIN = 0
 IK_SECOND = 16
+
+def prop_string(string):
+	return string.replace(" ", "_").lower()
 
 class CloudBaseRig(BaseRig, CloudUtilities):
 	"""Base for all CloudRig rigs."""
 
 	description = "CloudRig Element (no description)"
 
-	bone_groups = {}
+	bone_sets = {}
 
 	def find_org_bones(self, bone):
 		"""Populate self.bones.org."""
@@ -65,6 +68,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		self.bone_infos = BoneInfoContainer(self)
 		
 		# Keep track of created widgets, so we can add them to Rigify-created Widgets collection at the end.
+		# TODO: move to generator?
 		self.widgets = []
 
 		parent = self.get_bone(self.base_bone).parent
@@ -73,7 +77,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		# Root bone
 		self.root_bone = self.bone_infos.bone(
 			name = "root",
-			bone_group = self.group_root,
+			bone_group = self.bone_groups['Root Control'],
+			layers = self.bone_layers['Root Control'],
 			head = Vector((0, 0, 0)),
 			tail = Vector((0, self.scale*5, 0)),
 			bbone_width = 1/3,
@@ -83,7 +88,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		self.register_parent(self.root_bone, "Root")
 		if self.generator_params.cloudrig_double_root:
 			self.root_parent = self.create_parent_bone(self.root_bone)
-			self.root_parent.bone_group = self.group_root_parent
+			self.root_parent.bone_group = self.bone_groups['Root Control Parent']
+			self.root_parent.layers = self.bone_layers['Root Control Parent']
 
 		for k in self.obj.data.keys():
 			if k in ['_RNA_UI', 'rig_id']: continue
@@ -101,7 +107,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		prop_bone = self.bone_infos.bone(
 			name = "Properties_IKFK", # TODO: Rename to just "Properties"... just don't want to do it mid-production.
 			overwrite = False,
-			bone_group = self.group_root,
+			bone_group = self.bone_groups['Root Control'],
+			layers = self.bone_layers['Root Control'],
 			custom_shape = self.load_widget("Cogwheel"),
 			head = Vector((0, self.scale*2, 0)),
 			tail = Vector((0, self.scale*4, 0)),
@@ -111,23 +118,22 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 	def ensure_bone_groups(self):
 		""" Ensure bone groups that this rig needs. """
-		# TODO: This should just be a for loop using self.__class__.bone_groups, creating properties on self such as "group_"+bg.prop_name
-		# Although that can result in bad things if we change the prop_name string... fairly dark magic way of doing things, changing a string shouldn't break the code.
-		# Actually, forget that, it should be using self.params for the group name and the layers...
-		# Instead of referring to bone groups as self.group_whatever, we should have a self.bone_groups.get("whatever").
-
 		# Now my only concern is, where do we get the preset from? It could be stored in cls.bone_groups...
 		
-		self.group_root = self.generator.bone_groups.ensure(
-			name = "Root Control"
-			,layers = [IK_MAIN, IK_SECOND]
-			,preset = 2
-		)
-		self.group_root_parent = self.generator.bone_groups.ensure(
-			name = "Root Control Parent"
-			,layers = [IK_MAIN, IK_SECOND]
-			,preset = 8
-		)
+		self.bone_groups = {}
+		self.bone_layers = {}
+		
+		class_sets = type(self).bone_sets
+		for ui_name in class_sets.keys():
+			set_info = class_sets[ui_name]
+
+			group_name = getattr(self.params, set_info['param'])
+			group_layers = getattr(self.params, set_info['layer_param'])
+			self.bone_groups[ui_name] = self.generator.bone_groups.ensure(
+				name = group_name,
+				preset = set_info['preset']
+			)
+			self.bone_layers[ui_name] = group_layers[:]
 
 	def prepare_bones(self):
 		self.load_org_bones()
@@ -237,8 +243,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		self.set_layers(self.obj.data, [0, 16, 1, 17])
 
 		# Set root bone layers
-		root_bone = self.get_bone("root")
-		self.set_layers(root_bone.bone, [0, 1, 16, 17])
+		# root_bone = self.get_bone("root")
+		# self.set_layers(root_bone.bone, [0, 1, 16, 17])
 
 		# Nuke Rigify's generated root bone shape so it cannot be applied.
 		root_shape = bpy.data.objects.get("WGT-"+self.obj.name+"_root")
@@ -261,10 +267,17 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	# Parameters
 
 	@classmethod
-	def add_bone_set(cls, params, group_name, ui_name=None, default_group="Group", default_layers=[0]):
+	def add_bone_set(cls, params, ui_name, default_group="", default_layers=[0], preset=-1):
+		group_name = prop_string(ui_name)
+		if default_group=="":
+			default_group = ui_name
+
+		param_name = "CR_BG_" + group_name.replace(" ", "_")
+		layer_param_name = "CR_BG_LAYERS_" + group_name.replace(" ", "_")
+
 		setattr(
 			params, 
-			"CR_BG_" + group_name.replace(" ", "_"),
+			param_name,
 			StringProperty(
 				default = default_group,
 				description = "Select what group this set of bones should be assigned to"
@@ -274,7 +287,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		default_layers_bools = [i in default_layers for i in range(32)]
 		setattr(
 			params, 
-			"CR_BG_LAYERS_" + group_name.replace(" ", "_"), 
+			layer_param_name, 
 			BoolVectorProperty(
 				size = 32, 
 				subtype = 'LAYER', 
@@ -283,16 +296,20 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			)
 		)
 		
-		cls.bone_groups[group_name] = ui_name
+		cls.bone_sets[ui_name] = {
+			'preset' : preset,					# Bone Group color preset to use in case the bone group doesn't already exist.
+			'param' : param_name,				# Name of the bone group name parameter
+			'layer_param' : layer_param_name	# Name of the bone layers parameter
+		}
 		return ui_name
 
 	@classmethod
 	def add_bone_sets(cls, params):
 		""" Create parameters for this rig's bone groups. """
-		params.CR_show_bone_groups = BoolProperty(name="Bone Groups")
+		params.CR_show_bone_sets = BoolProperty(name="Bone Sets")
 
-		cls.add_bone_set(params, "root", "Root Control")
-		cls.add_bone_set(params, "root_parent", "Root Control Parent")
+		cls.add_bone_set(params, "Root Control", preset=2)
+		cls.add_bone_set(params, "Root Control Parent", preset=8)
 
 	@classmethod
 	def add_parameters(cls, params):
@@ -302,15 +319,16 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		cls.add_bone_sets(params)
 
 	@classmethod
-	def bone_groups_ui(cls, layout, params):
-		icon = 'TRIA_DOWN' if params.CR_show_bone_groups else 'TRIA_RIGHT'
-		layout.prop(params, "CR_show_bone_groups", toggle=True, icon=icon)
-		if not params.CR_show_bone_groups: return
+	def bone_sets_ui(cls, layout, params):
+		icon = 'TRIA_DOWN' if params.CR_show_bone_sets else 'TRIA_RIGHT'
+		layout.prop(params, "CR_show_bone_sets", toggle=True, icon=icon)
+		if not params.CR_show_bone_sets: return
 
-		for group_name in cls.bone_groups.keys():
+		for ui_name in cls.bone_sets.keys():
+			set_info = cls.bone_sets[ui_name]
 			col = layout.column()
-			col.prop_search(params, "CR_BG_"+group_name, bpy.context.object.pose, "bone_groups", text=cls.bone_groups[group_name])
-			col.prop(params, "CR_BG_LAYERS_"+group_name, text="")
+			col.prop_search(params, set_info['param'], bpy.context.object.pose, "bone_groups", text=ui_name)
+			col.prop(params, set_info['layer_param'], text="")
 			layout.separator()
 
 	@classmethod
@@ -318,7 +336,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		""" Create the ui for the rig parameters.
 		"""
 		ui_label_with_linebreak(layout, cls.description, bpy.context)
-		cls.bone_groups_ui(layout, params)
+		cls.bone_sets_ui(layout, params)
 
 		# We can return a dictionary of key:UILayout elements, in case we want to affect the UI layout of inherited rig elements.
 		return {}

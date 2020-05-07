@@ -59,8 +59,6 @@ class CloudGenerator(Generator):
 	def assign_layers(self):
 		bones = self.obj.data.bones
 
-		bones[self.root_bone].layers = ROOT_LAYER
-
 		# Every bone that has a name starting with "DEF-" make deforming.  All the
 		# others make non-deforming.
 		for bone in bones:

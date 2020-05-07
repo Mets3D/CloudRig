@@ -1,5 +1,6 @@
 from ..rigs import cloud_utils
 import bpy
+from .id import IDCollection
 
 # Default BoneGroup color schemes that come with Blender.
 presets = [
@@ -22,7 +23,7 @@ presets = [
 
 class BoneGroup:
 	# TODO: This should extend list, and self.bones=[] would become that list, remove_bone() would be inherited as remove(), etc.
-	def __init__(self, name="Group", normal=None, select=None, active=None, layers=[0], *, preset=-1):
+	def __init__(self, name="Group", normal=None, select=None, active=None, *, preset=-1):
 		self.name = name
 
 		self.color_set = 'CUSTOM'
@@ -42,7 +43,6 @@ class BoneGroup:
 		if select: self.select = select
 		if active: self.active = active
 
-		self.layers = layers		# If a bone assigned to this bonegroup is not assigned any layers, assign these layers.
 		self.bones = []
 
 	def __str__(self):
@@ -80,15 +80,17 @@ class BoneGroup:
 				continue
 			real_bone.bone_group = bg
 
-			cloud_utils.set_layers(real_bone.bone, self.layers)
-
-class BoneGroupContainer(dict):
-	def ensure(self, name, normal=None, select=None, active=None, layers=None, *, preset=-1):
+class BoneGroupContainer(IDCollection):
+	def __init__(self):
+		self.coll_type = BoneGroup
+	
+	#TODO: This can be deleted, since the inherited one should be equivalent.
+	def ensure(self, name, normal=None, select=None, active=None, *, preset=-1):
 		""" Return a bone group with the given name if it exists, otherwise create it. """
 		if name in self:
 			return self[name]
 
-		self[name] = BoneGroup(name, normal, select, active, layers, preset=preset)
+		self[name] = BoneGroup(name, normal, select, active, preset=preset)
 		return self[name]
 
 	def make_real(self, rig):

@@ -21,17 +21,14 @@ class CloudChainRig(CloudBaseRig):
 		BODY_MECH = 8
 		self.group_str = self.generator.bone_groups.ensure(
 			name = "Stretch Chain Controls"
-			,layers = [STRETCH]
 			,preset = 8
 		)
 		self.group_str_helper = self.generator.bone_groups.ensure(
 			name = "Stretch Chain Helpers"
-			,layers = [BODY_MECH]
 		)
 		if self.params.CR_shape_key_helpers:
 			self.group_sk_helper = self.generator.bone_groups.ensure(
 				name = "Stretch Chain Shape Key Helpers"
-				,layers = [BODY_MECH]
 			)
 
 
