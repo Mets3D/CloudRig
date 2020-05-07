@@ -7,26 +7,12 @@ from rigify.base_rig import stage
 from ..definitions.driver import Driver
 from .cloud_chain import CloudChainRig
 
+FK_MAIN = 1
+
 class CloudFKChainRig(CloudChainRig):
 	"""CloudRig FK chain."""
 
 	description = "FK chain with squash and stretch controls."
-
-	def ensure_bone_groups(self):
-		""" Ensure bone groups that this rig needs. """
-		super().ensure_bone_groups()
-		FK_MAIN = 1
-		BODY_MECH = 8
-		self.group_fk_ctrl = self.generator.bone_groups.ensure(
-			name = "FK Chain Controls"
-			,layers = [FK_MAIN]
-			,preset = 1
-		)
-		self.group_fk_extra = self.generator.bone_groups.ensure(
-			name = "FK Chain Helper Bones"
-			,layers = [BODY_MECH]
-			,preset = 1
-		)
 
 	def initialize(self):
 		"""Gather and validate data about the rig."""
@@ -39,12 +25,13 @@ class CloudFKChainRig(CloudChainRig):
 		for i, org_bone in enumerate(self.org_chain):
 			fk_name = org_bone.name.replace("ORG", "FK")
 			fk_bone = self.bone_infos.bone(
-				name				= fk_name, 
-				source				= org_bone,
-				custom_shape 		= self.load_widget("FK_Limb"),
-				custom_shape_scale 	= org_bone.custom_shape_scale,# * 0.8,
-				parent				= self.bones.parent,
-				bone_group			= self.group_fk_ctrl
+				name				= fk_name
+				,source				= org_bone
+				,custom_shape 		= self.load_widget("FK_Limb")
+				,custom_shape_scale = org_bone.custom_shape_scale
+				,parent				= self.bones.parent
+				,bone_group			= self.bone_groups["FK Controls"]
+				,layers				= self.bone_layers["FK Controls"]
 			)
 			if i > 0:
 				# Parent FK bone to previous FK bone.
@@ -53,12 +40,17 @@ class CloudFKChainRig(CloudChainRig):
 				self.create_dsp_bone(fk_bone, center=True)
 			if self.params.CR_counter_rotate_str:
 				str_bone = self.main_str_bones[i]
-				str_bone.add_constraint(self.obj, 'TRANSFORM',
-				subtarget = fk_bone.name,	# TODO: Shouldn't this be targetting an ORG- bone instead of an FK- bone?
-				map_from = 'ROTATION', map_to='ROTATION',
-				use_motion_extrapolate = True,
-				from_max_x_rot = 1, from_max_y_rot = 1, from_max_z_rot = 1,
-				to_max_x_rot = -0.5, to_max_y_rot = -0.5, to_max_z_rot = -0.5
+				str_bone.add_constraint(self.obj, 'TRANSFORM'
+					,subtarget				= fk_bone.name
+					,map_from				= 'ROTATION'
+					,map_to					= 'ROTATION'
+					,use_motion_extrapolate = True
+					,from_max_x_rot			= 1
+					,from_max_y_rot			= 1
+					,from_max_z_rot			= 1
+					,to_max_x_rot			= -0.5
+					,to_max_y_rot			= -0.5
+					,to_max_z_rot			= -0.5
 				)
 			self.fk_chain.append(fk_bone)
 
@@ -96,6 +88,15 @@ class CloudFKChainRig(CloudChainRig):
 			,description = "Display all FK controls' shapes in the center of the bone, rather than the beginning of the bone"
 			,default	 = False
 		)
+
+	@classmethod
+	def add_bone_sets(cls, params):
+		""" Create parameters for this rig's bone groups. """
+		params.CR_show_bone_sets = BoolProperty(name="Bone Sets")
+
+		cls.add_bone_set(params, "FK Controls", preset=1, default_layers=[FK_MAIN])
+
+		super().add_bone_sets(params)
 
 	@classmethod
 	def parameters_ui(cls, layout, params):

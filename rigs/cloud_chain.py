@@ -156,8 +156,8 @@ class CloudChainRig(CloudBaseRig):
 					name 		 = self.add_prefix_to_name(str_bone.name, "H")
 					,source 	 = str_bone
 					,bbone_width = 1/10
-					,bone_group  = self.bone_groups["Stretch Controls"]
-					,layers		 = self.bone_layers["Stretch Controls"]
+					,bone_group  = self.bone_groups["Stretch Helpers"]
+					,layers		 = self.bone_layers["Stretch Helpers"]
 					,parent		 = str_bone.parent
 					,hide_select = self.mch_disable_select
 				)

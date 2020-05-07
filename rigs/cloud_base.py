@@ -1,6 +1,7 @@
 import bpy, os
 from bpy.props import BoolProperty, FloatProperty, StringProperty, BoolVectorProperty
 from mathutils import Vector
+from collections import OrderedDict
 
 from rigify.base_rig import BaseRig, stage
 
@@ -22,7 +23,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 	description = "CloudRig Element (no description)"
 
-	bone_sets = {}
+	bone_sets = OrderedDict()
 
 	def find_org_bones(self, bone):
 		"""Populate self.bones.org."""
