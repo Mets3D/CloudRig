@@ -13,15 +13,6 @@ from .. import cloud_generator
 IK_MAIN = 0
 IK_SECOND = 16
 
-class BoneGroupParameter:
-	def __init__(self, prop_name, ui_name="Group", layers=[0], default_group=None):
-		self.prop_name = prop_name
-		self.ui_name = ui_name
-		self.layers = layers
-		self.default_group = default_group
-		if not default_group:
-			self.default_group = ui_name
-
 class CloudBaseRig(BaseRig, CloudUtilities):
 	"""Base for all CloudRig rigs."""
 
@@ -126,6 +117,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		# Instead of referring to bone groups as self.group_whatever, we should have a self.bone_groups.get("whatever").
 
 		# Now my only concern is, where do we get the preset from? It could be stored in cls.bone_groups...
+		
 		self.group_root = self.generator.bone_groups.ensure(
 			name = "Root Control"
 			,layers = [IK_MAIN, IK_SECOND]
@@ -269,50 +261,45 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	# Parameters
 
 	@classmethod
-	def add_bone_group_param(cls, params, group_name, ui_name=None, default_group="Group", default_layers=[0]):
-		setattr(params, "CR_BG_" + group_name.replace(" ", "_"), StringProperty(default=default_group))
-		setattr(params, "CR_BG_LAYERS_" + group_name.replace(" ", "_"), BoolVectorProperty(size=32))
-		cls.bone_groups[group_name] = BoneGroupParameter(group_name, "Root Control", default_layers)
-		return cls.bone_groups[group_name]
+	def add_bone_set(cls, params, group_name, ui_name=None, default_group="Group", default_layers=[0]):
+		setattr(
+			params, 
+			"CR_BG_" + group_name.replace(" ", "_"),
+			StringProperty(
+				default = default_group,
+				description = "Select what group this set of bones should be assigned to"
+			)
+		)
+		
+		default_layers_bools = [i in default_layers for i in range(32)]
+		setattr(
+			params, 
+			"CR_BG_LAYERS_" + group_name.replace(" ", "_"), 
+			BoolVectorProperty(
+				size = 32, 
+				subtype = 'LAYER', 
+				description = "Select what layers this set of bones should be assigned to",
+				default = default_layers_bools
+			)
+		)
+		
+		cls.bone_groups[group_name] = ui_name
+		return ui_name
 
 	@classmethod
-	def add_bone_group_params(cls, params):
+	def add_bone_sets(cls, params):
 		""" Create parameters for this rig's bone groups. """
 		params.CR_show_bone_groups = BoolProperty(name="Bone Groups")
 
-		cls.add_bone_group_param(params, "root", "Root Control")
-		cls.add_bone_group_param(params, "root_parent", "Root Control Parent")
+		cls.add_bone_set(params, "root", "Root Control")
+		cls.add_bone_set(params, "root_parent", "Root Control Parent")
 
 	@classmethod
 	def add_parameters(cls, params):
 		""" Add the parameters of this rig type to the
 			RigifyParameters PropertyGroup
 		"""
-		cls.add_bone_group_params(params)
-
-	@classmethod
-	def bone_layers_ui(cls, layout, params, group_name):
-		layer_param = "CR_BG_LAYERS_"+group_name
-		
-		col = main_row.column(align=True)
-		row = col.row(align=True)
-		for i in range(8):
-			row.prop(params, layer_param, index=i, toggle=True, text="")
-
-		row = col.row(align=True)
-		for i in range(16,24):
-			row.prop(params, layer_param, index=i, toggle=True, text="")
-
-		main_row.column(align=True)
-		col = main_row.column(align=True)
-		row = col.row(align=True)
-
-		for i in range(8,16):
-			row.prop(params, layer_param, index=i, toggle=True, text="")
-
-		row = col.row(align=True)
-		for i in range(24,32):
-			row.prop(params, layer_param, index=i, toggle=True, text="")
+		cls.add_bone_sets(params)
 
 	@classmethod
 	def bone_groups_ui(cls, layout, params):
@@ -321,8 +308,10 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		if not params.CR_show_bone_groups: return
 
 		for group_name in cls.bone_groups.keys():
-			layout.prop_search(params, "CR_BG_"+group_name, bpy.context.object.pose, "bone_groups", text=cls.bone_groups[group_name].ui_name)
-			cls.bone_layers_ui(layout, params, group_name)
+			col = layout.column()
+			col.prop_search(params, "CR_BG_"+group_name, bpy.context.object.pose, "bone_groups", text=cls.bone_groups[group_name])
+			col.prop(params, "CR_BG_LAYERS_"+group_name, text="")
+			layout.separator()
 
 	@classmethod
 	def parameters_ui(cls, layout, params):
