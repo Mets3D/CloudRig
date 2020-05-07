@@ -324,12 +324,6 @@ class CloudChainRig(CloudBaseRig):
 			,description = "Add the final control at the end of the chain (Turn off if you connect another chain to this one)"
 			,default	 = True
 		)
-
-	@classmethod
-	def bone_set_ui(cls, params, layout, set_info, ui_rows):
-		# We only want to draw Shape Key Helpers bone set UI if the option for it is enabled.
-		if set_info['name'] != "Shape Key Helpers" or params.CR_shape_key_helpers:
-			super().bone_set_ui(params, layout, set_info, ui_rows)
 	
 	@classmethod
 	def parameters_ui(cls, layout, params):
