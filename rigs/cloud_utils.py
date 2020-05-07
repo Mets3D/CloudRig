@@ -62,16 +62,16 @@ class CloudUtilities:
 
 		# Create Hinge helper bone
 		BODY_MECH = 8
-		hng_group = self.generator.bone_groups.ensure(
-			name = "Hinge Helpers"
-			,layers = [BODY_MECH]
-			,preset = 1
-		)
+		# hng_group = self.generator.bone_groups.ensure(
+		# 	name = "Hinge Helpers"
+		# 	,layers = [BODY_MECH]
+		# 	,preset = 1
+		# )
 		hng_bone = self.bone_infos.bone(
-			name			= hng_name,
-			source			= bone, 
-			bone_group 		= hng_group,
-			hide_select		= self.mch_disable_select
+			name			= hng_name
+			,source			= bone
+			# ,bone_group 		= hng_group
+			,hide_select		= self.mch_disable_select
 		)
 
 		# Hinge Armature constraint
@@ -201,11 +201,11 @@ class CloudUtilities:
 		arm_con_bone = self.create_parent_bone(child_bone)
 		arm_con_bone.name = "Parents_" + child_bone.name
 		arm_con_bone.custom_shape = None
-		BODY_MECH = 8
-		arm_con_bone.bone_group = self.generator.bone_groups.ensure(
-			name = "Parent Switching Helpers"
-			,layers = [BODY_MECH]
-		)
+		# BODY_MECH = 8
+		# arm_con_bone.bone_group = self.generator.bone_groups.ensure(
+		# 	name = "Parent Switching Helpers"
+		# 	,layers = [BODY_MECH]
+		# )
 
 		targets = []
 		for pn in parent_names:
@@ -241,13 +241,13 @@ class CloudUtilities:
 		sliced[0].append("P")
 		parent_name = make_name(*sliced)
 		parent_bone = self.bone_infos.bone(
-			parent_name, 
-			child, 
-			custom_shape = child.custom_shape,
-			custom_shape_scale = child.custom_shape_scale*1.1,
-			bone_group = child.bone_group,
-			parent = child.parent,
-			hide_select	= self.mch_disable_select
+			name				= parent_name 
+			,source				= child
+			,custom_shape		= child.custom_shape
+			,custom_shape_scale = child.custom_shape_scale * 1.1
+			,bone_group			= child.bone_group
+			,parent 			= child.parent
+			,hide_select		= self.mch_disable_select
 		)
 
 		child.parent = parent_bone
@@ -256,20 +256,20 @@ class CloudUtilities:
 	def create_dsp_bone(self, parent, center=False):
 		"""Create a bone to be used as another control's custom_shape_transform."""
 		dsp_name = "DSP-" + parent.name
-		BODY_MECH = 8
-		dsp_group = self.generator.bone_groups.ensure(
-			name = "Display Transform Helpers"
-			,layers = [BODY_MECH]
-		)
+		# BODY_MECH = 8
+		# dsp_group = self.generator.bone_groups.ensure(
+		# 	name = "Display Transform Helpers"
+		# 	,layers = [BODY_MECH]
+		# )
 		dsp_bone = self.bone_infos.bone(
-			name = dsp_name, 
-			source = parent,
-			bbone_width = parent.bbone_width*0.5,
-			only_transform = True,
-			custom_shape = None, 
-			parent = parent,
-			bone_group = dsp_group,
-			hide_select	= self.mch_disable_select
+			name			= dsp_name
+			,source			= parent
+			,bbone_width	= parent.bbone_width*0.5
+			,only_transform = True
+			,custom_shape	= None
+			,parent			= parent
+			# ,bone_group	= dsp_group
+			,hide_select	= self.mch_disable_select
 		)
 		parent.dsp_bone = dsp_bone
 		if center:

@@ -210,8 +210,8 @@ class Rig(CloudIKChainRig):
 				,tail		  = ik_foot.head + Vector((0, self.scale/2, self.scale/4))
 				,roll		  = rad(180)
 				,custom_shape = self.load_widget('FootRoll')
-				,bone_group	  = self.bone_groups["IK Control"]
-				,layers		  = self.bone_layers["IK Control"]
+				,bone_group	  = self.bone_groups["IK Controls"]
+				,layers		  = self.bone_layers["IK Controls"]
 				,parent		  = roll_master
 			)
 

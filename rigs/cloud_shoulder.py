@@ -27,7 +27,8 @@ class CloudShoulderRig(CloudFKChainRig):
 	@stage.prepare_bones
 	def prepare_fk_shoulder(self):
 		self.fk_chain[0].custom_shape = self.load_widget("Clavicle")
-		self.fk_chain[0].bone_group = self.group_fk_ctrl
+		self.fk_chain[0].bone_group = self.bone_groups["FK Controls"]
+		self.fk_chain[0].layers = self.bone_layers["FK Controls"]
 		self.register_parent(self.fk_chain[0], self.side_prefix.capitalize() + " Shoulder")
 
 		parent = self.get_bone(self.base_bone).parent
