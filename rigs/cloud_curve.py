@@ -16,7 +16,9 @@ class CloudCurveRig(CloudBaseRig):
 	def initialize(self):
 		"""Gather and validate data about the rig."""
 		super().initialize()
-		
+		self.initialize_curve_rig()
+	
+	def initialize_curve_rig(self):
 		curve_ob = self.get_curve()
 		assert curve_ob, f"Error: Curve object {self.params.CR_target_curve_name} not found for curve rig: {self.base_bone}"
 		assert curve_ob.type=='CURVE', f"Error: Curve target {self.params.CR_target_curve_name} is not a curve for rig: {self.base_bone}"
@@ -151,6 +153,9 @@ class CloudCurveRig(CloudBaseRig):
 
 	def prepare_bones(self):
 		super().prepare_bones()
+		self.curve_prepare_bones()
+	
+	def curve_prepare_bones(self):
 		self.create_root()
 		self.create_curve_point_hooks()
 

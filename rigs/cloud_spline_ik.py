@@ -8,15 +8,14 @@ from ..definitions.driver import Driver
 from .cloud_curve import CloudCurveRig
 from .cloud_utils import make_name, slice_name
 
+DEFORM = 29
+
 class CloudSplineIKRig(CloudCurveRig):
 	"""CloudRig Spline IK chain."""
 
 	description = "Create a bezier curve object to drive a bone chain with Spline IK constraint, controlled by Hooks."
 
-	def initialize(self):
-		"""Gather and validate data about the rig."""
-		super().initialize()
-
+	def initialize_curve_rig(self):
 		length = len(self.bones.org.main)
 		subdiv = self.params.CR_subdivide_deform
 		total = length * subdiv
@@ -50,7 +49,8 @@ class CloudSplineIKRig(CloudCurveRig):
 		bpy.ops.curve.primitive_bezier_curve_add(radius=0.2, location=(0, 0, 0))
 
 		curve_ob = bpy.context.view_layer.objects.active
-		self.meta_base_bone.rigify_parameters.CR_target_curve_name = self.curve_ob_name = curve_ob.name = curve_name
+		curve_ob.name = curve_name
+		self.meta_base_bone.rigify_parameters.CR_target_curve_name = self.params.CR_target_curve_name = self.curve_ob_name = curve_name
 
 		self.lock_transforms(curve_ob)
 
@@ -98,14 +98,16 @@ class CloudSplineIKRig(CloudCurveRig):
 
 				unit = org_bone.vec / segments
 				def_bone = self.bone_infos.bone(
-					name = def_name,
-					source = org_bone,
-					head = org_bone.head + (unit * i),
-					tail = org_bone.head + (unit * (i+1)),
-					roll = org_bone.roll,
-					bbone_width = 0.03,
-					hide_select	= self.mch_disable_select,
-					use_deform = True
+					name		 = def_name
+					,source		 = org_bone
+					,head		 = org_bone.head + (unit * i)
+					,tail		 = org_bone.head + (unit * (i+1))
+					,roll		 = org_bone.roll
+					,bbone_width = 0.03
+					,bone_group	 = self.bone_groups["Spline Deform Bones"]
+					,layers		 = self.bone_layers["Spline Deform Bones"]
+					,hide_select = self.mch_disable_select
+					,use_deform	 = True
 				)
 
 				if len(self.def_bones) > 0:
@@ -117,8 +119,15 @@ class CloudSplineIKRig(CloudCurveRig):
 
 	def prepare_bones(self):
 		super().prepare_bones()
+		self.create_root()
 		self.create_curve()
+		self.create_curve_point_hooks()
 		self.create_def_chain()
+	
+	def curve_prepare_bones(self):
+		# TODO: This is a bit wonky. This rig's create_curve() relies on CloudBaseRig.prepare_bones() having already run.
+		# But if we simply call super().prepare_bones(), it will run create_curve_point_hooks(), which, for this class, relies on create_curve() running beforehand.
+		pass
 
 	def configure_bones(self):
 		# Add constraint to deform chain
@@ -133,6 +142,12 @@ class CloudSplineIKRig(CloudCurveRig):
 
 	##############################
 	# Parameters
+
+	@classmethod
+	def add_bone_sets(cls, params):
+		super().add_bone_sets(params)
+		""" Create parameters for this rig's bone sets. """
+		cls.add_bone_set(params, "Spline Deform Bones", default_layers=[DEFORM])
 
 	@classmethod
 	def add_parameters(cls, params):
