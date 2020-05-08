@@ -100,8 +100,7 @@ class CloudGenerator(Generator):
 		# That is to say, everything in here should be behind an if(generator_parameter) statement.
 		print("CloudRig Generation begin")
 
-		# For now we just copy-pasted Rigify's generate(). A lot of this will be modifier later though.
-		# Unfortunately for some reason the Generator class has a lot of name-mangled functions, which makes it unneccessailry ugly to modify... Not sure why that choice was made.
+		# Unfortunately for some reason the Generator class has a lot of name-mangled functions.
 
 		context = self.context
 		metarig = self.metarig
@@ -128,6 +127,9 @@ class CloudGenerator(Generator):
 		
 		# Rename metarig data (TODO: parameter)
 		self.metarig.data.name = "Data_" + self.metarig.name
+
+		# Enable all armature layers during generation. This is to make sure if you try to set a bone as active, it won't fail silently.
+		obj.data.layers = [True]*32
 
 		# Get rid of anim data in case the rig already existed
 		print("Clear rig animation data.")

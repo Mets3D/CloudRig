@@ -178,10 +178,10 @@ class CloudCurveRig(CloudBaseRig):
 		bone = self.obj.data.bones.get(boneinfo.name)
 		self.obj.data.bones.active = bone
 
-		# If the hook modifier already exists, don't re-create it.
+		# If the hook modifier already exists, remove it.
 		mod = curve_ob.modifiers.get(boneinfo.name)
 		if mod:
-			return
+			curve_ob.modifiers.remove(mod)
 
 		# Add hook
 		old_modifiers = [m.name for m in curve_ob.modifiers]
@@ -257,7 +257,6 @@ class CloudCurveRig(CloudBaseRig):
 
 	def configure_bones(self):
 		self.setup_curve(self.hooks, self.params.CR_target_curve_name)
-
 		super().configure_bones()
 
 	##############################
