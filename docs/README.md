@@ -1,4 +1,11 @@
-**Note**: CloudRig is currently in a pre-release state. Backwards compatibility is not yet guaranteed, so as things get updated, rigs you generate with a newer version may not behave exactly the same as when you first generated them with an older version.
+**Note**: CloudRig is currently a work in progress.
+Here are some of the major things that still need to be done:
+- Customizable Layers UI.
+- Layer assignment override on the Generator level for all ORG, DEF and mechanism bones, for less cluttered "Bone Sets".
+- Certain bones don't get layers or groups assigned properly atm.
+- Update Cloud Human metarig and all rig samples.
+
+And that's not to mention dozens of smaller tasks, as well as adding more rig elements, like face setups. So use with care!
 
 # What is CloudRig?
 CloudRig is a custom featureset package for the Rigify Blender addon, developed for the Blender Animation Studio in-house, with the help of professional animators.
@@ -44,9 +51,6 @@ You might often encounter that the sizes of the bone shapes are too big or too s
 When you generate a rig for the first time, the bone groups will not only be created on the generated rig, but also on the Metarig.
 You can feel free to change the bone group colors on the Metarig. Next time you generate, those colors will be used instead of the default ones.
 If you changed a bone group color and would like to reset it to default, simply delete it from the Metarig. It will be re-created with default values next time you generate.
-
-### Limitations
-Currently, bone layers and bone group names cannot be customized.
 
 # Rig UI
 Once generated, select your generated rig, and press the N key to bring up the Sidebar. You should see a CloudRig tab, which contains the rig UI. This is where the animators will be able to find rig settings, as well as a handy layer selector.  
