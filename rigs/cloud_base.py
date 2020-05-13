@@ -14,6 +14,7 @@ from .. import cloud_generator
 IK_MAIN = 0
 IK_SECOND = 16
 ORG = 31
+BODY_MECH = 8
 
 def prop_string(string):
 	return string.replace(" ", "_").lower()
@@ -321,6 +322,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		cls.add_bone_set(params, "Root Control", preset=2)
 		cls.add_bone_set(params, "Root Control Parent", preset=8)
 		cls.add_bone_set(params, "Original Bones", default_layers=[ORG])
+		cls.add_bone_set(params, "Display Transform Helpers", default_layers=[BODY_MECH])
 
 	@classmethod
 	def add_parameters(cls, params):

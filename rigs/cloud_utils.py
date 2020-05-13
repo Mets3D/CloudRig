@@ -62,16 +62,12 @@ class CloudUtilities:
 
 		# Create Hinge helper bone
 		BODY_MECH = 8
-		# hng_group = self.generator.bone_groups.ensure(
-		# 	name = "Hinge Helpers"
-		# 	,layers = [BODY_MECH]
-		# 	,preset = 1
-		# )
 		hng_bone = self.bone_infos.bone(
 			name			= hng_name
 			,source			= bone
-			# ,bone_group 		= hng_group
-			,hide_select		= self.mch_disable_select
+			,bone_group 	= bone.bone_group
+			,layers			= bone.layers
+			,hide_select	= self.mch_disable_select
 		)
 
 		# Hinge Armature constraint
@@ -113,6 +109,7 @@ class CloudUtilities:
 
 		# Parenting
 		bone.parent = hng_bone
+		return hng_bone
 
 	def register_parent(self, bone, name):
 		if name in self.parent_candidates:
@@ -246,6 +243,7 @@ class CloudUtilities:
 			,custom_shape		= child.custom_shape
 			,custom_shape_scale = child.custom_shape_scale * 1.1
 			,bone_group			= child.bone_group
+			,layers				= child.layers
 			,parent 			= child.parent
 			,hide_select		= self.mch_disable_select
 		)
@@ -256,11 +254,6 @@ class CloudUtilities:
 	def create_dsp_bone(self, parent, center=False):
 		"""Create a bone to be used as another control's custom_shape_transform."""
 		dsp_name = "DSP-" + parent.name
-		# BODY_MECH = 8
-		# dsp_group = self.generator.bone_groups.ensure(
-		# 	name = "Display Transform Helpers"
-		# 	,layers = [BODY_MECH]
-		# )
 		dsp_bone = self.bone_infos.bone(
 			name			= dsp_name
 			,source			= parent
@@ -268,7 +261,8 @@ class CloudUtilities:
 			,only_transform = True
 			,custom_shape	= None
 			,parent			= parent
-			# ,bone_group	= dsp_group
+			,bone_group		= self.bone_groups["Display Transform Helpers"]
+			,layers			= self.bone_layers["Display Transform Helpers"]
 			,hide_select	= self.mch_disable_select
 		)
 		parent.dsp_bone = dsp_bone
