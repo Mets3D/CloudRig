@@ -95,7 +95,7 @@ class Rig(CloudIKChainRig):
 				self.fk_toe = fk_bone
 		
 		# Create Hinge helper
-		self.hinge_setup(
+		hng_bone = self.hinge_setup(
 			bone = hng_child, 
 			category = self.category,
 			parent_bone = self.limb_root_bone,
@@ -104,6 +104,8 @@ class Rig(CloudIKChainRig):
 			prop_name = self.fk_hinge_name,
 			limb_name = self.limb_ui_name
 		)
+		hng_bone.bone_group = self.bone_groups['FK Helpers']
+		hng_bone.layers = self.bone_layers['FK Helpers']
 
 	def prepare_str_limb(self):
 		# We want to make some changes to the STR chain to make it behave more limb-like.
