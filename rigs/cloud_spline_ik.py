@@ -8,8 +8,6 @@ from ..definitions.driver import Driver
 from .cloud_curve import CloudCurveRig
 from .cloud_utils import make_name, slice_name
 
-DEFORM = 29
-
 class CloudSplineIKRig(CloudCurveRig):
 	"""CloudRig Spline IK chain."""
 
@@ -104,8 +102,8 @@ class CloudSplineIKRig(CloudCurveRig):
 					,tail		 = org_bone.head + (unit * (i+1))
 					,roll		 = org_bone.roll
 					,bbone_width = 0.03
-					,bone_group	 = self.bone_groups["Spline Deform Bones"]
-					,layers		 = self.bone_layers["Spline Deform Bones"]
+					,bone_group	 = self.bone_groups["Curve Deform Bones"]
+					,layers		 = self.bone_layers["Curve Deform Bones"]
 					,hide_select = self.mch_disable_select
 					,use_deform	 = True
 				)
@@ -147,7 +145,7 @@ class CloudSplineIKRig(CloudCurveRig):
 	def add_bone_sets(cls, params):
 		super().add_bone_sets(params)
 		""" Create parameters for this rig's bone sets. """
-		cls.add_bone_set(params, "Spline Deform Bones", default_layers=[DEFORM])
+		cls.add_bone_set(params, "Curve Deform Bones", default_layers=[cls.default_layers('DEF')])
 
 	@classmethod
 	def add_parameters(cls, params):

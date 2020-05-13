@@ -7,10 +7,6 @@ from rigify.base_rig import stage
 from ..definitions.driver import Driver
 from .cloud_utils import make_name, slice_name
 from .cloud_base import CloudBaseRig
-		
-STRETCH = 2
-BODY_MECH = 8
-DEFORM = 29
 
 class CloudChainRig(CloudBaseRig):
 	"""CloudRig stretchy BBone chain."""
@@ -283,10 +279,10 @@ class CloudChainRig(CloudBaseRig):
 	def add_bone_sets(cls, params):
 		""" Create parameters for this rig's bone sets. """
 		super().add_bone_sets(params)
-		cls.add_bone_set(params, "Stretch Controls", preset=8, default_layers=[STRETCH])
-		cls.add_bone_set(params, "Stretch Helpers", default_layers=[BODY_MECH])
-		cls.add_bone_set(params, "Shape Key Helpers", default_layers=[BODY_MECH])
-		cls.add_bone_set(params, "Deform Bones", default_layers=[DEFORM])
+		cls.add_bone_set(params, "Stretch Controls", preset=8, default_layers=[cls.default_layers('STRETCH')])
+		cls.add_bone_set(params, "Stretch Helpers", default_layers=[cls.default_layers('MCH')])
+		cls.add_bone_set(params, "Shape Key Helpers", default_layers=[cls.default_layers('MCH')])
+		cls.add_bone_set(params, "Deform Bones", default_layers=[cls.default_layers('DEF')])
 
 	@classmethod
 	def add_parameters(cls, params):
@@ -324,7 +320,7 @@ class CloudChainRig(CloudBaseRig):
 			,description = "Add the final control at the end of the chain (Turn off if you connect another chain to this one)"
 			,default	 = True
 		)
-	
+
 	@classmethod
 	def parameters_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.
@@ -342,7 +338,7 @@ class CloudChainRig(CloudBaseRig):
 		sharp_sections.prop(params, "CR_sharp_sections")
 		ui_rows['sharp_sections'] = sharp_sections
 		layout.prop(params, "CR_cap_control")
-		
+
 		return ui_rows
 
 class Rig(CloudChainRig):

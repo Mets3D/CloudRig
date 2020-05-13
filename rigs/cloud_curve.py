@@ -28,8 +28,8 @@ class CloudCurveRig(CloudBaseRig):
 		self.root_control = self.bone_infos.bone(
 			name						= self.base_bone.replace("ORG", "ROOT")
 			,source						= self.org_chain[0]
-			,bone_group					= self.bone_groups["Spline IK Hooks"]
-			,layers						= self.bone_layers["Spline IK Hooks"]
+			,bone_group					= self.bone_groups["Curve Hooks"]
+			,layers						= self.bone_layers["Curve Hooks"]
 			,custom_shape				= self.load_widget("Cube")
 			,use_custom_shape_bone_size = True
 		)
@@ -52,8 +52,8 @@ class CloudCurveRig(CloudBaseRig):
 			,head						= loc
 			,tail						= loc_left
 			,parent						= parent
-			,bone_group					= self.bone_groups["Spline IK Hooks"]
-			,layers						= self.bone_layers["Spline IK Hooks"]
+			,bone_group					= self.bone_groups["Curve Hooks"]
+			,layers						= self.bone_layers["Curve Hooks"]
 			,use_custom_shape_bone_size	= True
 		)
 
@@ -69,8 +69,8 @@ class CloudCurveRig(CloudBaseRig):
 					name						= f"Hook_Radius_{hook_name}_{str(i).zfill(2)}{suffix}"
 					,source						= hook_ctr
 					,parent						= hook_ctr
-					,bone_group	 				= self.bone_groups["Spline IK Handles"]
-					,layers		 				= self.bone_layers["Spline IK Handles"]
+					,bone_group	 				= self.bone_groups["Curve Handles"]
+					,layers		 				= self.bone_layers["Curve Handles"]
 					,custom_shape				= self.load_widget("Circle")
 					,use_custom_shape_bone_size	= True
 				)
@@ -84,8 +84,8 @@ class CloudCurveRig(CloudBaseRig):
 					name		  = f"Hook_L_{hook_name}_{str(i).zfill(2)}{suffix}"
 					,head 		  = loc
 					,tail		  = loc_left
-					,bone_group	  = self.bone_groups["Spline IK Handles"]
-					,layers		  = self.bone_layers["Spline IK Handles"]
+					,bone_group	  = self.bone_groups["Curve Handles"]
+					,layers		  = self.bone_layers["Curve Handles"]
 					,parent		  = hook_ctr
 					,custom_shape = self.load_widget("CurveHandle")
 				)
@@ -97,8 +97,8 @@ class CloudCurveRig(CloudBaseRig):
 					name 		  = f"Hook_R_{hook_name}_{str(i).zfill(2)}{suffix}"
 					,head 		  = loc
 					,tail 		  = loc_right
-					,bone_group	  = self.bone_groups["Spline IK Handles"]
-					,layers		  = self.bone_layers["Spline IK Handles"]
+					,bone_group	  = self.bone_groups["Curve Handles"]
+					,layers		  = self.bone_layers["Curve Handles"]
 					,parent 	  = hook_ctr
 					,custom_shape = self.load_widget("CurveHandle")
 				)
@@ -299,8 +299,8 @@ class CloudCurveRig(CloudBaseRig):
 	def add_bone_sets(cls, params):
 		""" Create parameters for this rig's bone sets. """
 		super().add_bone_sets(params)
-		cls.add_bone_set(params, "Spline IK Hooks", preset=0, default_layers=[0])
-		cls.add_bone_set(params, "Spline IK Handles", preset=8, default_layers=[0])
+		cls.add_bone_set(params, "Curve Hooks", preset=0)
+		cls.add_bone_set(params, "Curve Handles", preset=8)
 
 	@classmethod
 	def add_parameters(cls, params):
@@ -341,8 +341,8 @@ class CloudCurveRig(CloudBaseRig):
 
 	@classmethod
 	def bone_set_ui(cls, params, layout, set_info, ui_rows):
-		# We only want to draw Spline IK Handles bone set UI if the option for it is enabled.
-		if set_info['name'] != "Spline IK Handles" or params.CR_controls_for_handles:
+		# We only want to draw Curve Handles bone set UI if the option for it is enabled.
+		if set_info['name'] != "Curve Handles" or params.CR_controls_for_handles:
 			super().bone_set_ui(params, layout, set_info, ui_rows)
 
 	@classmethod

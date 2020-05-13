@@ -7,8 +7,6 @@ from rigify.base_rig import stage
 from ..definitions.driver import Driver
 from .cloud_chain import CloudChainRig
 
-FK_MAIN = 1
-
 class CloudFKChainRig(CloudChainRig):
 	"""CloudRig FK chain."""
 
@@ -74,7 +72,7 @@ class CloudFKChainRig(CloudChainRig):
 	def add_bone_sets(cls, params):
 		""" Create parameters for this rig's bone sets. """
 		super().add_bone_sets(params)
-		cls.add_bone_set(params, "FK Controls", preset=1, default_layers=[FK_MAIN])
+		cls.add_bone_set(params, "FK Controls", preset=1, default_layers=[cls.default_layers('FK_MAIN')])
 
 	@classmethod
 	def add_parameters(cls, params):

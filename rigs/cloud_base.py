@@ -9,15 +9,17 @@ from ..definitions.driver import Driver
 from ..definitions.bone import BoneInfoContainer
 from .cloud_utils import CloudUtilities
 from .. import cloud_generator
+from enum import Enum
 
-# TODO: These defaults should be stored somewhere where they can get garbage collected after rig generation.
-IK_MAIN = 0
-IK_SECOND = 16
-ORG = 31
-BODY_MECH = 8
+class DefaultLayers(Enum):
+	IK_MAIN = 0
+	IK_SECOND = 16
+	FK_MAIN = 1
+	STRETCH = 2
 
-def prop_string(string):
-	return string.replace(" ", "_").lower()
+	ORG = 31
+	MCH = 8
+	DEF = 29
 
 class CloudBaseRig(BaseRig, CloudUtilities):
 	"""Base for all CloudRig rigs."""
@@ -25,6 +27,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	description = "CloudRig Element (no description)"
 
 	bone_sets = OrderedDict()
+
+	default_layers = lambda name: DefaultLayers[name].value
 
 	def find_org_bones(self, bone):
 		"""Populate self.bones.org."""
@@ -277,7 +281,17 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 	@classmethod
 	def add_bone_set(cls, params, ui_name, default_group="", default_layers=[0], preset=-1):
-		group_name = prop_string(ui_name)
+		""" 
+		A bone set is just a set of rig parameters for choosing a bone group and list of bone layers.
+		This function is responsible for creating those rig parameters, as well as storing them, 
+		so they can be referenced easily when implementing the creation of a new bone 
+		and assigning its bone group and layers. 
+
+		For example, all FK chain bones of the FK chain rig are hard-coded to be part of the "FK Main" bone set.
+		Then the "FK Main" bone set's bone group and bone layer can be customized via the parameters.
+		"""
+
+		group_name = ui_name.replace(" ", "_").lower()
 		if default_group=="":
 			default_group = ui_name
 
@@ -321,9 +335,9 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 		cls.add_bone_set(params, "Root Control", preset=2)
 		cls.add_bone_set(params, "Root Control Parent", preset=8)
-		cls.add_bone_set(params, "Original Bones", default_layers=[ORG])
-		cls.add_bone_set(params, "Display Transform Helpers", default_layers=[BODY_MECH])
-		cls.add_bone_set(params, "Parent Switch Helpers", default_layers=[BODY_MECH])
+		cls.add_bone_set(params, "Original Bones", default_layers=[cls.default_layers('ORG')])
+		cls.add_bone_set(params, "Display Transform Helpers", default_layers=[cls.default_layers('MCH')])
+		cls.add_bone_set(params, "Parent Switch Helpers", default_layers=[cls.default_layers('MCH')])
 
 	@classmethod
 	def add_parameters(cls, params):

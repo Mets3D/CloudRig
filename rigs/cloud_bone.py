@@ -6,6 +6,7 @@ from ..definitions.bone import BoneInfoContainer, BoneInfo
 from ..definitions.driver import Driver
 from ..definitions import custom_props
 from . import cloud_utils
+from ..rigs.cloud_base import DefaultLayers
 
 # TODO: This is currently a complete clusterfuck... rewrite it - probably as two separate rigs for creating and for tweaking... call them cloud_control and cloud_tweak. And make them use BoneInfo!!! (find corresponding BoneInfo by traversing parent rigs or storing that shit in the generator... former is kindof safer. Even if we store BoneInfos in the generator, if this rig isn't a child of the rig it's modifying, it will fail.)
 # TODO: When Transforms param is unchecked, move the metabone to the generated bone's transforms during generation?
@@ -44,9 +45,7 @@ class CloudBoneRig(BaseRig):
 			self.def_bone_name = self.copy_bone(org_bone.name, def_bone_name)
 			def_bone = self.get_bone(self.def_bone_name)
 			def_bone.bbone_x = def_bone.bbone_z = org_bone.bbone_x
-			# TODO: parameter for setting the layers for this I guess... shame we aren't inheriting from CloudBaseRig...
-			def_bone.layers = [False]*32
-			def_bone.layers[29] = True
+			cloud_utils.set_layers(def_bone, [DefaultLayers['DEF'].value])
 
 	@stage.configure_bones
 	def modify_bone_group(self):

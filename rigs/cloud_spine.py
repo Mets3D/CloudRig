@@ -15,11 +15,6 @@ from .cloud_fk_chain import CloudChainRig
 #     head hinge also has some hardcoded name strings.
 #     When registering bones as a parent, the parent identifiers are also non-unique.
 
-BODY_MECH = 8
-
-IK_MAIN = 0
-IK_SECOND = 16
-
 class CloudSpineRig(CloudChainRig):
 	"""CloudRig Spine"""
 
@@ -364,11 +359,11 @@ class CloudSpineRig(CloudChainRig):
 	def add_bone_sets(cls, params):
 		super().add_bone_sets(params)
 		""" Create parameters for this rig's bone sets. """
-		cls.add_bone_set(params, "Spine FK Controls", preset=1, default_layers=[IK_MAIN])
-		cls.add_bone_set(params, "Spine Main Controls", preset=2, default_layers=[IK_MAIN])
-		cls.add_bone_set(params, "Spine Parent Controls", preset=8, default_layers=[IK_MAIN])
-		cls.add_bone_set(params, "Spine IK Secondary", preset=10, default_layers=[IK_SECOND])
-		cls.add_bone_set(params, "Spine Mechanism", default_layers=[BODY_MECH])
+		cls.add_bone_set(params, "Spine FK Controls", preset=1, default_layers=[cls.default_layers('IK_MAIN')])
+		cls.add_bone_set(params, "Spine Main Controls", preset=2, default_layers=[cls.default_layers('IK_MAIN')])
+		cls.add_bone_set(params, "Spine Parent Controls", preset=8, default_layers=[cls.default_layers('IK_MAIN')])
+		cls.add_bone_set(params, "Spine IK Secondary", preset=10, default_layers=[cls.default_layers('IK_SECOND')])
+		cls.add_bone_set(params, "Spine Mechanism", default_layers=[cls.default_layers('MCH')])
 
 	@classmethod
 	def add_parameters(cls, params):
