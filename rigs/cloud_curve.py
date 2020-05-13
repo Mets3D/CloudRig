@@ -136,7 +136,8 @@ class CloudCurveRig(CloudBaseRig):
 
 		# Function to convert a location vector in the curve's local space into world space.
 		# For some reason this doesn't work when the curve object is parented to something, and we need it to be parented to the root bone kindof.
-		worldspace = lambda loc: (curve_ob.matrix_world @ Matrix.Translation(loc)).to_translation()
+		# Use matrix_basis instead of matrix_world in case there are constraints on the curve.
+		worldspace = lambda loc: (curve_ob.matrix_basis @ Matrix.Translation(loc)).to_translation()
 
 		spline = curve_ob.data.splines[0]	# For now we only support a single spline per curve.
 		self.hooks = []
@@ -192,6 +193,13 @@ class CloudCurveRig(CloudBaseRig):
 			if m.name not in old_modifiers:
 				m.name = boneinfo.name
 				m.show_expanded = False
+				
+				# Move modifier to top of the stack...
+				# (Curve object must be active)
+				for i in range(len(curve_ob.modifiers)):
+					bpy.ops.object.modifier_move_up(modifier=m.name)
+
+				break
 
 	def get_curve(self):
 		return self.datablock_from_str(bpy.data.objects, self.params.CR_target_curve_name)
@@ -211,6 +219,8 @@ class CloudCurveRig(CloudBaseRig):
 		curve_ob.select_set(True)
 		bpy.context.view_layer.objects.active = curve_ob
 
+		assert curve_ob.visible_get(), "Error: Curve object could not be made visible. Perhaps it has a driver on its hide_viewport property that forces it to True?"
+
 		bpy.ops.object.mode_set(mode='EDIT')
 		bpy.ops.curve.select_all(action='DESELECT')
 		spline = curve_ob.data.splines[0]
@@ -218,6 +228,20 @@ class CloudCurveRig(CloudBaseRig):
 		num_points = len(points)
 
 		assert num_points == len(hooks), f"Error: Curve object {curve_ob.name} has {num_points} points, but {len(hooks)} hooks were passed."
+
+		# Disable all modifiers on the curve object
+		mod_vis_backup = {}
+		for m in curve_ob.modifiers:
+			mod_vis_backup[m.name] = m.show_viewport
+			m.show_viewport = False
+
+		# Disable all constraints on the curve object
+		constraint_vis_backup = {}
+		for c in curve_ob.constraints:
+			constraint_vis_backup[c.name] = c.mute
+			c.mute=True
+		
+		bpy.context.view_layer.update()
 
 		for i in range(0, num_points):
 			hook_b = hooks[i]
@@ -248,6 +272,15 @@ class CloudCurveRig(CloudBaseRig):
 			
 			if self.params.CR_separate_radius:
 				var_tgt.bone_target = hooks[i].radius_control.name
+
+		# Restore modifier visibility on curve object
+		for m in curve_ob.modifiers:
+			if m.name in mod_vis_backup:
+				m.show_viewport = mod_vis_backup[m.name]
+		
+		# Restore constraints visibility on the curve object
+		for c in curve_ob.constraints:
+			c.mute = constraint_vis_backup[c.name]
 
 		# Reset selection so Rigify can continue execution.
 		bpy.ops.object.mode_set(mode='OBJECT')
