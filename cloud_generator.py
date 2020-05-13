@@ -131,6 +131,9 @@ class CloudGenerator(Generator):
 		# Enable all armature layers during generation. This is to make sure if you try to set a bone as active, it won't fail silently.
 		obj.data.layers = [True]*32
 
+		# Make sure X-Mirror editing is disabled, always!!
+		obj.data.use_mirror_x = False
+
 		# Get rid of anim data in case the rig already existed
 		print("Clear rig animation data.")
 
@@ -274,6 +277,12 @@ class CloudGenerator(Generator):
 
 		self.invoke_finalize()
 
+		#TODO: For some reason when cloud_bone adds constraints to a bone, sometimes those constraints can be invalid even though they aren't actually.
+		for pb in obj.pose.bones:
+			for c in pb.constraints:
+				if hasattr(c, 'subtarget'):
+					c.subtarget = c.subtarget
+
 		t.tick("Finalize: ")
 
 		#------------------------------------------
@@ -283,9 +292,6 @@ class CloudGenerator(Generator):
 
 		# Create Selection Sets
 		create_selection_sets(obj, metarig)
-
-		# Create Bone Groups
-		# create_bone_groups(obj, metarig, self.layer_group_priorities)
 
 		t.tick("The rest: ")
 
