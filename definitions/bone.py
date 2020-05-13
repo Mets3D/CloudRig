@@ -402,6 +402,9 @@ class BoneInfo(ID):
 				else:
 					# We don't want Blender to destroy my object references(particularly vectors) when leaving edit mode, so pass in a deepcopy instead.
 					setattr_safe(edit_bone, key, copy.deepcopy(value))
+		
+		edit_bone.bbone_x = self._bbone_x
+		edit_bone.bbone_z = self._bbone_z
 					
 		# Custom Properties.
 		for key, prop in self.custom_props_edit.items():
