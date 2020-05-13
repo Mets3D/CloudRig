@@ -287,6 +287,11 @@ class BoneInfo(ID):
 	
 	def flatten(self):
 		self.vec = cloud_utils.flat(self.vec)
+		from math import pi
+		deg = self.roll*180/pi
+		# Round to nearest 90 degrees.
+		rounded = round(deg/90)*90
+		self.roll = pi/180*rounded
 	
 	def copy_info(self, bone_info):
 		"""Called from __init__ to initialize using existing BoneInfo."""
