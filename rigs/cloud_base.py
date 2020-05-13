@@ -323,6 +323,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		cls.add_bone_set(params, "Root Control Parent", preset=8)
 		cls.add_bone_set(params, "Original Bones", default_layers=[ORG])
 		cls.add_bone_set(params, "Display Transform Helpers", default_layers=[BODY_MECH])
+		cls.add_bone_set(params, "Parent Switch Helpers", default_layers=[BODY_MECH])
 
 	@classmethod
 	def add_parameters(cls, params):

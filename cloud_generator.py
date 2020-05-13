@@ -309,6 +309,8 @@ class CloudGenerator(Generator):
 				child.parent_bone = sub_parent
 				child.matrix_world = mat
 
+
+
 def generate_rig(context, metarig):
 	""" Generates a rig from a metarig.	"""
 	# Initial configuration

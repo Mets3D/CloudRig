@@ -196,13 +196,10 @@ class CloudUtilities:
 		# Create parent bone for the bone that stores the Armature constraint.
 		# NOTE: Bones with Armature constraints should never be exposed to the animator directly because it breaks snapping functionality!
 		arm_con_bone = self.create_parent_bone(child_bone)
+		arm_con_bone.bone_group = self.bone_groups["Parent Switch Helpers"]
+		arm_con_bone.layers = self.bone_layers["Parent Switch Helpers"]
 		arm_con_bone.name = "Parents_" + child_bone.name
 		arm_con_bone.custom_shape = None
-		# BODY_MECH = 8
-		# arm_con_bone.bone_group = self.generator.bone_groups.ensure(
-		# 	name = "Parent Switching Helpers"
-		# 	,layers = [BODY_MECH]
-		# )
 
 		targets = []
 		for pn in parent_names:
