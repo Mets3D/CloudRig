@@ -8,13 +8,15 @@ class CloudUtilities:
 	# If a class inherits this class, it's also expected to inherit CloudBaseRig - These are only split up for organizational purposes.
 
 	def add_ui_data(self, ui_area, row_name, col_name, info, default=0.0, _min=0.0, _max=1.0):
-		""" Store some data in the rig, organized in a way which the UI script expects. 
+		""" Store a dict in the rig data, which is used by cloudrig.py to draw the CloudRig UI. 
 		ui_area: One of a list of pre-defined strings that the UI script recognizes, that describes a panel or area in the UI. Eg, "fk_hinges", "ik_switches".
 		row_name: A row in the UI area.
 		col_name: A column within the row.
-		info: The info to store, usually a dictionary. At minimum, this is {prop_bone : "Name of Properties Bone", prop_id : "Name of Property that controls this setting"}
-		The values from info param are used to create a custom property on prop_bone, named prop_id.
+		info: The dictionary to store in the rig data.
 		"""
+
+		assert ('prop_bone' in info) and ('prop_id' in info), 'Error: Expected an info dict with at least "prop_bone" and "prop_id" keys.'
+
 		if ui_area not in self.obj.data:
 			self.obj.data[ui_area] = {}
 
