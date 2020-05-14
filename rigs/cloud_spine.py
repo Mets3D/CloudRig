@@ -129,7 +129,7 @@ class CloudSpineRig(CloudChainRig):
 
 		# Head Hinge
 		if self.org_head:
-			self.hinge_setup(
+			hng_bone = self.hinge_setup(
 				bone = self.fk_chain[-1], 
 				category = "Head",
 				parent_bone = self.fk_chain[-2],
@@ -137,9 +137,10 @@ class CloudSpineRig(CloudChainRig):
 				prop_bone = self.prop_bone,
 				prop_name = "fk_hinge_head",
 				limb_name = "Head",
-				default_value = 1.0,	# TODO: Delet this.
 				head_tail = 1
 			)
+			hng_bone.bone_group = self.bone_groups['Spine Mechanism']
+			hng_bone.layers = self.bone_layers['Spine Mechanism']
 
 	@stage.prepare_bones
 	def prepare_ik_spine(self):
