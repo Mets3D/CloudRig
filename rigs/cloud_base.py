@@ -73,10 +73,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		}
 		# Bone Info container used for storing bones created by this rig element.
 		self.bone_infos = BoneInfoContainer(self)
-		
-		# Keep track of created widgets, so we can add them to Rigify-created Widgets collection at the end.
-		# TODO: move to generator?
-		self.widgets = []
 
 		parent = self.get_bone(self.base_bone).parent
 		self.bones.parent = parent.name if parent else ""
@@ -223,32 +219,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			if not bd.use_custom_shape_bone_size:
 				bd.custom_shape_scale *= self.scale * bd.bbone_width * 10
 			bd.write_pose_data(pose_bone)
-
-	def organize_widgets(self):
-		# Hijack the widget collection automatically created by Rigify.
-		wgt_collection = self.generator.collection.children.get("Widgets")
-		if not wgt_collection:
-			# Try finding a "Widgets" collection next to the metarig.
-			for c in self.generator.metarig.users_collection:
-				wgt_collection = c.children.get("Widgets")
-				if wgt_collection: break
-
-		if not wgt_collection:
-			# Try finding a "Widgets" collection next to the generated rig.
-			for c in self.obj.users_collection:
-				wgt_collection = c.children.get("Widgets")
-				if wgt_collection: break
-
-		if not wgt_collection:
-			# Fall back to master collection.
-			wgt_collection = bpy.context.scene.collection
-		
-		for wgt in self.widgets:
-			if wgt.name not in wgt_collection.objects:
-				wgt_collection.objects.link(wgt)
-
-	def finalize(self):
-		self.organize_widgets()
 
 	##############################
 	# Parameters

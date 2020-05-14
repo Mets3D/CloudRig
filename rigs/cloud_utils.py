@@ -130,50 +130,7 @@ class CloudUtilities:
 		return candidates
 
 	def load_widget(self, name):
-		""" Load custom shapes by appending them from a blend file, unless they already exist in this file. """
-		# If it's already loaded, return it.
-		wgt_name = "WGT-"+name
-		wgt_ob = bpy.data.objects.get(wgt_name)
-		
-		exists = wgt_ob is not None
-		overwrite = self.generator.metarig.data.rigify_force_widget_update
-
-		if exists and not overwrite:
-			return wgt_ob
-
-		# If it exists, and we want to update it, rename it while we append the new one...
-		if wgt_ob:
-			wgt_ob.name = wgt_ob.name + "_temp"
-			wgt_ob.data.name = wgt_ob.data.name + "_temp"
-
-		# Loading bone shape object from file
-		filename = "Widgets.blend"
-		filedir = os.path.dirname(os.path.realpath(__file__))
-		blend_path = os.path.join(filedir, filename)
-
-		with bpy.data.libraries.load(blend_path) as (data_from, data_to):
-			for o in data_from.objects:
-				if o == wgt_name:
-					data_to.objects.append(o)
-		
-		new_wgt_ob = bpy.data.objects.get(wgt_name)
-		if not new_wgt_ob:
-			print("WARNING: Failed to load bone shape: " + wgt_name)
-			return
-		elif wgt_ob:
-			# Update original object with new one's data, then delete new object.
-			old_data_name = wgt_ob.data.name
-			wgt_ob.data = new_wgt_ob.data
-			wgt_ob.name = wgt_name
-			bpy.data.meshes.remove(bpy.data.meshes.get(old_data_name))
-			bpy.data.objects.remove(new_wgt_ob)
-		else:
-			wgt_ob = new_wgt_ob
-
-		if wgt_ob not in self.widgets:
-			self.widgets.append(wgt_ob)
-		
-		return wgt_ob
+		return self.generator.load_widget(name)
 
 	def rig_child(self, child_bone, parent_names, prop_bone, prop_name):
 		""" Rig a child with multiple switchable parents, using Armature constraint and drivers.
