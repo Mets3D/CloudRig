@@ -97,21 +97,22 @@ class CloudGenerator(Generator):
 
 	def ensure_widget_collection(self):
 		wgt_collection = None
+		coll_name = "widgets_" + self.obj.name.replace("RIG-", "").lower()
 
 		# Try finding a "Widgets" collection next to the metarig.
 		for c in self.metarig.users_collection:
-			wgt_collection = c.children.get("Widgets")
+			wgt_collection = c.children.get(coll_name)
 			if wgt_collection: break
 
 		if not wgt_collection:
 			# Try finding a "Widgets" collection next to the generated rig.
 			for c in self.obj.users_collection:
-				wgt_collection = c.children.get("Widgets")
+				wgt_collection = c.children.get(coll_name)
 				if wgt_collection: break
 
 		if not wgt_collection:
 			# Create a Widgets collection within the master collection.
-			wgt_collection = bpy.data.collections.new("Widgets")
+			wgt_collection = bpy.data.collections.new(coll_name)
 			bpy.context.scene.collection.children.link(wgt_collection)
 		
 		wgt_collection.hide_viewport=True
@@ -168,7 +169,6 @@ class CloudGenerator(Generator):
 		# NOTE: It should be possible to configure the generator options such that this function does nothing beside calling the generation stages of the rig elements.
 		# That is to say, everything in here should be behind an if(generator_parameter) statement.
 		print("CloudRig Generation begin")
-
 
 		context = self.context
 		metarig = self.metarig
