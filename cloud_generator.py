@@ -261,11 +261,9 @@ class CloudGenerator(Generator):
 		#------------------------------------------
 		bpy.ops.object.mode_set(mode='OBJECT')
 
-		create_root_widget(obj, "root")
+		# self.invoke_generate_widgets()
 
-		self.invoke_generate_widgets()
-
-		t.tick("Generate widgets: ")
+		# t.tick("Generate widgets: ")
 
 		#------------------------------------------
 		bpy.ops.object.mode_set(mode='OBJECT')

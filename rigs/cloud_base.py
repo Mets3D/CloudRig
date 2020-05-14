@@ -253,11 +253,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		self.obj.data.display_type = 'BBONE'
 
 	def finalize(self):
-		# Nuke Rigify's generated root bone shape so it cannot be applied.
-		root_shape = bpy.data.objects.get("WGT-"+self.obj.name+"_root")
-		if root_shape:
-			bpy.data.objects.remove(root_shape)
-
 		# For some god-forsaken reason, this is the earliest point when we can set bbone_x and bbone_z.
 		for b in self.obj.data.bones:
 			bi = self.bone_infos.find(b.name)
