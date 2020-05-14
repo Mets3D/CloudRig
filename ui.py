@@ -92,6 +92,8 @@ def draw_cloud_layer_names(self, context):
 	obj = context.object
 	arm = obj.data
 	layout = self.layout
+	ui_label_with_linebreak(layout, "Organize Layers panel layout. Layers without a name and layers beginning with $ will not be shown.")
+	ui_label_with_linebreak(layout, "In the generated rig, the same layers will be active and protected as on the metarig.")
 
 	# Ensure that the layers exist
 	if len(arm.rigify_layers) != len(arm.layers):
@@ -110,11 +112,13 @@ def draw_cloud_layer_names(self, context):
 			row = col_layer.row()
 			row.label(text=text)
 
-		row = col_layer.row()
+		row = col_layer.row(align=True)
 		col_number.label(text=str(i+1) + '.')
 		rigify_layer = arm.rigify_layers[i]
 		icon = 'RESTRICT_VIEW_OFF' if arm.layers[i] else 'RESTRICT_VIEW_ON'
 		row.prop(arm, "layers", index=i, text="", toggle=True, icon=icon)
+		icon = 'FAKE_USER_ON' if arm.layers_protected[i] else 'FAKE_USER_OFF'
+		row.prop(arm, "layers_protected", index=i, text="", toggle=True, icon=icon)
 		row.prop(rigify_layer, "name", text="")
 		row.prop(rigify_layer, "row", text="UI Row")
 
@@ -152,7 +156,7 @@ def ui_label_with_linebreak(layout, text):
 	cur_line_length = 0
 	# Try to determine maximum allowed characters in this line, based on pixel width of the area. 
 	# Not a great solution, but better than nothing.
-	max_line_length = bpy.context.area.width/6
+	max_line_length = bpy.context.area.width/8
 
 	while word_index < len(words):
 		word = words[word_index]

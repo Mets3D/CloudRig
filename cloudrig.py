@@ -872,6 +872,7 @@ class CLOUDRIG_PT_layers(CLOUDRIG_PT_main):
 		current_row_index = 0
 		for rigify_layer in sorted_layers:
 			if rigify_layer.name=="": continue
+			if rigify_layer.name.startswith("$"): continue
 			if rigify_layer.row > current_row_index:
 				current_row_index = rigify_layer.row
 				row = layout.row()

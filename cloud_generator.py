@@ -270,7 +270,8 @@ class CloudGenerator(Generator):
 		#------------------------------------------
 		bpy.ops.object.mode_set(mode='OBJECT')
 
-		self._Generator__compute_visible_layers()
+		obj.data.layers = self.metarig.data.layers[:]
+		obj.data.layers_protected = self.metarig.data.layers_protected[:]
 		self._Generator__restore_driver_vars()
 
 		t.tick("Assign layers: ")
