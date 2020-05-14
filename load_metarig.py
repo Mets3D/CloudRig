@@ -32,3 +32,4 @@ def load_metarig(metarig_name):
     
     bpy.context.scene.collection.objects.link(new_metarig)
     bpy.context.view_layer.objects.active = new_metarig
+    new_metarig.location = bpy.context.scene.cursor.location
