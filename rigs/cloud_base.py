@@ -247,23 +247,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			if wgt.name not in wgt_collection.objects:
 				wgt_collection.objects.link(wgt)
 
-	def configure_display(self):
-		# Armature display settings
-		self.obj.display_type = 'SOLID'
-		self.obj.data.display_type = 'BBONE'
-
 	def finalize(self):
-		# For some god-forsaken reason, this is the earliest point when we can set bbone_x and bbone_z.
-		for b in self.obj.data.bones:
-			bi = self.bone_infos.find(b.name)
-			if not bi:
-				# print("How come there's no BoneInfo for {b.name}?")	# TODO?
-				continue
-			b.bbone_x = bi._bbone_x
-			b.bbone_z = bi._bbone_z
-
 		self.organize_widgets()
-		self.configure_display()
 
 	##############################
 	# Parameters

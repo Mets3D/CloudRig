@@ -285,6 +285,10 @@ class CloudGenerator(Generator):
 		# Load and execute cloudrig.py rig UI script
 		obj.data['script'] = self.load_ui_script()
 
+		# Armature display settings
+		obj.display_type = self.metarig.display_type
+		obj.data.display_type = self.metarig.data.display_type
+
 		self.invoke_finalize()
 
 		#TODO: For some reason when cloud_bone adds constraints to a bone, sometimes those constraints can be invalid even though they aren't actually.
