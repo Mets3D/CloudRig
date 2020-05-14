@@ -142,7 +142,7 @@ class CloudGenerate(bpy.types.Operator):
 
 		return {'FINISHED'}
 
-def ui_label_with_linebreak(layout, text, context):
+def ui_label_with_linebreak(layout, text):
 	words = text.split(" ")
 	word_index = 0
 
@@ -152,7 +152,7 @@ def ui_label_with_linebreak(layout, text, context):
 	cur_line_length = 0
 	# Try to determine maximum allowed characters in this line, based on pixel width of the area. 
 	# Not a great solution, but better than nothing.
-	max_line_length = context.area.width/6
+	max_line_length = bpy.context.area.width/6
 
 	while word_index < len(words):
 		word = words[word_index]

@@ -375,7 +375,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		"""
 		ui_rows = {}
 		from ..ui import ui_label_with_linebreak
-		ui_label_with_linebreak(layout, cls.description, bpy.context)
+		ui_label_with_linebreak(layout, cls.description)
 		cls.bone_sets_ui(layout, params, ui_rows)
 
 		# We can return a dictionary of key:UILayout elements, in case we want to affect the UI layout of inherited rig elements.

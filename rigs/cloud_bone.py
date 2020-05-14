@@ -347,7 +347,8 @@ class CloudBoneRig(BaseRig):
 	@classmethod
 	def parameters_ui(cls, layout, params):
 		"""Create the ui for the rig parameters."""
-		layout.label(text=cls.description)
+		from ..ui import ui_label_with_linebreak
+		ui_label_with_linebreak(layout, cls.description)
 
 		layout.use_property_split = True
 		
