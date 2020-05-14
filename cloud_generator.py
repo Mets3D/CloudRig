@@ -1,6 +1,6 @@
 import bpy, os
 from mathutils import Matrix
-from bpy.props import BoolProperty, StringProperty, EnumProperty, PointerProperty
+from bpy.props import BoolProperty, StringProperty, EnumProperty, PointerProperty, BoolVectorProperty
 from rigify.generate import *
 from .definitions.bone_group import BoneGroupContainer
 from .rigs import cloud_utils
@@ -60,6 +60,47 @@ class CloudRigProperties(bpy.types.PropertyGroup):
 		,default	 = "."
 	)
 
+	override_options = BoolProperty(
+		name = "Override Bone Layers"
+		,description = "Instead of allowing rig elements to assign deform/mechanism/org bone layers individually, set it from the generator instead."
+		,default=False
+	)
+
+	override_def_layers = BoolProperty(
+		name		="Deform"
+		,description="Instead of allowing rig elements to assign deform layers individually, set it from the generator instead."
+		,default	=True
+	)
+	def_layer = BoolVectorProperty(
+		size = 32, 
+		subtype = 'LAYER', 
+		description = "Select what layers this set of bones should be assigned to",
+		default = [l==29 for l in range(32)]
+	)
+
+	override_mch_layers = BoolProperty(
+		name		="Mechanism"
+		,description="Instead of allowing rig elements to assign mechanism layers individually, set it from the generator instead."
+		,default	=True
+	)
+	mch_layer = BoolVectorProperty(
+		size = 32, 
+		subtype = 'LAYER', 
+		description = "Select what layers this set of bones should be assigned to",
+		default = [l==30 for l in range(32)]
+	)
+
+	override_org_layers = BoolProperty(
+		name		="Org"
+		,description="Instead of allowing rig elements to assign original bones' layers individually, set it from the generator instead."
+		,default	=True
+	)
+	org_layer = BoolVectorProperty(
+		size = 32, 
+		subtype = 'LAYER', 
+		description = "Select what layers this set of bones should be assigned to",
+		default = [l==31 for l in range(32)]
+	)
 
 class CloudGenerator(Generator):
 	def __init__(self, context, metarig):

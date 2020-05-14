@@ -27,7 +27,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	description = "CloudRig Element (no description)"
 
 	bone_sets = OrderedDict()
-
+	
 	default_layers = lambda name: DefaultLayers[name].value
 
 	def find_org_bones(self, bone):
@@ -98,17 +98,12 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			if k in ['_RNA_UI', 'rig_id']: continue
 			del self.obj.data[k]
 
-		# TODO: Put this under a generator parameter
-		# If no layers are protected, protect all layers. Otherwise, we assume protected layers were set up manually in a previously generated rig, so we don't touch them.
-		if list(self.obj.data.layers_protected) == [False]*32:
-			self.obj.data.layers_protected = [True]*32
-
 	@property
 	def prop_bone(self):
 		""" Ensure that a Properties bone exists, and return it. """
 		# This is a @property so that if it's never called(like in the case of very simple rigs), the properties bone is not created.
 		prop_bone = self.bone_infos.bone(
-			name = "Properties_IKFK", # TODO: Rename to just "Properties"... just don't want to do it mid-production.
+			name = "Properties_IKFK",
 			overwrite = False,
 			bone_group = self.bone_groups['Root Control'],
 			layers = self.bone_layers['Root Control'],
@@ -121,7 +116,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 	def ensure_bone_groups(self):
 		""" Ensure bone groups that this rig needs. """
-		# Now my only concern is, where do we get the preset from? It could be stored in cls.bone_groups...
 		
 		self.bone_groups = {}
 		self.bone_layers = {}
@@ -151,7 +145,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 			meta_org_name = eb.name[4:]
 			meta_org = self.generator.metarig.pose.bones.get(meta_org_name)
-			# meta_org.name = meta_org.name.replace("-", self.generator.prefix_separator)
 
 			org_bi = self.bone_infos.bone(
 				name		 = bn
@@ -160,10 +153,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 				,bone_group	 = self.bone_groups["Original Bones"]
 				,layers		 = self.bone_layers["Original Bones"]
 			)
-
-			# Rigify discards the bbone scale values from the metarig, but I'd like to keep them for easy visual scaling.
-			org_bi._bbone_x = meta_org.bone.bbone_x
-			org_bi._bbone_z = meta_org.bone.bbone_z
 
 			org_bi.meta_bone = meta_org
 
@@ -176,8 +165,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 				bd.name not in self.bones.flatten() and
 				bd.name != 'root'
 			):
-				self.copy_bone("root", bd.name)
-				# self.new_bone(bd.name) # new_bone() is currently bugged and doesn't register the new bone, so we use copy_bone instead.
+				self.new_bone(bd.name)
 
 	def parent_bones(self):
 		for bd in self.bone_infos.bones:
@@ -186,6 +174,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			bd.write_edit_data(self.obj, edit_bone)
 
 	def create_real_bone_groups(self):
+		# TODO: Move this whole function into the generator.
 		bgs = self.generator.bone_groups
 		# If the metarig has a group with the same name as what we're about to create, modify bone group's colors accordingly.
 		for meta_bg in self.generator.metarig.pose.bone_groups:
@@ -215,7 +204,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			except:
 				print(f"WARNING: BoneInfo wasn't created for some reason: {bd.name}")
 				continue
-			# Apply scaling
+
+			# Scale bone shape based on BBone scale
 			if not bd.use_custom_shape_bone_size:
 				bd.custom_shape_scale *= self.scale * bd.bbone_width * 10
 			bd.write_pose_data(pose_bone)
@@ -304,9 +294,6 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		layout.prop(params, "CR_show_bone_sets", toggle=True, icon=icon)
 		if not params.CR_show_bone_sets: return
 
-		# print(f"bone sets for {cls}")
-		# import json
-		# print(json.dumps(cls.bone_sets, indent=2))
 		for ui_name in cls.bone_sets.keys():
 			set_info = cls.bone_sets[ui_name]
 			cls.bone_set_ui(params, layout, set_info, ui_rows)

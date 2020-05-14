@@ -66,7 +66,24 @@ def draw_cloud_bone_group_options(self, context):
 	if obj.data.rigify_colors_lock:
 		color_row.prop(obj.data.rigify_selection_colors, "select", text="")
 		color_row.prop(obj.data.rigify_selection_colors, "active", text="")
-		# TODO: If possible, we would draw a BoolVectorProperty layer selector for each existing bonegroup in the metarig.
+
+	cloudrig = obj.data.cloudrig
+	layout.separator()
+
+	icon = 'TRIA_DOWN' if cloudrig.override_options else 'TRIA_RIGHT'
+	layout.prop(cloudrig, "override_options", toggle=True, icon=icon)
+	if cloudrig.override_options:
+		layout.prop(cloudrig, "override_def_layers")
+		if cloudrig.override_def_layers:
+			layout.prop(cloudrig, "def_layer", text="")
+
+		layout.prop(cloudrig, "override_mch_layers")
+		if cloudrig.override_mch_layers:
+			layout.prop(cloudrig, "mch_layer", text="")
+
+		layout.prop(cloudrig, "override_org_layers")
+		if cloudrig.override_org_layers:
+			layout.prop(cloudrig, "org_layer", text="")
 
 class CloudRigLayerInit(bpy.types.Operator):
 	"""Initialize armature rigify layers"""
