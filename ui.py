@@ -73,6 +73,16 @@ def draw_cloud_bone_group_options(self, context):
 	icon = 'TRIA_DOWN' if cloudrig.override_options else 'TRIA_RIGHT'
 	layout.prop(cloudrig, "override_options", toggle=True, icon=icon)
 	if cloudrig.override_options:
+	
+		layout.prop_search(cloudrig, "root_bone_group", bpy.context.object.pose, "bone_groups")
+		layout.prop(cloudrig, "root_layers", text="")
+
+		if cloudrig.double_root:
+			layout.prop_search(cloudrig, "root_parent_group", bpy.context.object.pose, "bone_groups")
+			layout.prop(cloudrig, "root_parent_layers", text="")
+
+		layout.separator()
+		
 		layout.prop(cloudrig, "override_def_layers")
 		if cloudrig.override_def_layers:
 			layout.prop(cloudrig, "def_layers", text="")

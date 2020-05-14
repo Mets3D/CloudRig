@@ -66,9 +66,33 @@ class CloudRigProperties(bpy.types.PropertyGroup):
 		,default=False
 	)
 
+	root_bone_group = StringProperty(
+		name="Root"
+		,description="Bone Group to assign the root bone to"
+		,default="Root"
+	)
+	root_layers = BoolVectorProperty(
+		size = 32, 
+		subtype = 'LAYER', 
+		description = "Layers to assign the root bone to",
+		default = [l==0 for l in range(32)]
+	)
+
+	root_parent_group = StringProperty(
+		name="Root Parent"
+		,description="Bone Group to assign the second root bone to"
+		,default="Root Parent"
+	)
+	root_parent_layers = BoolVectorProperty(
+		size = 32, 
+		subtype = 'LAYER', 
+		description = "Layers to assign the the second root bone to",
+		default = [l==0 for l in range(32)]
+	)
+
 	override_def_layers = BoolProperty(
 		name		="Deform"
-		,description="Instead of allowing rig elements to assign deform layers individually, set it from the generator instead."
+		,description="Instead of allowing rig elements to assign deform layers individually, set it from the generator instead"
 		,default	=True
 	)
 	def_layers = BoolVectorProperty(
@@ -80,7 +104,7 @@ class CloudRigProperties(bpy.types.PropertyGroup):
 
 	override_mch_layers = BoolProperty(
 		name		="Mechanism"
-		,description="Instead of allowing rig elements to assign mechanism layers individually, set it from the generator instead."
+		,description="Instead of allowing rig elements to assign mechanism layers individually, set it from the generator instead"
 		,default	=True
 	)
 	mch_layers = BoolVectorProperty(
@@ -92,7 +116,7 @@ class CloudRigProperties(bpy.types.PropertyGroup):
 
 	override_org_layers = BoolProperty(
 		name		="Org"
-		,description="Instead of allowing rig elements to assign original bones' layers individually, set it from the generator instead."
+		,description="Instead of allowing rig elements to assign original bones' layers individually, set it from the generator instead"
 		,default	=True
 	)
 	org_layers = BoolVectorProperty(
@@ -110,7 +134,17 @@ class CloudGenerator(Generator):
 		# Initialize BoneGroupContainer.
 		self.bone_groups = BoneGroupContainer()
 
-		# Initialize generator parameters (These are registered in cloudrig/__init__.py)
+		# Root bone groups
+		self.root_group = self.bone_groups.ensure(
+			name = self.params.cloudrig.root_bone_group,
+			preset = 2
+		)
+		if self.params.cloudrig.double_root:
+			self.root_parent_group = self.bone_groups.ensure(
+				name = self.params.cloudrig.root_parent_group,
+				preset = 8
+			)
+
 		self.prefix_separator = self.params.cloudrig.prefix_separator
 		self.suffix_separator = self.params.cloudrig.suffix_separator
 		assert self.prefix_separator != self.suffix_separator, "CloudGenerator Error: Prefix and Suffix separators cannot be the same."
