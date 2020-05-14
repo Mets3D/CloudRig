@@ -399,17 +399,18 @@ class CloudSpineRig(CloudChainRig):
 			super().bone_set_ui(params, layout, set_info, ui_rows)
 
 	@classmethod
-	def parameters_ui(cls, layout, params):
+	def cloud_params_ui(cls, layout, params):
 		"""Create the ui for the rig parameters."""
-		super().parameters_ui(layout, params)
+		ui_rows = super().cloud_params_ui(layout, params)
 
 		icon = 'TRIA_DOWN' if params.CR_show_spine_settings else 'TRIA_RIGHT'
 		layout.prop(params, "CR_show_spine_settings", toggle=True, icon=icon)
-		if not params.CR_show_spine_settings: return
+		if not params.CR_show_spine_settings: return ui_rows
 		
 		layout.prop(params, "CR_spine_length")
 		layout.prop(params, "CR_create_ik_spine")
 		layout.prop(params, "CR_double_controls")
+		return ui_rows
 
 class Rig(CloudSpineRig):
 	pass

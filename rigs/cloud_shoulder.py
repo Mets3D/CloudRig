@@ -46,10 +46,10 @@ class CloudShoulderRig(CloudFKChainRig):
 		super().add_parameters(params)
 
 	@classmethod
-	def parameters_ui(cls, layout, params):
+	def cloud_params_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
-		super().parameters_ui(layout, params)
+		super().cloud_params_ui(layout, params)
 
 class Rig(CloudShoulderRig):
 	pass

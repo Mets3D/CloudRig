@@ -346,10 +346,10 @@ class CloudCurveRig(CloudBaseRig):
 			super().bone_set_ui(params, layout, set_info, ui_rows)
 
 	@classmethod
-	def parameters_ui(cls, layout, params):
+	def cloud_params_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
-		ui_rows = super().parameters_ui(layout, params)
+		ui_rows = super().cloud_params_ui(layout, params)
 
 		curve_ob = cls.datablock_from_str(bpy.data.objects, params.CR_target_curve_name)
 		no_curve = params.CR_target_curve_name=="" or curve_ob==None or curve_ob.type!='CURVE'

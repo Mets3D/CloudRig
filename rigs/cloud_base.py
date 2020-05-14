@@ -315,14 +315,20 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			cls.bone_set_ui(params, layout, set_info, ui_rows)
 		
 		return ui_rows
+	
+	@classmethod
+	def cloud_params_ui(cls, layout, params):
+		ui_rows = {}
+		from ..ui import ui_label_with_linebreak
+		ui_label_with_linebreak(layout, cls.description)
+		return ui_rows
 
 	@classmethod
 	def parameters_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
-		ui_rows = {}
-		from ..ui import ui_label_with_linebreak
-		ui_label_with_linebreak(layout, cls.description)
+		ui_rows = cls.cloud_params_ui(layout, params)
+		layout.separator()
 		cls.bone_sets_ui(layout, params, ui_rows)
 
 		# We can return a dictionary of key:UILayout elements, in case we want to affect the UI layout of inherited rig elements.

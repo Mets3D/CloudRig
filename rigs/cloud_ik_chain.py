@@ -561,10 +561,10 @@ class CloudIKChainRig(CloudFKChainRig):
 			super().bone_set_ui(params, layout, set_info, ui_rows)
 
 	@classmethod
-	def parameters_ui(cls, layout, params):
+	def cloud_params_ui(cls, layout, params):
 		""" Create the ui for the rig parameters.
 		"""
-		ui_rows = super().parameters_ui(layout, params)
+		ui_rows = super().cloud_params_ui(layout, params)
 
 		icon = 'TRIA_DOWN' if params.CR_show_ik_settings else 'TRIA_RIGHT'
 		layout.prop(params, "CR_show_ik_settings", toggle=True, icon=icon)
