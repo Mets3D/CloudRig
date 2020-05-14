@@ -1,9 +1,7 @@
 **Note**: CloudRig is currently a work in progress.
 Here are some of the major things that still need to be done:
-- Customizable Layers UI.
 - Layer assignment override on the Generator level for all ORG, DEF and mechanism bones, for less cluttered "Bone Sets".
-- Certain bones don't get layers or groups assigned properly atm.
-- Update Cloud Human metarig and all rig samples.
+- Update all rig samples.
 
 And that's not to mention dozens of smaller tasks, as well as adding more rig elements, like face setups. So use with care!
 

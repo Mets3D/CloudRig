@@ -66,6 +66,21 @@ def draw_cloud_bone_group_options(self, context):
 		color_row.prop(obj.data.rigify_selection_colors, "active", text="")
 		# TODO: If possible, we would draw a BoolVectorProperty layer selector for each existing bonegroup in the metarig.
 
+class CloudRigLayerInit(bpy.types.Operator):
+	"""Initialize armature rigify layers"""
+
+	bl_idname = "pose.cloudrig_layer_init"
+	bl_label = "Add Rigify Layers (CloudRig)"
+	bl_options = {'UNDO', 'INTERNAL'}
+
+	def execute(self, context):
+		obj = context.object
+		arm = obj.data
+		for i in range(len(arm.rigify_layers), len(arm.layers)):
+			arm.rigify_layers.add()
+
+		return {'FINISHED'}
+
 def draw_cloud_layer_names(self, context):
 	""" Hijack Rigify's Layer Names panel and replace it with our own. """
 	obj = context.object
@@ -78,14 +93,26 @@ def draw_cloud_layer_names(self, context):
 	arm = obj.data
 	layout = self.layout
 
+	# Ensure that the layers exist
+	if len(arm.rigify_layers) != len(arm.layers):
+		layout.operator("pose.cloudrig_layer_init")
+		return
+
 	# UI
 	main_row = layout.row(align=True).split(factor=0.05)
 	col_number = main_row.column()
 	col_layer = main_row.column()
-	for i in range(28):
+
+	for i in range(len(arm.rigify_layers)):
+		if i in (0, 16):
+			col_number.label(text="")
+			text = ("Top" if i==0 else "Bottom") + " Row"
+			row = col_layer.row()
+			row.label(text=text)
+
+		row = col_layer.row()
 		col_number.label(text=str(i+1) + '.')
 		rigify_layer = arm.rigify_layers[i]
-		row = col_layer.row()
 		icon = 'RESTRICT_VIEW_OFF' if arm.layers[i] else 'RESTRICT_VIEW_ON'
 		row.prop(arm, "layers", index=i, text="", toggle=True, icon=icon)
 		row.prop(rigify_layer, "name", text="")
@@ -115,9 +142,38 @@ class CloudGenerate(bpy.types.Operator):
 
 		return {'FINISHED'}
 
+def ui_label_with_linebreak(layout, text, context):
+	words = text.split(" ")
+	word_index = 0
+
+	lines = [""]
+	line_index = 0
+
+	cur_line_length = 0
+	# Try to determine maximum allowed characters in this line, based on pixel width of the area. 
+	# Not a great solution, but better than nothing.
+	max_line_length = context.area.width/6
+
+	while word_index < len(words):
+		word = words[word_index]
+
+		if cur_line_length + len(word)+1 < max_line_length:
+			word_index += 1
+			cur_line_length += len(word)+1
+			lines[line_index] += word + " "
+		else:
+			cur_line_length = 0
+			line_index += 1
+			lines.append("")
+	
+	for line in lines:
+		layout.label(text=line)
+
 def register():
 	from bpy.utils import register_class
 	register_class(CloudGenerate)
+	register_class(CloudRigLayerInit)
+	
 	
 	# Hijack Rigify panels' draw functions.
 	bpy.types.DATA_PT_rigify_buttons.draw_old = bpy.types.DATA_PT_rigify_buttons.draw
@@ -132,6 +188,7 @@ def register():
 def unregister():
 	from bpy.utils import unregister_class
 	unregister_class(CloudGenerate)
+	unregister_class(CloudRigLayerInit)
 	
 	# Restore Rigify panels' draw functions.
 	bpy.types.DATA_PT_rigify_buttons.draw = bpy.types.DATA_PT_rigify_buttons.draw_old

@@ -859,55 +859,23 @@ class CLOUDRIG_PT_layers(CLOUDRIG_PT_main):
 	bl_label = "Layers"
 
 	def draw(self, context):
-		layout = self.layout
+		""" Draw rig layer toggles based on data stored in rig.data.rigify_layers. """
 		rig = active_cloudrig()
 		if not rig: return
 		data = rig.data
+		rigify_layers = data.rigify_layers
 
-		row_ik = layout.row()
-		row_ik.prop(data, 'layers', index=0, toggle=True, text='IK')
-		row_ik.prop(data, 'layers', index=16, toggle=True, text='IK Secondary')
-
-		row_fk = layout.row()
-		row_fk.prop(data, 'layers', index=1, toggle=True, text='FK')
-		row_fk.prop(data, 'layers', index=17, toggle=True, text='FK Secondary')
-
-		layout.prop(data, 'layers', index=2, toggle=True, text='Stretch')
-
-		row_face = layout.row()
-		row_face.column().prop(data, 'layers', index=3, toggle=True, text='Face Primary')
-		row_face.column().prop(data, 'layers', index=19, toggle=True, text='Face Extras')
-		row_face.column().prop(data, 'layers', index=20, toggle=True, text='Face Tweak')
-
-		layout.prop(data, 'layers', index=5, toggle=True, text='Fingers')
-
-		layout.row().prop(data, 'layers', index=6, toggle=True, text='Hair')
-		layout.row().prop(data, 'layers', index=7, toggle=True, text='Clothes')
-
-		# Draw secret layers
-		if 'dev' in rig and rig['dev']==1:
-			layout.separator()
-			layout.prop(rig, '["dev"]', text="Secret Layers")
-			layout.label(text="Body")
-			row = layout.row()
-			row.prop(data, 'layers', index=8, toggle=True, text='Mech')
-			row.prop(data, 'layers', index=9, toggle=True, text='Adjust Mech')
-			row = layout.row()
-			row.prop(data, 'layers', index=24, toggle=True, text='Deform')
-			row.prop(data, 'layers', index=25, toggle=True, text='Adjust Deform')
-
-			layout.label(text="Head")
-			row = layout.row()
-			row.prop(data, 'layers', index=11, toggle=True, text='Mech')
-			row.prop(data, 'layers', index=12, toggle=True, text='Unlockers')
-			row = layout.row()
-			row.prop(data, 'layers', index=27, toggle=True, text='Deform')
-			row.prop(data, 'layers', index=28, toggle=True, text='Hierarchy')
-
-			layout.label(text="Other")
-			death_row = layout.row()
-			death_row.prop(data, 'layers', index=30, toggle=True, text='Properties')
-			death_row.prop(data, 'layers', index=31, toggle=True, text='Black Box')
+		layout = self.layout
+		
+		sorted_layers = sorted(rigify_layers, key=lambda l: l.row)
+		sorted_layers = [l for l in sorted_layers if l.name!=" "]
+		current_row_index = 0
+		for rigify_layer in sorted_layers:
+			if rigify_layer.name=="": continue
+			if rigify_layer.row > current_row_index:
+				current_row_index = rigify_layer.row
+				row = layout.row()
+			row.prop(data, 'layers', index=rigify_layers.find(rigify_layer.name), toggle=True, text=rigify_layer.name)
 
 class CLOUDRIG_PT_settings(CLOUDRIG_PT_main):
 	bl_idname = "CLOUDRIG_PT_settings_" + script_id

@@ -17,9 +17,9 @@ class DefaultLayers(Enum):
 	FK_MAIN = 1
 	STRETCH = 2
 
-	ORG = 31
-	MCH = 8
 	DEF = 29
+	MCH = 30
+	ORG = 31
 
 class CloudBaseRig(BaseRig, CloudUtilities):
 	"""Base for all CloudRig rigs."""
@@ -374,35 +374,9 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		""" Create the ui for the rig parameters.
 		"""
 		ui_rows = {}
+		from ..ui import ui_label_with_linebreak
 		ui_label_with_linebreak(layout, cls.description, bpy.context)
 		cls.bone_sets_ui(layout, params, ui_rows)
 
 		# We can return a dictionary of key:UILayout elements, in case we want to affect the UI layout of inherited rig elements.
 		return ui_rows
-
-def ui_label_with_linebreak(layout, text, context):
-	words = text.split(" ")
-	word_index = 0
-
-	lines = [""]
-	line_index = 0
-
-	cur_line_length = 0
-	# Try to determine maximum allowed characters in this line, based on pixel width of the area. 
-	# Not a great solution, but better than nothing.
-	max_line_length = context.area.width/6
-
-	while word_index < len(words):
-		word = words[word_index]
-
-		if cur_line_length + len(word)+1 < max_line_length:
-			word_index += 1
-			cur_line_length += len(word)+1
-			lines[line_index] += word + " "
-		else:
-			cur_line_length = 0
-			line_index += 1
-			lines.append("")
-	
-	for line in lines:
-		layout.label(text=line)

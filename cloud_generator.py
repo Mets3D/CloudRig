@@ -189,6 +189,17 @@ class CloudGenerator(Generator):
 
 		t.tick("Initialize rigs: ")
 
+		# Copy Rigify Layers from metarig to target rig
+		for i in range(len(obj.data.rigify_layers), len(self.metarig.data.rigify_layers)):
+			obj.data.rigify_layers.add()
+		for i, rig_layer in enumerate(self.metarig.data.rigify_layers):
+			target = obj.data.rigify_layers[i]
+			source = self.metarig.data.rigify_layers[i]
+			target.name = source.name
+			target.row = source.row
+			target.selset = source.selset
+			target.group = source.group
+
 		#------------------------------------------
 		bpy.ops.object.mode_set(mode='EDIT')
 
@@ -308,8 +319,6 @@ class CloudGenerator(Generator):
 				mat = child.matrix_world.copy()
 				child.parent_bone = sub_parent
 				child.matrix_world = mat
-
-
 
 def generate_rig(context, metarig):
 	""" Generates a rig from a metarig.	"""
