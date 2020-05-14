@@ -75,15 +75,15 @@ def draw_cloud_bone_group_options(self, context):
 	if cloudrig.override_options:
 		layout.prop(cloudrig, "override_def_layers")
 		if cloudrig.override_def_layers:
-			layout.prop(cloudrig, "def_layer", text="")
+			layout.prop(cloudrig, "def_layers", text="")
 
 		layout.prop(cloudrig, "override_mch_layers")
 		if cloudrig.override_mch_layers:
-			layout.prop(cloudrig, "mch_layer", text="")
+			layout.prop(cloudrig, "mch_layers", text="")
 
 		layout.prop(cloudrig, "override_org_layers")
 		if cloudrig.override_org_layers:
-			layout.prop(cloudrig, "org_layer", text="")
+			layout.prop(cloudrig, "org_layers", text="")
 
 class CloudRigLayerInit(bpy.types.Operator):
 	"""Initialize armature rigify layers"""

@@ -364,7 +364,7 @@ class CloudSpineRig(CloudChainRig):
 		cls.add_bone_set(params, "Spine Main Controls", preset=2, default_layers=[cls.default_layers('IK_MAIN')])
 		cls.add_bone_set(params, "Spine Parent Controls", preset=8, default_layers=[cls.default_layers('IK_MAIN')])
 		cls.add_bone_set(params, "Spine IK Secondary", preset=10, default_layers=[cls.default_layers('IK_SECOND')])
-		cls.add_bone_set(params, "Spine Mechanism", default_layers=[cls.default_layers('MCH')])
+		cls.add_bone_set(params, "Spine Mechanism", default_layers=[cls.default_layers('MCH')], override='MCH')
 
 	@classmethod
 	def add_parameters(cls, params):

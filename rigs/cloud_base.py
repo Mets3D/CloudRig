@@ -132,6 +132,16 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			)
 			self.bone_layers[ui_name] = group_layers[:]
 
+			# Handle layer overrides for DEF/MCH/ORG from generator parameters.
+			if set_info['override'] == 'DEF' and self.generator_params.cloudrig.override_def_layers:
+				self.bone_layers[ui_name] = self.generator_params.cloudrig.def_layers[:]
+
+			if set_info['override'] == 'MCH' and self.generator_params.cloudrig.override_mch_layers:
+				self.bone_layers[ui_name] = self.generator_params.cloudrig.mch_layers[:]
+
+			if set_info['override'] == 'ORG' and self.generator_params.cloudrig.override_org_layers:
+				self.bone_layers[ui_name] = self.generator_params.cloudrig.org_layers[:]
+
 	def prepare_bones(self):
 		self.load_org_bones()
 
@@ -214,7 +224,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	# Parameters
 
 	@classmethod
-	def add_bone_set(cls, params, ui_name, default_group="", default_layers=[0], preset=-1):
+	def add_bone_set(cls, params, ui_name, default_group="", default_layers=[0], override="", preset=-1):
 		""" 
 		A bone set is just a set of rig parameters for choosing a bone group and list of bone layers.
 		This function is responsible for creating those rig parameters, as well as storing them, 
@@ -252,12 +262,15 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 				default = default_layers_bools
 			)
 		)
+
+		assert override in ['', 'DEF', 'MCH', 'ORG'], "Error: Unsupported bone set override"
 		
 		cls.bone_sets[ui_name] = {
-			'name' : ui_name,
-			'preset' : preset,					# Bone Group color preset to use in case the bone group doesn't already exist.
-			'param' : param_name,				# Name of the bone group name parameter
-			'layer_param' : layer_param_name	# Name of the bone layers parameter
+			'name' 		   : ui_name
+			,'preset' 	   : preset				# Bone Group color preset to use in case the bone group doesn't already exist.
+			,'param' 	   : param_name			# Name of the bone group name parameter
+			,'layer_param' : layer_param_name	# Name of the bone layers parameter
+			,'override'	   : override
 		}
 		return ui_name
 
@@ -269,9 +282,9 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 		cls.add_bone_set(params, "Root Control", preset=2)
 		cls.add_bone_set(params, "Root Control Parent", preset=8)
-		cls.add_bone_set(params, "Original Bones", default_layers=[cls.default_layers('ORG')])
-		cls.add_bone_set(params, "Display Transform Helpers", default_layers=[cls.default_layers('MCH')])
-		cls.add_bone_set(params, "Parent Switch Helpers", default_layers=[cls.default_layers('MCH')])
+		cls.add_bone_set(params, "Original Bones", default_layers=[cls.default_layers('ORG')], override='ORG')
+		cls.add_bone_set(params, "Display Transform Helpers", default_layers=[cls.default_layers('MCH')], override='MCH')
+		cls.add_bone_set(params, "Parent Switch Helpers", default_layers=[cls.default_layers('MCH')], override='MCH')
 
 	@classmethod
 	def add_parameters(cls, params):
@@ -283,6 +296,11 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 	
 	@classmethod
 	def bone_set_ui(cls, params, layout, set_info, ui_rows):
+		cloudrig = bpy.context.object.data.cloudrig
+		if set_info['override'] == 'DEF' and cloudrig.override_def_layers: return
+		if set_info['override'] == 'MCH' and cloudrig.override_mch_layers: return
+		if set_info['override'] == 'ORG' and cloudrig.override_org_layers: return
+
 		ui_rows[set_info['param']] = col = layout.column()
 		col.prop_search(params, set_info['param'], bpy.context.object.pose, "bone_groups", text=set_info['name'])
 		col.prop(params, set_info['layer_param'], text="")

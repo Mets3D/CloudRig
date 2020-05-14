@@ -71,7 +71,7 @@ class CloudRigProperties(bpy.types.PropertyGroup):
 		,description="Instead of allowing rig elements to assign deform layers individually, set it from the generator instead."
 		,default	=True
 	)
-	def_layer = BoolVectorProperty(
+	def_layers = BoolVectorProperty(
 		size = 32, 
 		subtype = 'LAYER', 
 		description = "Select what layers this set of bones should be assigned to",
@@ -83,7 +83,7 @@ class CloudRigProperties(bpy.types.PropertyGroup):
 		,description="Instead of allowing rig elements to assign mechanism layers individually, set it from the generator instead."
 		,default	=True
 	)
-	mch_layer = BoolVectorProperty(
+	mch_layers = BoolVectorProperty(
 		size = 32, 
 		subtype = 'LAYER', 
 		description = "Select what layers this set of bones should be assigned to",
@@ -95,7 +95,7 @@ class CloudRigProperties(bpy.types.PropertyGroup):
 		,description="Instead of allowing rig elements to assign original bones' layers individually, set it from the generator instead."
 		,default	=True
 	)
-	org_layer = BoolVectorProperty(
+	org_layers = BoolVectorProperty(
 		size = 32, 
 		subtype = 'LAYER', 
 		description = "Select what layers this set of bones should be assigned to",
