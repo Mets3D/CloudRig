@@ -431,9 +431,8 @@ class CloudIKChainRig(CloudFKChainRig):
 			# If this rig has no parent candidates, there's nothing to be done here.
 			return
 
-		# Try to rig the IK control's parent switcher, searching for these parent candidates.
 		ik_parents_prop_name = "ik_parents_" + self.limb_name_props
-
+		# Try to rig the IK control's parent switcher, searching for these parent candidates.
 		parent_names = self.rig_child(ik_ctrl, self.ik_parents, self.prop_bone, ik_parents_prop_name)
 		if len(parent_names) > 0:
 			bones = [ik_ctrl.name]
@@ -475,7 +474,7 @@ class CloudIKChainRig(CloudFKChainRig):
 			arm_con_bone = self.pole_ctrl.parent
 			arm_con = arm_con_bone.constraints[0][1]
 			arm_con['targets'].append({
-				"subtarget" : ik_ctrl.name
+				"subtarget" : self.ik_mstr.name
 			})
 
 			# Tweak each driver on the IK pole's parent, as well as add a driver to the new target.

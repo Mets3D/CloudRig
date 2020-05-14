@@ -80,8 +80,8 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		# Root bone
 		self.root_bone = self.bone_infos.bone(
 			name				= "root"
-			,bone_group			= self.generator.root_bone_group
-			,layers				= self.generator.cloudrig.root_layers[:]
+			,bone_group			= self.generator.root_group
+			,layers				= self.generator_params.cloudrig.root_layers[:]
 			,head				= Vector((0, 0, 0))
 			,tail				= Vector((0, self.scale*5, 0))
 			,bbone_width		= 1/3
@@ -92,7 +92,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		if self.generator_params.cloudrig.double_root:
 			self.root_parent = self.create_parent_bone(self.root_bone)
 			self.root_parent.bone_group = self.generator.root_parent_group
-			self.root_parent.layers = self.generator.cloudrig.root_parent_layers[:]
+			self.root_parent.layers = self.generator_params.cloudrig.root_parent_layers[:]
 
 		for k in self.obj.data.keys():
 			if k in ['_RNA_UI', 'rig_id']: continue
@@ -103,14 +103,14 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		""" Ensure that a Properties bone exists, and return it. """
 		# This is a @property so that if it's never called(like in the case of very simple rigs), the properties bone is not created.
 		prop_bone = self.bone_infos.bone(
-			name = "Properties_IKFK",
-			overwrite = False,
-			bone_group = self.bone_groups['Root Control'],
-			layers = self.bone_layers['Root Control'],
-			custom_shape = self.load_widget("Cogwheel"),
-			head = Vector((0, self.scale*2, 0)),
-			tail = Vector((0, self.scale*4, 0)),
-			bbone_width = 1/8
+			name		  = "Properties_IKFK"
+			,overwrite	  = False
+			,bone_group	  = self.generator.root_group
+			,layers		  = self.generator_params.cloudrig.root_layers[:]
+			,custom_shape = self.load_widget("Cogwheel")
+			,head		  = Vector((0, self.scale*2, 0))
+			,tail		  = Vector((0, self.scale*4, 0))
+			,bbone_width  = 1/8
 		)
 		return prop_bone
 

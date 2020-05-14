@@ -1,9 +1,4 @@
-**Note**: CloudRig is currently a work in progress.
-Here are some of the major things that still need to be done:
-- Layer assignment override on the Generator level for all ORG, DEF and mechanism bones, for less cluttered "Bone Sets".
-- Update all rig samples.
-
-And that's not to mention dozens of smaller tasks, as well as adding more rig elements, like face setups. So use with care!
+**Note**: CloudRig is currently a work in progress, but open for testing. If you would like to report any issues, the preferred communication channel for the moment is to ping @Demeter Dzadik in the [#blender-riggers channel on blender.chat](https://blender.chat/channel/blender-riggers).
 
 # What is CloudRig?
 CloudRig is a custom featureset package for the Rigify Blender addon, developed for the Blender Animation Studio in-house, with the help of professional animators.

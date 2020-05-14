@@ -115,7 +115,7 @@ class CloudRigProperties(bpy.types.PropertyGroup):
 	)
 
 	override_org_layers = BoolProperty(
-		name		="Org"
+		name		="Original"
 		,description="Instead of allowing rig elements to assign original bones' layers individually, set it from the generator instead"
 		,default	=True
 	)

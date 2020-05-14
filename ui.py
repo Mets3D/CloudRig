@@ -106,7 +106,43 @@ class CloudRigLayerInit(bpy.types.Operator):
 		obj = context.object
 		arm = obj.data
 		for i in range(len(arm.rigify_layers), len(arm.layers)):
-			arm.rigify_layers.add()
+			layer = arm.rigify_layers.add()
+
+			if i==0:
+				layer.name = "IK"
+			if i==16:
+				layer.name = "IK Secondary"
+			if i==1:
+				layer.name = "FK"
+				layer.row = 2
+			if i==17:
+				layer.name = "FK Secondary"
+				layer.row = 2
+			if i==2:
+				layer.name = "Stretch"
+				layer.row = 3
+
+			if i==3:
+				layer.name = "Face"
+				layer.row = 4
+			if i==19:
+				layer.name = "Face Extras"
+				layer.row = 4
+			if i==20:
+				layer.name = "Face Tweak"
+				layer.row = 4
+
+			if i==5:
+				layer.name = "Fingers"
+				layer.row = 5
+
+			if i==6:
+				layer.name = "Hair"
+				layer.row = 6
+			if i==7:
+				layer.name = "Clothes"
+				layer.row = 7
+
 
 		return {'FINISHED'}
 
