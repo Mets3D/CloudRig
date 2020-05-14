@@ -24,30 +24,32 @@ def draw_cloud_generator_options(self, context):
 
 	layout.operator("pose.cloudrig_generate", text="Generate CloudRig")
 
-	icon = 'TRIA_DOWN' if obj.data.cloudrig_options else 'TRIA_RIGHT'
-	layout.prop(obj.data, "cloudrig_options", toggle=True, icon=icon)
-	if not obj.data.cloudrig_options: return
+	cloudrig = obj.data.cloudrig
+
+	icon = 'TRIA_DOWN' if cloudrig.options else 'TRIA_RIGHT'
+	layout.prop(cloudrig, "options", toggle=True, icon=icon)
+	if not cloudrig.options: return
 	
 	layout.prop(obj.data, "rigify_target_rig")
-	layout.prop_search(obj.data, "cloudrig_custom_script", bpy.data, "texts")
+	layout.prop_search(cloudrig, "custom_script", bpy.data, "texts")
 
 	root_row = layout.row()
-	root_row.prop(obj.data, "cloudrig_create_root")
-	if obj.data.cloudrig_create_root:
-		root_row.prop(obj.data, "cloudrig_double_root")
+	root_row.prop(cloudrig, "create_root")
+	if cloudrig.create_root:
+		root_row.prop(cloudrig, "double_root")
 
 	mech_row = layout.row()
-	mech_row.prop(obj.data, "cloudrig_mechanism_selectable")
-	if obj.data.cloudrig_mechanism_selectable:
-		mech_row.prop(obj.data, "cloudrig_mechanism_movable")
+	mech_row.prop(cloudrig, "mechanism_selectable")
+	if cloudrig.mechanism_selectable:
+		mech_row.prop(cloudrig, "mechanism_movable")
 
 	layout.prop(obj.data, "rigify_force_widget_update")
 
 	naming_row = layout.row()
 	naming_row.column().label(text="Prefix Separator")
-	naming_row.column().prop(obj.data, "cloudrig_prefix_separator", text="")
+	naming_row.column().prop(cloudrig, "prefix_separator", text="")
 	naming_row.column().label(text="Suffix Separator")
-	naming_row.column().prop(obj.data, "cloudrig_suffix_separator", text="")
+	naming_row.column().prop(cloudrig, "suffix_separator", text="")
 	
 def draw_cloud_bone_group_options(self, context):
 	""" Hijack Rigify's Bone Group panel and replace it with our own. """

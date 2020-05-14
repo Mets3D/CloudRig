@@ -1,9 +1,65 @@
 import bpy, os
 from mathutils import Matrix
-from bpy.props import BoolProperty, StringProperty, EnumProperty
+from bpy.props import BoolProperty, StringProperty, EnumProperty, PointerProperty
 from rigify.generate import *
 from .definitions.bone_group import BoneGroupContainer
 from .rigs import cloud_utils
+
+separators = [
+	(".", ".", "."),
+	("-", "-", "-"),
+	("_", "_", "_"),
+]
+
+class CloudRigProperties(bpy.types.PropertyGroup):
+	options = BoolProperty(
+		name		 = "CloudRig Settings"
+		,description = "Show CloudRig Settings"
+		,default	 = False
+	)
+	create_root = BoolProperty(
+		name		 = "Create Root"
+		,description = "Create the root control"
+		,default	 = True
+	)
+	double_root = BoolProperty(
+		name		 = "Double Root"
+		,description = "Create two root controls"
+		,default	 = False
+	)
+	custom_script = StringProperty(
+		name		 = "Custom Script"
+		,description = "Execute a python script after the rig is generated"
+	)
+	mechanism_movable = BoolProperty(
+		name		 = "Movable Helpers"
+		,description = "Whether helper bones can be moved or not"
+		,default	 = True
+	)
+	mechanism_selectable = BoolProperty(
+		name		 = "Selectable Helpers"
+		,description = "Whether helper bones can be selected or not"
+		,default	 = True
+	)
+	properties_bone = BoolProperty(
+		name		 = "Properties Bone"
+		,description = "Specify a bone to store Properties on. This bone doesn't have to exist in the metarig"
+		,default	 = True
+	)
+
+	prefix_separator = EnumProperty(
+		name		 = "Prefix Separator"
+		,description = "Character that separates prefixes in the bone names"
+		,items 		 = separators
+		,default	 = "-"
+	)
+	suffix_separator = EnumProperty(
+		name		 = "Suffix Separator"
+		,description = "Character that separates suffixes in the bone names"
+		,items 		 = separators
+		,default	 = "."
+	)
+
 
 class CloudGenerator(Generator):
 	def __init__(self, context, metarig):
@@ -14,8 +70,8 @@ class CloudGenerator(Generator):
 		self.bone_groups = BoneGroupContainer()
 
 		# Initialize generator parameters (These are registered in cloudrig/__init__.py)
-		self.prefix_separator = self.params.cloudrig_prefix_separator
-		self.suffix_separator = self.params.cloudrig_suffix_separator
+		self.prefix_separator = self.params.cloudrig.prefix_separator
+		self.suffix_separator = self.params.cloudrig.suffix_separator
 		assert self.prefix_separator != self.suffix_separator, "CloudGenerator Error: Prefix and Suffix separators cannot be the same."
 
 	def create_rig_object(self):
@@ -349,7 +405,7 @@ class CloudGenerator(Generator):
 		bpy.ops.object.mode_set(mode='OBJECT')
 		
 		# Execute custom script
-		script = cloud_utils.datablock_from_str(bpy.data.texts, self.params.cloudrig_custom_script)
+		script = cloud_utils.datablock_from_str(bpy.data.texts, self.params.cloudrig.custom_script)
 		if script:
 			exec(script.as_string(), {})
 
@@ -416,67 +472,11 @@ def generate_rig(context, metarig):
 		raise e
 
 def register():
-	bpy.types.Armature.cloudrig_options = BoolProperty(
-		name		 = "CloudRig Settings"
-		,description = "Show CloudRig Settings"
-		,default	 = False
-	)
-	bpy.types.Armature.cloudrig_create_root = BoolProperty(
-		name		 = "Create Root"
-		,description = "Create the root control"
-		,default	 = True
-	)
-	bpy.types.Armature.cloudrig_double_root = BoolProperty(
-		name		 = "Double Root"
-		,description = "Create two root controls"
-		,default	 = False
-	)
-	bpy.types.Armature.cloudrig_custom_script = StringProperty(
-		name		 = "Custom Script"
-		,description = "Execute a python script after the rig is generated"
-	)
-	bpy.types.Armature.cloudrig_mechanism_movable = BoolProperty(
-		name		 = "Movable Helpers"
-		,description = "Whether helper bones can be moved or not"
-		,default	 = True
-	)
-	bpy.types.Armature.cloudrig_mechanism_selectable = BoolProperty(
-		name		 = "Selectable Helpers"
-		,description = "Whether helper bones can be selected or not"
-		,default	 = True
-	)
-	bpy.types.Armature.cloudrig_properties_bone = BoolProperty(
-		name		 = "Properties Bone"
-		,description = "Specify a bone to store Properties on. This bone doesn't have to exist in the metarig"
-		,default	 = True
-	)
-
-	separators = [
-		(".", ".", "."),
-		("-", "-", "-"),
-		("_", "_", "_"),
-	]
-	bpy.types.Armature.cloudrig_prefix_separator = EnumProperty(
-		name		 = "Prefix Separator"
-		,description = "Character that separates prefixes in the bone names"
-		,items 		 = separators
-		,default	 = "-"
-	)
-	bpy.types.Armature.cloudrig_suffix_separator = EnumProperty(
-		name		 = "Suffix Separator"
-		,description = "Character that separates suffixes in the bone names"
-		,items 		 = separators
-		,default	 = "."
-	)
+	from bpy.utils import register_class
+	register_class(CloudRigProperties)
+	bpy.types.Armature.cloudrig = PointerProperty(type=CloudRigProperties)
 
 def unregister():
-	ArmStore = bpy.types.Armature
-	del ArmStore.cloudrig_options
-	del ArmStore.cloudrig_create_root
-	del ArmStore.cloudrig_double_root
-	del ArmStore.cloudrig_custom_script
-	del ArmStore.cloudrig_mechanism_movable
-	del ArmStore.cloudrig_mechanism_selectable
-	del ArmStore.cloudrig_properties_bone
-	del ArmStore.cloudrig_prefix_separator
-	del ArmStore.cloudrig_suffix_separator
+	from bpy.utils import unregister_class
+	unregister_class(CloudRigProperties)
+	del bpy.types.Armature.cloudrig

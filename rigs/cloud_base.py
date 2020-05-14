@@ -47,7 +47,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 
 		self.generator_params = self.generator.metarig.data
 
-		self.mch_disable_select = not self.generator_params.cloudrig_mechanism_selectable
+		self.mch_disable_select = not self.generator_params.cloudrig.mechanism_selectable
 		
 		self.meta_base_bone = self.generator.metarig.pose.bones.get(self.base_bone.replace("ORG-", ""))
 		self.parent_candidates = {}
@@ -89,7 +89,7 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 			,custom_shape_scale = 1.5
 		)
 		self.register_parent(self.root_bone, "Root")
-		if self.generator_params.cloudrig_double_root:
+		if self.generator_params.cloudrig.double_root:
 			self.root_parent = self.create_parent_bone(self.root_bone)
 			self.root_parent.bone_group = self.bone_groups['Root Control Parent']
 			self.root_parent.layers = self.bone_layers['Root Control Parent']
