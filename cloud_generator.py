@@ -136,17 +136,17 @@ class CloudGenerator(Generator):
 
 		# Root bone groups
 		self.root_group = self.bone_groups.ensure(
-			name = self.params.cloudrig.root_bone_group,
+			name = self.params.cloudrig_parameters.root_bone_group,
 			preset = 2
 		)
-		if self.params.cloudrig.double_root:
+		if self.params.cloudrig_parameters.double_root:
 			self.root_parent_group = self.bone_groups.ensure(
-				name = self.params.cloudrig.root_parent_group,
+				name = self.params.cloudrig_parameters.root_parent_group,
 				preset = 8
 			)
 
-		self.prefix_separator = self.params.cloudrig.prefix_separator
-		self.suffix_separator = self.params.cloudrig.suffix_separator
+		self.prefix_separator = self.params.cloudrig_parameters.prefix_separator
+		self.suffix_separator = self.params.cloudrig_parameters.suffix_separator
 		assert self.prefix_separator != self.suffix_separator, "CloudGenerator Error: Prefix and Suffix separators cannot be the same."
 
 	def create_rig_object(self):
@@ -480,7 +480,7 @@ class CloudGenerator(Generator):
 		bpy.ops.object.mode_set(mode='OBJECT')
 		
 		# Execute custom script
-		script = cloud_utils.datablock_from_str(bpy.data.texts, self.params.cloudrig.custom_script)
+		script = cloud_utils.datablock_from_str(bpy.data.texts, self.params.cloudrig_parameters.custom_script)
 		if script:
 			exec(script.as_string(), {})
 
@@ -549,9 +549,9 @@ def generate_rig(context, metarig):
 def register():
 	from bpy.utils import register_class
 	register_class(CloudRigProperties)
-	bpy.types.Armature.cloudrig = PointerProperty(type=CloudRigProperties)
+	bpy.types.Armature.cloudrig_parameters = PointerProperty(type=CloudRigProperties)
 
 def unregister():
 	from bpy.utils import unregister_class
 	unregister_class(CloudRigProperties)
-	del bpy.types.Armature.cloudrig
+	del bpy.types.Armature.cloudrig_parameters

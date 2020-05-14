@@ -24,7 +24,7 @@ def draw_cloud_generator_options(self, context):
 
 	layout.operator("pose.cloudrig_generate", text="Generate CloudRig")
 
-	cloudrig = obj.data.cloudrig
+	cloudrig = obj.data.cloudrig_parameters
 
 	icon = 'TRIA_DOWN' if cloudrig.options else 'TRIA_RIGHT'
 	layout.prop(cloudrig, "options", toggle=True, icon=icon)
@@ -67,7 +67,7 @@ def draw_cloud_bone_group_options(self, context):
 		color_row.prop(obj.data.rigify_selection_colors, "select", text="")
 		color_row.prop(obj.data.rigify_selection_colors, "active", text="")
 
-	cloudrig = obj.data.cloudrig
+	cloudrig = obj.data.cloudrig_parameters
 	layout.separator()
 
 	icon = 'TRIA_DOWN' if cloudrig.override_options else 'TRIA_RIGHT'
