@@ -101,7 +101,7 @@ class BoneInfo(ID):
 			NOTE: Ideally a source should always be specified, or bbone_x/z specified, otherwise blender will use the default 0.1, which can result in giant or tiny bones.
 		kwargs: Allow setting arbitrary bone properties at initialization.
 		"""
-		
+
 		self.container = container
 
 		### The following dictionaries store pure information, never references to the real thing. ###
@@ -115,30 +115,14 @@ class BoneInfo(ID):
 
 		# List of (Type, attribs{}) tuples where attribs{} is a dictionary with the attributes of the constraint.
 		# "drivers" is a valid attribute which expects the same content as self.drivers, and it holds the constraints for constraint properties.
-		# I'm too lazy to implement a container for every constraint type, or even a universal one, but maybe I should.
+		# TODO: I'm too lazy to implement a container for every constraint type, or even a universal one, but maybe I should.
 		self.constraints = []
-		
-		self.name = name
+
+		### Edit Bone properties
+		# Note that for these bbone properties, we are referring only to edit bone versions of the values.
 		self.head = Vector((0,0,0))
 		self.tail = Vector((0,1,0))
 		self.roll = 0
-		self.layers = [False]*32	# NOTE: If no layers are enabled, Blender will force layers[0]=True without warning.
-		self.rotation_mode = 'QUATERNION'
-		self.hide_select = False
-		self.hide = False
-
-		### Properties that are shared between pose and edit mode.
-		self.bbone_width = 0.1
-		self._bbone_x = 0.1	# These get special treatment to avoid having to put self.scale everywhere.
-		self._bbone_z = 0.1
-		self.bbone_segments = 1
-		self.bbone_handle_type_start = "AUTO"
-		self.bbone_handle_type_end = "AUTO"
-		self.bbone_custom_handle_start = None	# Bone name only!
-		self.bbone_custom_handle_end = None		# Bone name only!
-
-		### Edit Mode Only
-		# Note that for these bbone properties, we are referring only to edit bone versions of the values.
 		self.bbone_curveinx = 0
 		self.bbone_curveiny = 0
 		self.bbone_curveoutx = 0
@@ -150,24 +134,27 @@ class BoneInfo(ID):
 		self.bbone_scaleoutx = 1
 		self.bbone_scaleouty = 1
 
-		self.parent = None	# Bone name only!
+		### Bone properties
+		self.name = name
+		self.layers = [l==0 for l in range(32)]	# 32 bools where only the first one is True.
+		self.rotation_mode = 'QUATERNION'
+		self.hide_select = False
+		self.hide = False
 
-		### Pose Mode Only
-		self._bone_group = None
-		self.custom_shape = None   # Object ID?
-		self.custom_shape_scale = 1.0
-		self.use_custom_shape_bone_size = False
-		self.use_endroll_as_inroll = False
+		self.parent = None	# Blender expects bpy.types.Bone, but we store definitions.bone.BoneInfo.
 		self.use_connect = False
 		self.use_deform = False
-		self.use_inherit_rotation = True
-		self.use_inherit_scale = True
-		self.use_local_location = True
-		self.use_relative_parent = False
-		self.lock_location = [False, False, False]
-		self.lock_rotation = [False, False, False]
-		self.lock_rotation_w = False
-		self.lock_scale = [False, False, False]
+		self.show_wire = False
+		self.use_endroll_as_inroll = False
+
+		self.bbone_width = 0.1	# Property that wraps bbone_x and bbone_z.
+		self._bbone_x = 0.1
+		self._bbone_z = 0.1
+		self.bbone_segments = 1
+		self.bbone_handle_type_start = "AUTO"
+		self.bbone_handle_type_end = "AUTO"
+		self.bbone_custom_handle_start = ""	# Blender expects bpy.types.Bone, but we store str.	TODO: We should store BoneInfo here as well!!
+		self.bbone_custom_handle_end = ""	# Blender expects bpy.types.Bone, but we store str.
 
 		self.envelope_distance = 0.25
 		self.envelope_weight = 1.0
@@ -175,8 +162,23 @@ class BoneInfo(ID):
 		self.head_radius = 0.1
 		self.tail_radius = 0.1
 
-		self.custom_shape_transform = None # Bone name
-		
+		self.use_inherit_rotation = True
+		self.inherit_scale = "FULL"
+		self.use_local_location = True
+		self.use_relative_parent = False
+
+		### Pose Mode Only
+		self._bone_group = None		# Blender expects bpy.types.BoneGroup, we store definitions.bone_group.BoneGroup.
+		self.custom_shape = None	# Blender expects bpy.types.Object, we store bpy.types.Object.
+		self.custom_shape_transform = None	# Blender expects bpy.types.PoseBone, we store definitions.bone.BoneInfo.
+		self.custom_shape_scale = 1.0
+		self.use_custom_shape_bone_size = False
+
+		self.lock_location = [False, False, False]
+		self.lock_rotation = [False, False, False]
+		self.lock_rotation_w = False
+		self.lock_scale = [False, False, False]
+
 		# Apply property values from container's defaults
 		for key, value in self.container.defaults.items():
 			setattr_safe(self, key, value)
@@ -204,7 +206,7 @@ class BoneInfo(ID):
 
 		if type(bone_group) != str:
 			self.bone_group = bone_group
-		
+
 		# Apply property values from arbitrary keyword arguments if any were passed.
 		for key, value in kwargs.items():
 			setattr_safe(self, key, value)
@@ -228,7 +230,7 @@ class BoneInfo(ID):
 	@property
 	def bone_group(self):
 		return self._bone_group
-	
+
 	@bone_group.setter
 	def bone_group(self, value):
 		# value is expected to be a cloudrig.definitions.bone_group.Bone_Group object.
@@ -242,7 +244,7 @@ class BoneInfo(ID):
 	def vec(self):
 		"""Vector pointing from head to tail."""
 		return self.tail-self.head
-	
+
 	@vec.setter
 	def vec(self, value):
 		self.tail = self.head + value
@@ -275,7 +277,7 @@ class BoneInfo(ID):
 		offset = loc-self.head
 		self.head = loc
 		self.tail = loc+offset
-		
+
 		if length:
 			self.length=length
 		if width:
@@ -284,7 +286,7 @@ class BoneInfo(ID):
 			self.scale_length(scale_length)
 		if scale_width:
 			self.scale_width(scale_width)
-	
+
 	def flatten(self):
 		self.vec = cloud_utils.flat(self.vec)
 		from math import pi
@@ -292,14 +294,20 @@ class BoneInfo(ID):
 		# Round to nearest 90 degrees.
 		rounded = round(deg/90)*90
 		self.roll = pi/180*rounded
-	
+
 	def copy_info(self, bone_info):
 		"""Called from __init__ to initialize using existing BoneInfo."""
 		my_dict = self.__dict__
 		skip = ["name"]
 		for attr in my_dict.keys():
 			if attr in skip: continue
-			setattr_safe( self, attr, getattr(bone_info, copy.deepcopy(attr)) )
+			attr_copy = attr
+			try:
+				attr_copy = copy.deepcopy(attr)
+			except:
+				print(f"Warning: Failed to deepcopy {attr} while trying to initialize BoneInfo.")
+
+			setattr_safe( self, attr, getattr(bone_info, attr_copy) )
 
 	def copy_bone(self, armature, edit_bone):
 		"""Called from __init__ to initialize using existing bone."""
@@ -374,15 +382,16 @@ class BoneInfo(ID):
 
 	def write_edit_data(self, armature, edit_bone):
 		"""Write relevant data into an EditBone."""
-		assert armature.mode == 'EDIT', "Armature must be in Edit Mode when writing bone data"
+		assert armature.mode == 'EDIT', "Error: Armature must be in Edit Mode when writing edit bone data."
 
 		# Check for 0-length bones.
 		if (self.head - self.tail).length == 0:
 			# Warn and force length.
 			print("WARNING: Had to force 0-length bone to have some length: " + self.name)
 			self.tail = self.head+Vector((0, 0.1, 0))
-		
+
 		# Edit Bone Properties.
+
 		for key, value in self.__dict__.items():
 			if(hasattr(edit_bone, key)):
 				if key == 'use_connect': continue	# TODO why does this break everything?
@@ -421,19 +430,43 @@ class BoneInfo(ID):
 
 		my_dict = self.__dict__
 		
-		# Layers
-		pose_bone.bone.layers = self.layers[:]
+		# Pose bone data
+		pb = pose_bone
+		pb.custom_shape = self.custom_shape
+		pb.custom_shape_scale = self.custom_shape_scale
+		if self.custom_shape_transform:
+			pb.custom_shape_transform = armature.pose.bones.get(self.custom_shape_transform.name)
+		pb.use_custom_shape_bone_size = self.use_custom_shape_bone_size
 
-		# Pose bone data.
-		skip = ['constraints', 'head', 'tail', 'parent', 'children', 'length', 'use_connect', 'bone_group']
-		for attr in my_dict.keys():
-			value = my_dict[attr]
-			if(hasattr(pose_bone, attr)):
-				if attr in skip: continue
-				if 'bbone' in attr: continue
-				if(attr in ['custom_shape_transform'] and value):
-					value = armature.pose.bones.get(value.name)
-				setattr_safe(pose_bone, attr, value)
+		pb.lock_location = self.lock_location
+		pb.lock_rotation = self.lock_rotation
+		pb.lock_rotation_w = self.lock_rotation_w
+		pb.lock_scale = self.lock_scale
+
+		# Bone data
+		b = pb.bone
+		b.layers = self.layers[:]
+		b.use_deform = self.use_deform
+		b.bbone_x = self._bbone_x
+		b.bbone_z = self._bbone_z
+		b.bbone_segments = self.bbone_segments
+		b.bbone_handle_type_start = self.bbone_handle_type_start
+		b.bbone_handle_type_end = self.bbone_handle_type_end
+		b.bbone_custom_handle_start = armature.data.bones.get(self.bbone_custom_handle_start or "")
+		b.bbone_custom_handle_end = armature.data.bones.get(self.bbone_custom_handle_end or "")
+		b.show_wire = self.show_wire
+		b.use_endroll_as_inroll = self.use_endroll_as_inroll
+
+		b.use_inherit_rotation = self.use_inherit_rotation
+		b.inherit_scale = self.inherit_scale
+		b.use_local_location = self.use_local_location
+		b.use_relative_parent = self.use_relative_parent
+
+		b.envelope_distance = self.envelope_distance
+		b.envelope_weight = self.envelope_weight
+		b.use_envelope_multiply = self.use_envelope_multiply
+		b.head_radius = self.head_radius
+		b.tail_radius = self.tail_radius
 		
 		# Constraints.
 		for cd in self.constraints:
