@@ -235,7 +235,7 @@ class CloudChainRig(CloudBaseRig):
 			for i, def_bone in enumerate(section):
 				if i==0:
 					# If this is the first bone in the section, parent it to the STR bone of the same indices.
-					def_bone.parent = str_sections[sec_i][i].name
+					def_bone.parent = str_sections[sec_i][i]
 					# Create shape key helpers
 					if self.params.CR_shape_key_helpers and sec_i>0:
 						self.create_shape_key_helpers(def_sections[sec_i-1][-1], def_bone)
@@ -244,7 +244,7 @@ class CloudChainRig(CloudBaseRig):
 						break
 				else:
 					# Otherwise parent to previous deform bone.
-					def_bone.parent = section[i-1].name
+					def_bone.parent = section[i-1]
 				
 				# Set BBone start handle to the same index STR bone.
 				def_bone.bbone_custom_handle_start = str_sections[sec_i][i].name

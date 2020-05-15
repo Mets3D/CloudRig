@@ -93,7 +93,14 @@ class BoneInfoContainer(ID):
 		self.bones = []
 
 class BoneInfo(ID):
-	"""Container of all info relating to a Bone."""
+	""" 
+	The purpose of this class is to abstract bpy.types.Bone, bpy.types.PoseBone and bpy.types.EditBone
+	into a single concept.
+
+	This class does not concern itself with posing the bone, only creating and rigging it.
+	Eg, it does not store pose bone transformations such as loc/rot/scale. 
+	"""
+
 	def __init__(self, container, name="Bone", source=None, bone_group=None, **kwargs):
 		""" 
 		container: Need a reference to what BoneInfoContainer this BoneInfo belongs to.
@@ -119,10 +126,11 @@ class BoneInfo(ID):
 		self.constraints = []
 
 		### Edit Bone properties
-		# Note that for these bbone properties, we are referring only to edit bone versions of the values.
+		self.parent = None	# Blender expects bpy.types.EditBone, but we store definitions.bone.BoneInfo. str is also supported for now, but should be avoided.
 		self.head = Vector((0,0,0))
 		self.tail = Vector((0,1,0))
 		self.roll = 0
+		# NOTE: For these bbone properties, we are referring only to edit bone versions of the values.
 		self.bbone_curveinx = 0
 		self.bbone_curveiny = 0
 		self.bbone_curveoutx = 0
@@ -141,7 +149,6 @@ class BoneInfo(ID):
 		self.hide_select = False
 		self.hide = False
 
-		self.parent = None	# Blender expects bpy.types.Bone, but we store definitions.bone.BoneInfo.
 		self.use_connect = False
 		self.use_deform = False
 		self.show_wire = False
@@ -297,6 +304,7 @@ class BoneInfo(ID):
 
 	def copy_info(self, bone_info):
 		"""Called from __init__ to initialize using existing BoneInfo."""
+		# TODO: This should just be called clone() and return a copy of itself.
 		my_dict = self.__dict__
 		skip = ["name"]
 		for attr in my_dict.keys():
@@ -311,6 +319,7 @@ class BoneInfo(ID):
 
 	def copy_bone(self, armature, edit_bone):
 		"""Called from __init__ to initialize using existing bone."""
+		# TODO: This should be a classmethod (from_editbone) that returns a new instance.
 		my_dict = self.__dict__
 		skip = ['name', 'constraints', 'bl_rna', 'type', 'rna_type', 'error_location', 'error_rotation', 'is_proxy_local', 'is_valid', 'children']
 		
@@ -390,45 +399,40 @@ class BoneInfo(ID):
 			print("WARNING: Had to force 0-length bone to have some length: " + self.name)
 			self.tail = self.head+Vector((0, 0.1, 0))
 
-		# Edit Bone Properties.
+		### Edit Bone properties
+		eb = edit_bone
+		eb.use_connect = False	# NOTE: Without this, ORG- bones' Copy Transforms constraints can't work properly.
 
-		for key, value in self.__dict__.items():
-			if(hasattr(edit_bone, key)):
-				if key == 'use_connect': continue	# TODO why does this break everything?
-				if key in bone_attribs:
-					real_bone = None
-					if(type(value) == str):
-						real_bone = armature.data.edit_bones.get(value)
-					elif(type(value) == BoneInfo):
-						real_bone = value.get_real(armature)
-						if not real_bone:
-							print(f"WARNING: {key}: {self.parent.name} not found for bone: {self.name}")
-					elif value != None:
-						# TODO: Maybe this should be raised when assigning the parent in the first place(via @property setter/getter)
-						assert False, "ERROR: Unsupported parent type: " + str(type(value))
-					
-					setattr_safe(edit_bone, key, real_bone)
-				else:
-					# We don't want Blender to destroy my object references(particularly vectors) when leaving edit mode, so pass in a deepcopy instead.
-					setattr_safe(edit_bone, key, copy.deepcopy(value))
-		
-		edit_bone.bbone_x = self._bbone_x
-		edit_bone.bbone_z = self._bbone_z
-					
+		if self.parent:
+			if type(self.parent)==str:
+				eb.parent = armature.data.edit_bones.get(self.parent)
+			else:
+				eb.parent = armature.data.edit_bones.get(self.parent.name)
+
+		eb.head = self.head.copy()
+		eb.tail = self.tail.copy()
+		eb.roll = self.roll
+
+		eb.bbone_curveinx = self.bbone_curveinx
+		eb.bbone_curveiny = self.bbone_curveiny
+		eb.bbone_curveoutx = self.bbone_curveoutx
+		eb.bbone_curveouty = self.bbone_curveouty
+		eb.bbone_easein = self.bbone_easein
+		eb.bbone_easeout = self.bbone_easeout
+		eb.bbone_scaleinx = self.bbone_scaleinx
+		eb.bbone_scaleiny = self.bbone_scaleiny
+		eb.bbone_scaleoutx = self.bbone_scaleoutx
+		eb.bbone_scaleouty = self.bbone_scaleouty
+
 		# Custom Properties.
 		for key, prop in self.custom_props_edit.items():
 			prop.make_real(edit_bone)
-		
-		# Without this, ORG- bones' Copy Transforms constraints can't work properly.
-		edit_bone.use_connect = False
 
 	def write_pose_data(self, pose_bone):
 		"""Write relevant data into a PoseBone."""
 		armature = pose_bone.id_data
 
 		assert armature.mode != 'EDIT', "Armature cannot be in Edit Mode when writing pose data"
-
-		my_dict = self.__dict__
 		
 		# Pose bone data
 		pb = pose_bone
