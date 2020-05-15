@@ -3,10 +3,9 @@ from .id import *
 from .. import utils
 import copy
 
-# Data Container and utilities for de-coupling driver management from BPY.
-# Lets us easily apply similar drivers to many properties.
-
 class Driver(ID):
+	""" Data Container and utilities for de-coupling driver management from BPY.
+	Lets us easily apply similar but not identical drivers to many properties."""
 	def __init__(self, source=None, **kwargs):
 		super().__init__()
 		self.expression = "var"
@@ -35,7 +34,7 @@ class Driver(ID):
 			setattr(self, key, value)
 
 	def clone(self):
-		"""Return a copy of this Driver description."""
+		"""Return a copy of this Driver definition."""
 		new = Driver()
 		new.expression = self.expression
 		new.use_self = self.use_self
@@ -43,26 +42,6 @@ class Driver(ID):
 		for var in self.variables:
 			new.variables.append(var.clone())
 		return new
-
-	# TODO: Isn't this redundant? I think there's a builtin find() function for this.
-	@staticmethod
-	def get_driver_by_data_path(obj, data_path):
-		if not obj.animation_data: return
-
-		for d in obj.animation_data.drivers:
-			if(d.data_path == data_path):
-				return d.driver
-
-	def flip(self, targets=False, subtargets=True, paths=True):
-		"""Mirror this driver around the X axis.
-		targets: Attempt to flip target object names.
-		subtargets: Attempt to flip subtarget names(bones, vertex groups)
-		paths: Attempt to flip Single Property data paths.
-		"""
-		#TODO: Pass as parameter whatever information is required in order to do this correctly. Try to keep parameters in this function specific to the driver itself(eg. don't pass bone orientation. That stuff should be figured out outside of this, and something conclusive passed into this that relates directly to the driver and its variables.)
-
-		# Flip variable target bones.
-		pass
 
 	def make_var(self, name="var"):
 		"""Shorthand for creating a variable with a name and add it to the driver. 

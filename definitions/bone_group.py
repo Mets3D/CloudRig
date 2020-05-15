@@ -65,7 +65,11 @@ class BoneGroup:
 	def make_real(self, rig):
 		""" Create this bone group and assign the bones where possible. """
 		bgs = rig.pose.bone_groups
-		# TODO: The bone group should only get created if this bonegroup has any bones?
+
+		if not self.bones:
+			# If the group doesn't contain any bones, don't create it.
+			return
+
 		bg = bgs.get(self.name)
 		if not bg:
 			bg = bgs.new(name=self.name)
@@ -84,7 +88,6 @@ class BoneGroupContainer(IDCollection):
 	def __init__(self):
 		self.coll_type = BoneGroup
 	
-	#TODO: This can be deleted, since the inherited one should be equivalent.
 	def ensure(self, name, normal=None, select=None, active=None, *, preset=-1):
 		""" Return a bone group with the given name if it exists, otherwise create it. """
 		if name in self:
