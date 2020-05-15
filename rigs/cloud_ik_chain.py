@@ -115,22 +115,23 @@ class CloudIKChainRig(CloudFKChainRig):
 			,head				= self.pole_location
 			,tail				= self.pole_location + self.flat_vector(self.pole_vector) * 0.2
 			,roll				= 0
-			,custom_shape		= self.load_widget('ArrowHead')
-			,custom_shape_scale	= 0.5
 			,bone_group			= self.bone_groups["IK Controls"]
 			,layers				= self.bone_layers["IK Controls"]
+			,custom_shape		= self.load_widget('ArrowHead')
+			,custom_shape_scale	= 0.5
+			,use_custom_shape_bone_size = True
 		)
 
 		pole_line = self.bone_infos.bone(
-			name						= self.make_name(["IK", "POLE", "LINE"], self.limb_name, [self.side_suffix])
-			,source						= pole_ctrl
-			,tail						= self.org_chain[0].tail.copy()
-			,custom_shape				= self.load_widget('Pole_Line')
+			name		  = self.make_name(["IK", "POLE", "LINE"], self.limb_name, [self.side_suffix])
+			,source		  = pole_ctrl
+			,tail		  = self.org_chain[0].tail.copy()
+			,parent		  = pole_ctrl
+			,bone_group	  = self.bone_groups["IK Controls"]
+			,layers		  = self.bone_layers["IK Controls"]
+			,hide_select  = True
+			,custom_shape = self.load_widget('Pole_Line')
 			,use_custom_shape_bone_size	= True
-			,parent						= pole_ctrl
-			,bone_group					= self.bone_groups["IK Controls"]
-			,layers						= self.bone_layers["IK Controls"]
-			,hide_select				= True
 		)
 		pole_line.add_constraint(self.obj, 'STRETCH_TO'
 			,subtarget = self.org_chain[0].name

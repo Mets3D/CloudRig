@@ -8,7 +8,6 @@ from ..rigs import cloud_utils
 
 # Attributes that reference an actual bone ID. These should get special treatment, because we don't want to store said bone ID. 
 # Ideally we would store a BoneInfo, but a string is allowed too.
-bone_attribs = ['parent', 'bbone_custom_handle_start', 'bbone_custom_handle_end']
 
 def get_defaults(contype, armature):
 	"""Return my preferred defaults for each constraint type."""
@@ -89,6 +88,100 @@ class BoneInfoContainer(ID):
 		self.bones.append(bi)
 		return bi
 	
+	def from_edit_bone(self, armature, edit_bone):
+		"""Create a BoneInfo instance based on an existing Blender bone, and add it to this container."""
+		eb = edit_bone
+		pose_bone = armature.pose.bones.get(eb.name)
+		assert pose_bone, f"Error: Failed to create BoneInfo from EditBone {eb.name} because corresponding PoseBone does not exist. Make sure to leave Edit Mode after creating a bone to make sure it's fully initialized."
+		
+		bi = self.bone(eb.name)
+
+		### Edit Bone properties
+		bi.parent = eb.parent.name if eb.parent else ""
+		bi.head = eb.head.copy()
+		bi.tail = eb.tail.copy()
+		bi.roll = eb.roll
+
+		bi.bbone_curveinx = eb.bbone_curveinx
+		bi.bbone_curveiny = eb.bbone_curveiny
+		bi.bbone_curveoutx = eb.bbone_curveoutx
+		bi.bbone_curveouty = eb.bbone_curveouty
+		bi.bbone_easein = eb.bbone_easein
+		bi.bbone_easeout = eb.bbone_easeout
+		bi.bbone_scaleinx = eb.bbone_scaleinx
+		bi.bbone_scaleiny = eb.bbone_scaleiny
+		bi.bbone_scaleoutx = eb.bbone_scaleoutx
+		bi.bbone_scaleouty = eb.bbone_scaleouty
+
+		### Pose Bone Properties
+		pb = pose_bone
+		bi.bone_group = self.container.cloudrig.generator.bone_groups.find(eb.bone_group.name)
+		if pb.custom_shape:
+			bi.custom_shape = pb.custom_shape
+		if pb.custom_shape_transform:
+			bi.custom_shape_transform = self.find(pb.custom_shape_transform.name)
+		bi.custom_shape_scale = pb.custom_shape_scale
+		bi.use_custom_shape_bone_size = pb.use_custom_shape_bone_size
+
+		bi.lock_location = pb.lock_location
+		bi.lock_rotation = pb.lock_rotation
+		bi.lock_rotation_w = pb.lock_rotation_w
+		bi.lock_scale = pb.lock_scale
+
+		### Bone properties
+		b = pb.bone
+		bi.name = b.name
+		bi.layers = b.layers[:]
+		bi.rotation_mode = b.rotation_mode
+		bi.hide_select = b.hide_select
+		bi.hide = b.hide
+
+		bi.use_connect = b.use_connect
+		bi.use_deform = b.use_deform
+		bi.show_wire = b.show_wire
+		bi.use_endroll_as_inroll = b.use_endroll_as_inroll
+
+		bi._bbone_x = b.bbone_x
+		bi._bbone_z = b.bbone_z
+		bi.bbone_segments = b.bbone_segments
+		bi.bbone_handle_type_start = b.bbone_handle_type_start
+		bi.bbone_handle_type_end = b.bbone_handle_type_end
+
+		if b.bbone_custom_handle_start:
+			bi.bbone_custom_handle_start = b.bbone_custom_handle_start.name
+		if b.bbone_custom_handle_end:
+			bi.bbone_custom_handle_end = b.bbone_custom_handle_end.name
+
+		bi.envelope_distance = b.envelope_distance
+		bi.envelope_weight = b.envelope_weight
+		bi.use_envelope_multiply = b.use_envelope_multiply
+		bi.head_radius = b.head_radius
+		bi.tail_radius = b.tail_radius
+
+		bi.use_inherit_rotation = b.use_inherit_rotation
+		bi.inherit_scale = b.inherit_scale
+		bi.use_local_location = b.use_local_location
+		bi.use_relative_parent = b.use_relative_parent
+
+		# Read Constraint data
+		skip = ['name', 'constraints', 'bl_rna', 'type', 'rna_type', 'error_location', 'error_rotation', 'is_proxy_local', 'is_valid', 'children']
+		for c in pose_bone.constraints:
+			constraint_data = (c.type, {})
+			for attr in dir(c):
+				if "__" in attr: continue
+				if attr in skip: continue
+				constraint_data[1][attr] = getattr(c, attr)
+
+			bi.constraints.append(constraint_data)
+		
+		return bi
+
+	def clone_bone_info(self, bone_info, new_name=None):
+		"""Create a clone of a bone_info, add it to our list and return it."""
+		my_clone = bone_info.clone(new_name=new_name)
+		self.bones.append(my_clone)
+		return my_clone
+
 	def clear(self):
 		self.bones = []
 
@@ -105,7 +198,6 @@ class BoneInfo(ID):
 		""" 
 		container: Need a reference to what BoneInfoContainer this BoneInfo belongs to.
 		source:	Bone to take transforms from (head, tail, roll, bbone_x, bbone_z).
-			NOTE: Ideally a source should always be specified, or bbone_x/z specified, otherwise blender will use the default 0.1, which can result in giant or tiny bones.
 		kwargs: Allow setting arbitrary bone properties at initialization.
 		"""
 
@@ -122,7 +214,7 @@ class BoneInfo(ID):
 
 		# List of (Type, attribs{}) tuples where attribs{} is a dictionary with the attributes of the constraint.
 		# "drivers" is a valid attribute which expects the same content as self.drivers, and it holds the constraints for constraint properties.
-		# TODO: I'm too lazy to implement a container for every constraint type, or even a universal one, but maybe I should.
+		# TODO: Implement a proper container for constraints.
 		self.constraints = []
 
 		### Edit Bone properties
@@ -154,8 +246,7 @@ class BoneInfo(ID):
 		self.show_wire = False
 		self.use_endroll_as_inroll = False
 
-		self.bbone_width = 0.1	# Property that wraps bbone_x and bbone_z.
-		self._bbone_x = 0.1
+		self._bbone_x = 0.1		# NOTE: These two are wrapped by bbone_width @property.
 		self._bbone_z = 0.1
 		self.bbone_segments = 1
 		self.bbone_handle_type_start = "AUTO"
@@ -175,7 +266,7 @@ class BoneInfo(ID):
 		self.use_relative_parent = False
 
 		### Pose Mode Only
-		self._bone_group = None		# Blender expects bpy.types.BoneGroup, we store definitions.bone_group.BoneGroup.
+		self._bone_group = None		# Blender expects bpy.types.BoneGroup, we store definitions.bone_group.BoneGroup. It is also wrapped by bone_group @property.
 		self.custom_shape = None	# Blender expects bpy.types.Object, we store bpy.types.Object.
 		self.custom_shape_transform = None	# Blender expects bpy.types.PoseBone, we store definitions.bone.BoneInfo.
 		self.custom_shape_scale = 1.0
@@ -186,9 +277,9 @@ class BoneInfo(ID):
 		self.lock_rotation_w = False
 		self.lock_scale = [False, False, False]
 
-		# Apply property values from container's defaults
+		# Apply container's defaults
 		for key, value in self.container.defaults.items():
-			setattr_safe(self, key, value)
+			setattr(self, key, value)
 
 		if source:
 			self.head = source.head.copy()
@@ -216,7 +307,21 @@ class BoneInfo(ID):
 
 		# Apply property values from arbitrary keyword arguments if any were passed.
 		for key, value in kwargs.items():
-			setattr_safe(self, key, value)
+			setattr(self, key, value)
+
+	def clone(self, new_name=None):
+		"""Return a clone of self."""
+		custom_ob_backup = self.custom_object	# This would fail to deepcopy since it's a bpy.types.Object.
+		self.custom_object = None
+
+		my_clone = copy.deepcopy(self)
+		my_clone.name = self.name + ".001"
+		if new_name:
+			my_clone.name = new_name
+
+		my_clone.custom_object = custom_ob_backup
+
+		return my_clone
 
 	def __str__(self):
 		return self.name
@@ -239,11 +344,11 @@ class BoneInfo(ID):
 		return self._bone_group
 
 	@bone_group.setter
-	def bone_group(self, value):
-		# value is expected to be a cloudrig.definitions.bone_group.Bone_Group object.
-		# Let the bone group know that this bone has been assigned to it.
-		if value:
-			value.assign_bone(self)
+	def bone_group(self, bg):
+		# bg is expected to be a cloudrig.definitions.bone_group.Bone_Group object.
+		# Bone Group assignment is handled directly by the Bone Group object.
+		if bg:
+			bg.assign_bone(self)
 		elif self._bone_group:
 			self._bone_group.remove_bone(self)
 
@@ -301,64 +406,6 @@ class BoneInfo(ID):
 		# Round to nearest 90 degrees.
 		rounded = round(deg/90)*90
 		self.roll = pi/180*rounded
-
-	def copy_info(self, bone_info):
-		"""Called from __init__ to initialize using existing BoneInfo."""
-		# TODO: This should just be called clone() and return a copy of itself.
-		my_dict = self.__dict__
-		skip = ["name"]
-		for attr in my_dict.keys():
-			if attr in skip: continue
-			attr_copy = attr
-			try:
-				attr_copy = copy.deepcopy(attr)
-			except:
-				print(f"Warning: Failed to deepcopy {attr} while trying to initialize BoneInfo.")
-
-			setattr_safe( self, attr, getattr(bone_info, attr_copy) )
-
-	def copy_bone(self, armature, edit_bone):
-		"""Called from __init__ to initialize using existing bone."""
-		# TODO: This should be a classmethod (from_editbone) that returns a new instance.
-		my_dict = self.__dict__
-		skip = ['name', 'constraints', 'bl_rna', 'type', 'rna_type', 'error_location', 'error_rotation', 'is_proxy_local', 'is_valid', 'children']
-		
-		for key, value in my_dict.items():
-			if key in skip: continue
-			if(hasattr(edit_bone, key)):
-				target_bone = getattr(edit_bone, key)
-				if key in bone_attribs and target_bone:
-					value = target_bone.name
-				else:
-					if key in ['layers']:
-						value = list(getattr(edit_bone, key)[:])
-					else:
-						# NOTE: EDIT BONE PROPERTIES MUST BE DEEPCOPIED SO THEY AREN'T DESTROYED WHEN LEAVEING EDIT MODE!
-						value = copy.deepcopy(getattr(edit_bone, key))
-				setattr_safe(self, key, value)
-				skip.append(key)
-
-		# Read Pose Bone data (only if armature was passed)
-		if not armature: return
-		pose_bone = armature.pose.bones.get(edit_bone.name)
-		if not pose_bone: return
-
-		for attr in my_dict.keys():
-			if attr in skip: continue
-
-			if hasattr(pose_bone, attr):
-				setattr_safe( self, attr, getattr(pose_bone, attr) )
-
-		# Read Constraint data
-		for c in pose_bone.constraints:
-			constraint_data = (c.type, {})
-			# TODO: Why are we using dir() here instead of __dict__?
-			for attr in dir(c):
-				if "__" in attr: continue
-				if attr in skip: continue
-				constraint_data[1][attr] = getattr(c, attr)
-
-			self.constraints.append(constraint_data)
 
 	def disown(self, new_parent):
 		""" Parent all children of this bone to a new parent. """
@@ -478,8 +525,7 @@ class BoneInfo(ID):
 			cinfo = cd[1]
 			c = pose_bone.constraints.new(con_type)
 			if 'name' in cinfo:
-				c.name = cinfo['name'] 
-			#c = find_or_create_constraint(pose_bone, con_type, name)
+				c.name = cinfo['name']
 			for key, value in cinfo.items():
 				if con_type == 'ARMATURE' and key=='targets':
 					# Armature constraint targets need special treatment. D'oh!

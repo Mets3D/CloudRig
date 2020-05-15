@@ -105,12 +105,13 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		prop_bone = self.bone_infos.bone(
 			name		  = "Properties_IKFK"
 			,overwrite	  = False
-			,bone_group	  = self.generator.root_group
-			,layers		  = self.generator_params.cloudrig_parameters.root_layers[:]
-			,custom_shape = self.load_widget("Cogwheel")
 			,head		  = Vector((0, self.scale*2, 0))
 			,tail		  = Vector((0, self.scale*4, 0))
 			,bbone_width  = 1/8
+			,bone_group	  = self.generator.root_group
+			,layers		  = self.generator_params.cloudrig_parameters.root_layers[:]
+			,custom_shape = self.load_widget("Cogwheel")
+			,use_custom_shape_bone_size = True
 		)
 		return prop_bone
 
