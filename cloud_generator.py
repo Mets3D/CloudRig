@@ -12,114 +12,114 @@ separators = [
 ]
 
 class CloudRigProperties(bpy.types.PropertyGroup):
-	options = BoolProperty(
+	options: BoolProperty(
 		name		 = "CloudRig Settings"
 		,description = "Show CloudRig Settings"
 		,default	 = False
 	)
-	create_root = BoolProperty(
+	create_root: BoolProperty(
 		name		 = "Create Root"
 		,description = "Create the root control"
 		,default	 = True
 	)
-	double_root = BoolProperty(
+	double_root: BoolProperty(
 		name		 = "Double Root"
 		,description = "Create two root controls"
 		,default	 = False
 	)
-	custom_script = StringProperty(
+	custom_script: StringProperty(
 		name		 = "Custom Script"
 		,description = "Execute a python script after the rig is generated"
 	)
-	mechanism_movable = BoolProperty(
+	mechanism_movable: BoolProperty(
 		name		 = "Movable Helpers"
 		,description = "Whether helper bones can be moved or not"
 		,default	 = True
 	)
-	mechanism_selectable = BoolProperty(
+	mechanism_selectable: BoolProperty(
 		name		 = "Selectable Helpers"
 		,description = "Whether helper bones can be selected or not"
 		,default	 = True
 	)
-	properties_bone = BoolProperty(
+	properties_bone: BoolProperty(
 		name		 = "Properties Bone"
 		,description = "Specify a bone to store Properties on. This bone doesn't have to exist in the metarig"
 		,default	 = True
 	)
 
-	prefix_separator = EnumProperty(
+	prefix_separator: EnumProperty(
 		name		 = "Prefix Separator"
 		,description = "Character that separates prefixes in the bone names"
 		,items 		 = separators
 		,default	 = "-"
 	)
-	suffix_separator = EnumProperty(
+	suffix_separator: EnumProperty(
 		name		 = "Suffix Separator"
 		,description = "Character that separates suffixes in the bone names"
 		,items 		 = separators
 		,default	 = "."
 	)
 
-	override_options = BoolProperty(
+	override_options: BoolProperty(
 		name = "Override Bone Layers"
 		,description = "Instead of allowing rig elements to assign deform/mechanism/org bone layers individually, set it from the generator instead."
 		,default=False
 	)
 
-	root_bone_group = StringProperty(
+	root_bone_group: StringProperty(
 		name="Root"
 		,description="Bone Group to assign the root bone to"
 		,default="Root"
 	)
-	root_layers = BoolVectorProperty(
+	root_layers: BoolVectorProperty(
 		size = 32, 
 		subtype = 'LAYER', 
 		description = "Layers to assign the root bone to",
 		default = [l==0 for l in range(32)]
 	)
 
-	root_parent_group = StringProperty(
+	root_parent_group: StringProperty(
 		name="Root Parent"
 		,description="Bone Group to assign the second root bone to"
 		,default="Root Parent"
 	)
-	root_parent_layers = BoolVectorProperty(
+	root_parent_layers: BoolVectorProperty(
 		size = 32, 
 		subtype = 'LAYER', 
 		description = "Layers to assign the the second root bone to",
 		default = [l==0 for l in range(32)]
 	)
 
-	override_def_layers = BoolProperty(
+	override_def_layers: BoolProperty(
 		name		="Deform"
 		,description="Instead of allowing rig elements to assign deform layers individually, set it from the generator instead"
 		,default	=True
 	)
-	def_layers = BoolVectorProperty(
+	def_layers: BoolVectorProperty(
 		size = 32, 
 		subtype = 'LAYER', 
 		description = "Select what layers this set of bones should be assigned to",
 		default = [l==29 for l in range(32)]
 	)
 
-	override_mch_layers = BoolProperty(
+	override_mch_layers: BoolProperty(
 		name		="Mechanism"
 		,description="Instead of allowing rig elements to assign mechanism layers individually, set it from the generator instead"
 		,default	=True
 	)
-	mch_layers = BoolVectorProperty(
+	mch_layers: BoolVectorProperty(
 		size = 32, 
 		subtype = 'LAYER', 
 		description = "Select what layers this set of bones should be assigned to",
 		default = [l==30 for l in range(32)]
 	)
 
-	override_org_layers = BoolProperty(
+	override_org_layers: BoolProperty(
 		name		="Original"
 		,description="Instead of allowing rig elements to assign original bones' layers individually, set it from the generator instead"
 		,default	=True
 	)
-	org_layers = BoolVectorProperty(
+	org_layers: BoolVectorProperty(
 		size = 32, 
 		subtype = 'LAYER', 
 		description = "Select what layers this set of bones should be assigned to",
