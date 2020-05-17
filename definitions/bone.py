@@ -494,6 +494,8 @@ class BoneInfo(ID):
 		pb.lock_rotation_w = self.lock_rotation_w
 		pb.lock_scale = self.lock_scale
 
+		pb.rotation_mode = self.rotation_mode
+
 		# Bone data
 		b = pb.bone
 		b.layers = self.layers[:]
@@ -507,6 +509,9 @@ class BoneInfo(ID):
 		b.bbone_custom_handle_end = armature.data.bones.get(self.bbone_custom_handle_end or "")
 		b.show_wire = self.show_wire
 		b.use_endroll_as_inroll = self.use_endroll_as_inroll
+		
+		b.hide_select = self.hide_select
+		b.hide = self.hide
 
 		b.use_inherit_rotation = self.use_inherit_rotation
 		b.inherit_scale = self.inherit_scale
