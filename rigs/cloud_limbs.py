@@ -227,37 +227,37 @@ class Rig(CloudIKChainRig):
 		)
 
 		# Create bone to use as pivot point when rolling back. This is read from the metarig and should be placed at the heel of the shoe, pointing forward.
-		ankle_pivot_name = self.params.CR_ankle_pivot_bone
-		if ankle_pivot_name=="":
-			ankle_pivot_name = "AnklePivot." + self.side_suffix
-		meta_ankle_pivot = self.generator.metarig.data.bones.get(ankle_pivot_name)
-		assert meta_ankle_pivot, f"ERROR: Could not find AnklePivot bone in the metarig: {ankle_pivot_name}."	# TODO IMPORTANT: This doesn't need to be an assert, just use the transforms of the foot org bone and create a new bone there! After that, we could remove the hardcoded default name of "AnklePivot.L/R".
+		heel_pivot_name = self.params.CR_heel_pivot_bone
+		if heel_pivot_name=="":
+			heel_pivot_name = self.org_chain[-2].name.replace("ORG-", "")
+		heel_pivot_bone = self.generator.metarig.data.bones.get(heel_pivot_name)
+		assert heel_pivot_bone, f"ERROR: Could not find HeelPivot bone in the metarig: {heel_pivot_name}."
 
-		# I want to be able to customize the shape size of the foot controls from the metarig, via ankle pivot bone bbone scale.
-		self.ik_mstr._bbone_x = meta_ankle_pivot.bbone_x
-		self.ik_mstr._bbone_z = meta_ankle_pivot.bbone_z
+		# Take the bone shape size of the foot controls from the heel pivot bone bbone scale.
+		self.ik_mstr._bbone_x = heel_pivot_bone.bbone_x
+		self.ik_mstr._bbone_z = heel_pivot_bone.bbone_z
 		if self.params.CR_double_ik_control:
-			self.ik_mstr.parent._bbone_x = meta_ankle_pivot.bbone_x
-			self.ik_mstr.parent._bbone_z = meta_ankle_pivot.bbone_z
+			self.ik_mstr.parent._bbone_x = heel_pivot_bone.bbone_x
+			self.ik_mstr.parent._bbone_z = heel_pivot_bone.bbone_z
 
-		ankle_pivot = self.bone_infos.bone(
+		heel_pivot = self.bone_infos.bone(
 			name		  = "IK-RollBack" + self.generator.suffix_separator + self.side_suffix
 			,bbone_width  = self.org_chain[-1].bbone_width
-			,head		  = meta_ankle_pivot.head_local
-			,tail		  = meta_ankle_pivot.tail_local
-			,roll		  = rad(180)
+			,head		  = heel_pivot_bone.head_local
+			,tail		  = heel_pivot_bone.head_local + Vector((0, -self.scale*0.1, 0))
+			,roll		  = 0
 			,bone_group	  = self.bone_groups["IK Mechanism"]
 			,layers		  = self.bone_layers["IK Mechanism"]
 			,parent		  = roll_master
 			,hide_select  = self.mch_disable_select
 		)
 
-		ankle_pivot.add_constraint(self.obj, 'TRANSFORM',
+		heel_pivot.add_constraint(self.obj, 'TRANSFORM',
 			subtarget = roll_ctrl.name,
 			map_from = 'ROTATION',
 			map_to = 'ROTATION',
 			from_min_x_rot = rad(-90),
-			to_min_x_rot = rad(-60),
+			to_min_x_rot = rad(60),
 		)
 		
 		# Create reverse bones
@@ -269,7 +269,7 @@ class Rig(CloudIKChainRig):
 				,head		 = b.tail.copy()
 				,tail		 = b.head.copy()
 				,roll		 = 0
-				,parent		 = ankle_pivot
+				,parent		 = heel_pivot
 				,bone_group	 = self.bone_groups["IK Mechanism"]
 				,layers		 = self.bone_layers["IK Mechanism"]
 				,hide_select = self.mch_disable_select
@@ -418,9 +418,9 @@ class Rig(CloudIKChainRig):
 			,description = "Create Foot roll controls"
 			,default 	 = True
 		)
-		params.CR_ankle_pivot_bone = StringProperty(
-			 name		 = "Ankle Pivot Bone"
-			,description = "Bone to use as the ankle pivot. This bone should be placed at the heel of the shoe, pointing forward. If unspecified, default to a bone called AnklePivot.L/.R"
+		params.CR_heel_pivot_bone = StringProperty(
+			 name		 = "Heel Pivot Bone"
+			,description = "Bone to use as the heel pivot. This bone should be placed at the heel of the shoe, pointing forward. If unspecified, fall back to the foot bone."
 			,default	 = ""
 		)
 
@@ -428,7 +428,8 @@ class Rig(CloudIKChainRig):
 	def cloud_params_ui(cls, layout, params):
 		"""Create the ui for the rig parameters."""
 		ui_rows = super().cloud_params_ui(layout, params)
-		ui_rows['sharp_sections'].enabled = False
+		if 'sharp_sections' in ui_rows:
+			ui_rows['sharp_sections'].enabled = False
 
 		icon = 'TRIA_DOWN' if params.CR_show_limb_settings else 'TRIA_RIGHT'
 		layout.prop(params, "CR_show_limb_settings", toggle=True, icon=icon)
@@ -439,7 +440,7 @@ class Rig(CloudIKChainRig):
 			footroll_row = layout.row()
 			footroll_row.prop(params, "CR_use_foot_roll")
 			if params.CR_use_foot_roll:
-				footroll_row.prop_search(params, "CR_ankle_pivot_bone", bpy.context.object.data, "bones", text="Ankle Pivot")
+				footroll_row.prop_search(params, "CR_heel_pivot_bone", bpy.context.object.data, "bones", text="Heel Pivot")
 
 		double_row = layout.row()
 		double_row.prop(params, "CR_double_ik_control")
@@ -553,7 +554,7 @@ def create_sample(obj):
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Foot.L']]
     bones['Toes.L'] = bone.name
-    bone = arm.edit_bones.new('AnklePivot.L')
+    bone = arm.edit_bones.new('HeelPivot.L')
     bone.head = 0.0657, 0.0495, 0.0213
     bone.tail = 0.0672, -0.0040, 0.0213
     bone.roll = 0.0000
@@ -566,7 +567,7 @@ def create_sample(obj):
     bone.envelope_weight = 1.0000
     bone.use_envelope_multiply = 0.0000
     bone.parent = arm.edit_bones[bones['Foot.L']]
-    bones['AnklePivot.L'] = bone.name
+    bones['HeelPivot.L'] = bone.name
 
     bpy.ops.object.mode_set(mode='OBJECT')
     pbone = obj.pose.bones[bones['Thigh.L']]
@@ -683,7 +684,7 @@ def create_sample(obj):
     pbone.lock_rotation_w = False
     pbone.lock_scale = (False, False, False)
     pbone.rotation_mode = 'QUATERNION'
-    pbone = obj.pose.bones[bones['AnklePivot.L']]
+    pbone = obj.pose.bones[bones['HeelPivot.L']]
     pbone.rigify_type = ''
     pbone.lock_location = (False, False, False)
     pbone.lock_rotation = (False, False, False)
