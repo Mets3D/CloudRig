@@ -316,10 +316,9 @@ class CloudSpineRig(CloudChainRig):
 			# If there are any neck bones, set the last one's last def bone's easeout to 0.
 			self.org_necks[-1].def_bones[-1].bbone_easeout = 0
 
-		# The last DEF bone should copy the scale of the FK bone. (Or maybe each of them should? And maybe all FK chains, not just the spine? TODO)
 		last_def = self.def_bones[-1]
-		# Nevermind, just inherit scale for now, it works nice when the neck STR scales the head in this case.
-		last_def.inherit_scale = 'FULL'
+		if last_def.bbone_segments == 1:
+			last_def.inherit_scale = 'FULL'	# TODO: This shouldn't be needed. When cloud_chain calls get_segments() for this class, it should return 1, 1 for the head, not create bbone drivers, and not set inherit scale to None in the first place. Don't get why that isn't the case already.
 
 	@stage.prepare_bones
 	def prepare_org_spine(self):
@@ -360,11 +359,11 @@ class CloudSpineRig(CloudChainRig):
 	def add_bone_sets(cls, params):
 		super().add_bone_sets(params)
 		""" Create parameters for this rig's bone sets. """
-		cls.add_bone_set(params, "Spine FK Controls", preset=1, default_layers=[cls.default_layers('IK_MAIN')])
-		cls.add_bone_set(params, "Spine Main Controls", preset=2, default_layers=[cls.default_layers('IK_MAIN')])
-		cls.add_bone_set(params, "Spine Parent Controls", preset=8, default_layers=[cls.default_layers('IK_MAIN')])
-		cls.add_bone_set(params, "Spine IK Secondary", preset=10, default_layers=[cls.default_layers('IK_SECOND')])
-		cls.add_bone_set(params, "Spine Mechanism", default_layers=[cls.default_layers('MCH')], override='MCH')
+		cls.add_bone_set(params, "Spine FK Controls",	  preset=1,  default_layers=[cls.default_layers('IK_MAIN')]		)
+		cls.add_bone_set(params, "Spine Main Controls",	  preset=2,  default_layers=[cls.default_layers('IK_MAIN')]		)
+		cls.add_bone_set(params, "Spine Parent Controls", preset=8,  default_layers=[cls.default_layers('IK_MAIN')]		)
+		cls.add_bone_set(params, "Spine IK Secondary",	  preset=10, default_layers=[cls.default_layers('IK_SECOND')]	)
+		cls.add_bone_set(params, "Spine Mechanism",					 default_layers=[cls.default_layers('MCH')], 	  override='MCH')
 
 	@classmethod
 	def add_parameters(cls, params):
