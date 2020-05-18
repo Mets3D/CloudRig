@@ -375,7 +375,8 @@ class CloudGenerator(Generator):
 		rna_idprop_ui_prop_get(obj.data, "rig_id", create=True)
 		obj.data["rig_id"] = self.rig_id
 
-		self.script = rig_ui_template.ScriptGenerator(self)
+		# self.script = rig_ui_template.ScriptGenerator(self)
+		self.script = None
 
 		#------------------------------------------
 		bpy.ops.object.mode_set(mode='OBJECT')
