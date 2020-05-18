@@ -302,6 +302,9 @@ class CloudUtilities:
 			Y_tgt.bone_target = scale_tgt.bone_target = bi.bbone_custom_handle_end
 			bi.drivers["bbone_easeout"] = my_d.clone()
 
+	def move_constraint(self, constraint, bone=None, target_index=-1):
+		return move_constraint(self.obj, constraint, bone, target_index)
+
 	def vector_along_bone_chain(self, chain, length=0, index=-1):
 		return vector_along_bone_chain(chain, length, index)
 
@@ -534,6 +537,44 @@ def flat(vec):
 			new_vec[i] = 0
 
 	return new_vec
+
+def move_constraint(obj, constraint, bone=None, target_index=-1):
+	"""Move a constraint in its stack to a target index. 0 for first, -1 for last.
+	bone: if specified, look for the constraint on this pose bone.
+	obj: object that has the constraint. If bone is specified, object should be the owner rig."""
+	my_context = bpy.context.copy()
+	my_context["constraint"] = constraint
+	
+	owner='OBJECT'
+	constraints = obj.constraints
+
+	org_active = None
+	if bone:
+		# assert obj.mode == 'POSE', "Error: Cannot move bone constraints while armature isn't in pose mode."
+		org_active = obj.data.bones.active
+		obj.data.bones.active = bone.bone
+		constraints = bone.constraints
+		owner='BONE'
+
+	cur_index = -1	# Current index of the constraint
+	for i, c in enumerate(constraints):
+		if c == constraint:
+			cur_index = i
+			break
+	assert cur_index > -1, f"Error: Failed to move constraint {constraint.name} because it was not found on {obj}, {bone}"
+
+	if target_index < 0:
+		target_index = len(constraints)+target_index
+
+	moves = cur_index - target_index
+	move_func = bpy.ops.constraint.move_up if cur_index > target_index else bpy.ops.constraint.move_down
+	
+	for i in range(moves):
+		move_func(my_context, constraint=constraint.name, owner=owner)
+
+	# Restore active bone
+	if bone and org_active:
+		obj.data.bones.active = org_active
 
 class EnsureVisible:
 	""" Ensure an object is visible, then reset it to how it was before. """
