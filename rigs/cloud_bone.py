@@ -27,6 +27,13 @@ class CloudBoneRig(BaseRig):
 		self.orgless_name = self.base_bone.replace("ORG-", "")
 		self.copy_type = self.params.CR_copy_type
 
+		# If the metarig bone has a Child Of or Armature constraint, don't do any parenting logic.
+		self.do_parenting = True
+		meta_pose_bone = self.generator.metarig.pose.bones.get(self.orgless_name)
+		for c in meta_pose_bone.constraints:
+			if c.type in ('CHILD_OF', 'ARMATURE'):
+				self.do_parenting = False
+
 	def generate_bones(self):
 		org_bone = self.get_bone(self.bones.org)
 		meta_bone = self.generator.metarig.pose.bones.get(self.orgless_name)
@@ -72,26 +79,28 @@ class CloudBoneRig(BaseRig):
 
 	@stage.apply_bones
 	def modify_edit_bone(self):
-		meta_pose_bone = self.generator.metarig.pose.bones.get(self.orgless_name)
 		meta_bone = self.generator.metarig.data.bones.get(self.orgless_name)
 
 		mod_bone = self.get_bone(self.bone_name)
+		pose_bone = self.obj.pose.bones.get(mod_bone.name)
 
 		if hasattr(self, "def_bone_name"):
 			# TODO: Would this fail if I put it in generate_bones stage? I feel like that's where it started, and it would fail, but I don't really get why.
 			def_bone = self.get_bone(self.def_bone_name)
 			def_bone.parent = mod_bone
 
-		parent_name = self.params.CR_custom_bone_parent		
-		if parent_name != "":
+		parent_name = self.params.CR_custom_bone_parent
+		parent_bone = None
+		if parent_name != "" and self.do_parenting:
 			try:
-				mod_bone.parent = self.get_bone(self.params.CR_custom_bone_parent)
+				parent_bone = self.get_bone(parent_name)
+				if parent_bone.bbone_segments == 1:
+					mod_bone.parent = parent_bone
+				else:
+					mod_bone.parent = None # For parenting to bendy bones, we add Armature constraint in modify_pose_bone().
 			except:
 				print(f"Warning: Target parent bone {parent_name} not found for rig {self.base_bone}")
-
-		for c in meta_pose_bone.constraints:
-			if c.type in ('CHILD_OF', 'ARMATURE'):
-				mod_bone.parent = None
+		
 
 		if self.params.CR_bone_transforms:
 			mod_bone.head = meta_bone.head_local.copy()
@@ -107,9 +116,18 @@ class CloudBoneRig(BaseRig):
 	def modify_pose_bone(self):	
 		meta_bone = self.generator.metarig.pose.bones.get(self.orgless_name)
 		mod_bone = self.get_bone(self.bone_name)
+
 		if mod_bone.rotation_mode == 'QUATERNION':
 			print(f"Warning: cloud_bone {meta_bone.name} was on Quaternion rotation mode. Forcing it to XYZ.")
 			mod_bone.rotation_mode = 'XYZ'
+
+		parent_name = self.params.CR_custom_bone_parent
+		parent_bone = self.obj.pose.bones.get(parent_name)
+		if parent_name!="" and parent_bone and parent_bone.bone.bbone_segments > 1 and self.do_parenting:
+			arm_con = mod_bone.constraints.new('ARMATURE')
+			arm_con.name = "Armature@" + parent_name # Let relink_constraints() take care of setting up the constraint from here.
+			arm_con.targets.new()
+			cloud_utils.move_constraint(self.obj, arm_con, bone=mod_bone, target_index=0)
 
 		if self.copy_type == 'Create':
 			for c in mod_bone.constraints:
@@ -117,7 +135,7 @@ class CloudBoneRig(BaseRig):
 			return
 
 		mod_bone.bone.use_deform = meta_bone.bone.use_deform
-		
+
 		if self.params.CR_transform_locks:
 			mod_bone.lock_location = meta_bone.lock_location[:]
 			mod_bone.lock_rotation = meta_bone.lock_rotation[:]
@@ -216,9 +234,13 @@ class CloudBoneRig(BaseRig):
 		constraint.name = split_name[0]
 
 		if constraint.type=='ARMATURE':
+			# Ensure required number of targets
+			for i in range(len(constraint.targets), len(subtargets)-1):
+				constraint.targets.new()
+
 			for i, t in enumerate(constraint.targets):
 				t.target = self.obj
-				t.subtarget = subtargets[i]	# IndexError is possible - make sure the Armature constraint has the correct number of targets in the metarig!
+				t.subtarget = subtargets[i]
 			return
 
 		if not constraint.target:
