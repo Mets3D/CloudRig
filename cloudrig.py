@@ -863,20 +863,25 @@ class CLOUDRIG_PT_layers(CLOUDRIG_PT_main):
 		rig = active_cloudrig()
 		if not rig: return
 		data = rig.data
-		rigify_layers = data.rigify_layers
+		# This should work even if the Rigify addon is not enabled.
+		rigify_layers = data['rigify_layers']
 
 		layout = self.layout
-		
-		sorted_layers = sorted(rigify_layers, key=lambda l: l.row)
+		for i, l in enumerate(rigify_layers):
+			# When the Rigify addon is not enabled, finding the original index after sorting is impossible, so just store it.
+			l['index'] = i
+
+		sorted_layers = sorted(rigify_layers, key=lambda l: l['row'])
 		sorted_layers = [l for l in sorted_layers if l.name!=" "]
 		current_row_index = 0
 		for rigify_layer in sorted_layers:
-			if rigify_layer.name=="": continue
-			if rigify_layer.name.startswith("$"): continue
-			if rigify_layer.row > current_row_index:
-				current_row_index = rigify_layer.row
+			if rigify_layer['name'] in ["", " "]: continue
+			if rigify_layer['name'].startswith("$"): continue
+
+			if rigify_layer['row'] > current_row_index:
+				current_row_index = rigify_layer['row']
 				row = layout.row()
-			row.prop(data, 'layers', index=rigify_layers.find(rigify_layer.name), toggle=True, text=rigify_layer.name)
+			row.prop(data, 'layers', index=rigify_layer['index'], toggle=True, text=rigify_layer['name'])
 
 class CLOUDRIG_PT_settings(CLOUDRIG_PT_main):
 	bl_idname = "CLOUDRIG_PT_settings_" + script_id
