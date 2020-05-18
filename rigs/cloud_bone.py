@@ -100,7 +100,6 @@ class CloudBoneRig(BaseRig):
 					mod_bone.parent = None # For parenting to bendy bones, we add Armature constraint in modify_pose_bone().
 			except:
 				print(f"Warning: Target parent bone {parent_name} not found for rig {self.base_bone}")
-		
 
 		if self.params.CR_bone_transforms:
 			mod_bone.head = meta_bone.head_local.copy()
@@ -112,6 +111,18 @@ class CloudBoneRig(BaseRig):
 		# Rename the bone to its final name, without the ORG- prefix.
 		self.bone_name = mod_bone.name = self.orgless_name
 
+	def do_parenting_with_constraint(self):
+		mod_bone = self.get_bone(self.bone_name)
+
+		# Add parenting constraint
+		parent_name = self.params.CR_custom_bone_parent
+		parent_bone = self.obj.pose.bones.get(parent_name)
+		if parent_bone and parent_bone.bone.bbone_segments > 1:
+			arm_con = mod_bone.constraints.new('ARMATURE')
+			arm_con.name = "Armature@" + parent_name # Let relink_constraints() take care of setting up the constraint from here.
+			arm_con.targets.new()
+			cloud_utils.move_constraint(self.obj, arm_con, bone=mod_bone, target_index=0)
+
 	@stage.finalize
 	def modify_pose_bone(self):	
 		meta_bone = self.generator.metarig.pose.bones.get(self.orgless_name)
@@ -121,15 +132,8 @@ class CloudBoneRig(BaseRig):
 			print(f"Warning: cloud_bone {meta_bone.name} was on Quaternion rotation mode. Forcing it to XYZ.")
 			mod_bone.rotation_mode = 'XYZ'
 
-		parent_name = self.params.CR_custom_bone_parent
-		parent_bone = self.obj.pose.bones.get(parent_name)
-		if parent_name!="" and parent_bone and parent_bone.bone.bbone_segments > 1 and self.do_parenting:
-			arm_con = mod_bone.constraints.new('ARMATURE')
-			arm_con.name = "Armature@" + parent_name # Let relink_constraints() take care of setting up the constraint from here.
-			arm_con.targets.new()
-			cloud_utils.move_constraint(self.obj, arm_con, bone=mod_bone, target_index=0)
-
 		if self.copy_type == 'Create':
+			self.do_parenting_with_constraint()
 			for c in mod_bone.constraints:
 				self.relink_constraint(c)
 			return
@@ -182,10 +186,14 @@ class CloudBoneRig(BaseRig):
 			while len(mod_bone.constraints)>1:
 				mod_bone.constraints.remove(mod_bone.constraints[0])
 
-		for org_c in meta_bone.constraints:
-			# Create a copy of this constraint on mod_bone, then relink it.
-			new_con = self.copy_constraint(org_c, mod_bone)
-			self.relink_constraint(new_con)
+		self.do_parenting_with_constraint()
+		# Copy constraints from meta_bone to mod_bone
+		for c in meta_bone.constraints:
+			new_con = self.copy_constraint(c, mod_bone)
+
+		# Relink constraints
+		for c in mod_bone.constraints:
+			self.relink_constraint(c)
 		
 		# Copy custom properties
 		if self.params.CR_custom_props and '_RNA_UI' in meta_bone.keys():
