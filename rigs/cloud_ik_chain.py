@@ -183,13 +183,12 @@ class CloudIKChainRig(CloudFKChainRig):
 			ik_chain.append(ik_bone)
 
 			if i == 0:
-				# Parent first bone to the limb root
+				# First IK bone special treatment
 				ik_bone.parent = self.limb_root_bone.name
-				if not self.params.CR_use_pole_target:
-					ik_bone.custom_shape = self.load_widget("IK_Base")
-					ik_bone.use_custom_shape_bone_size = True
-					ik_bone.custom_shape_scale = 0.8
-					ik_bone.bone_group = self.group_ik_ctrl
+				ik_bone.custom_shape = self.load_widget("IK_Base")
+				ik_bone.use_custom_shape_bone_size = True
+				ik_bone.bone_group	  = self.bone_groups["IK Controls"]
+				ik_bone.layers		  = self.bone_layers["IK Controls"]
 
 			else:
 				ik_bone.parent = ik_chain[-2]
