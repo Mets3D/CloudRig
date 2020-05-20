@@ -822,6 +822,7 @@ class CLOUDRIG_PT_character(CLOUDRIG_PT_main):
 		rig_props = rig.cloud_rig
 
 		def add_props(prop_owner):
+
 			def get_text(prop_id, value):
 				""" If there is a property on prop_owner named $prop_id, expect it to be a list of strings and return the valueth element."""
 				text = prop_id.replace("_", " ")
@@ -834,7 +835,7 @@ class CLOUDRIG_PT_character(CLOUDRIG_PT_main):
 				else:
 					return text
 
-			for prop_id in prop_owner.keys():
+			for prop_id in sorted(prop_owner.keys()):
 				if prop_id.startswith("_"): continue
 				
 				if type(prop_owner[prop_id]) in [int, float]:
