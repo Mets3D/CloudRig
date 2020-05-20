@@ -836,11 +836,14 @@ class CLOUDRIG_PT_character(CLOUDRIG_PT_main):
 
 			for prop_id in prop_owner.keys():
 				if prop_id.startswith("_"): continue
-				# Int Props
+				
 				if type(prop_owner[prop_id]) in [int, float]:
 					layout.prop(prop_owner, '["'+prop_id+'"]', slider=True, 
 						text = get_text(prop_id, prop_owner[prop_id])
 					)
+				elif str(type(prop_owner[prop_id])) == "<class 'IDPropertyArray'>":
+					# Vectors
+					layout.prop(prop_owner, '["'+prop_id+'"]', text=prop_id.replace("_", " "))
 
 		# Add character properties to the UI, if any.
 		char_bone = get_char_bone(rig)
@@ -886,14 +889,6 @@ class CLOUDRIG_PT_layers(CLOUDRIG_PT_main):
 class CLOUDRIG_PT_settings(CLOUDRIG_PT_main):
 	bl_idname = "CLOUDRIG_PT_settings_" + script_id
 	bl_label = "Settings"
-
-	def draw(self, context):
-		layout = self.layout
-		rig = active_cloudrig()
-		if not rig: return
-
-		if 'render_modifiers' in rig.data:
-			layout.row().prop(rig.data, 'render_modifiers', text='Enable Modifiers', toggle=True)
 
 class CLOUDRIG_PT_fkik(CLOUDRIG_PT_main):
 	bl_idname = "CLOUDRIG_PT_fkik_" + script_id
