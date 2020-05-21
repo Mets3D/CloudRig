@@ -259,12 +259,12 @@ class CloudBoneRig(BaseRig):
 			# This is allowed to happen with targetless constraints like Limit Location.
 			pass
 
-	def copy_and_retarget_driver(self, BPY_driver, obj, data_path, index=-1):
-		"""Copy a driver to some other data path, while accounting for any constraint retargetting."""
+	def copy_and_relink_driver(self, BPY_driver, obj, data_path, index=-1):
+		"""Copy a driver to some other data path, while accounting for any constraint relinking."""
 		driver = Driver(BPY_driver)
 		data_path = BPY_driver.data_path
 		if 'constraints' in data_path:
-			org_con_name = data_path.split('constraints["')[-1].split('"]')[0]	# Oh, it's magnificent.
+			org_con_name = data_path.split('constraints["')[-1].split('"]')[0]
 			new_con_name = org_con_name.split("@")[0]
 			data_path = data_path.replace(org_con_name, new_con_name)
 		for var in driver.variables:
@@ -281,12 +281,12 @@ class CloudBoneRig(BaseRig):
 
 		for d in metarig.animation_data.drivers:
 			if bone.name in d.data_path:
-				self.copy_and_retarget_driver(d, rig, d.data_path, d.array_index)
+				self.copy_and_relink_driver(d, rig, d.data_path, d.array_index)
 		
 		if not metarig.data.animation_data: return
 		for d in metarig.data.animation_data.drivers:
 			if bone.name in d.data_path:
-				self.copy_and_retarget_driver(d, rig.data, d.data_path, d.array_index)
+				self.copy_and_relink_driver(d, rig.data, d.data_path, d.array_index)
 
 	##############################
 	# Parameters
