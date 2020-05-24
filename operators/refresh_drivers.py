@@ -1,5 +1,5 @@
 import bpy
-from bpy.props import *
+from bpy.props import BoolProperty
 
 def refresh_drivers(datablock):
 	if not datablock: return
@@ -26,6 +26,11 @@ class RefreshDrivers(bpy.types.Operator):
 				refresh_drivers(o.data)
 			if o.type=='MESH':
 				refresh_drivers(o.data.shape_keys)
+			
+			for ms in o.material_slots:
+				if ms.material:
+					refresh_drivers(ms.material)
+					refresh_drivers(ms.material.node_tree)
 
 		return { 'FINISHED' }
 
