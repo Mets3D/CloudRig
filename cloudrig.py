@@ -822,6 +822,8 @@ class CLOUDRIG_PT_character(CLOUDRIG_PT_main):
 		rig_props = rig.cloud_rig
 
 		def add_props(prop_owner):
+			props_done = []
+			bool_props = []		# Not implemented.
 
 			def get_text(prop_id, value):
 				""" If there is a property on prop_owner named $prop_id, expect it to be a list of strings and return the valueth element."""
@@ -835,16 +837,60 @@ class CLOUDRIG_PT_character(CLOUDRIG_PT_main):
 				else:
 					return text
 
-			for prop_id in sorted(prop_owner.keys()):
-				if prop_id.startswith("_"): continue
-				
-				if type(prop_owner[prop_id]) in [int, float]:
+			def add_prop(layout, prop_owner, prop_id):
+				if prop_id in props_done: return
+
+				if(prop_id in bool_props):
+					bp = bool_props[prop_id]
+					layout.prop(bp, 'value', toggle=True, text=bp.name, icon='TRIA_DOWN' if parent_prop_value in values else 'TRIA_RIGHT')
+				elif type(prop_owner[prop_id]) in [int, float]:
 					layout.prop(prop_owner, '["'+prop_id+'"]', slider=True, 
 						text = get_text(prop_id, prop_owner[prop_id])
 					)
 				elif str(type(prop_owner[prop_id])) == "<class 'IDPropertyArray'>":
 					# Vectors
 					layout.prop(prop_owner, '["'+prop_id+'"]', text=prop_id.replace("_", " "))
+
+			# Drawing properties with hierarchy
+			if 'prop_hierarchy' in prop_owner:
+				prop_hierarchy = eval(prop_owner['prop_hierarchy'])
+
+				for parent_prop_name in prop_hierarchy.keys():
+					parent_prop_name_without_values = parent_prop_name
+					values = [1]	# Values which this property needs to be for its children to show. For bools this is always 1.
+					# Example entry in prop_hierarchy: ['Jacket-23' : ['Hood', 'Belt']] This would mean Hood and Belt are only visible when Jacket is either 2 or 3.
+					if('-' in parent_prop_name):
+						split = parent_prop_name.split('-')
+						parent_prop_name_without_values = split[0]
+						values = [int(val) for val in split[1]]	# Convert them to an int list ( eg. '23' -> [2, 3] )
+
+					parent_prop_value = prop_owner[parent_prop_name_without_values]
+
+					# Drawing parent prop, if it wasn't drawn yet.
+					add_prop(layout, prop_owner, parent_prop_name_without_values)
+
+					# Marking parent prop as done drawing.
+					props_done.append(parent_prop_name_without_values)
+
+					# Checking if we should draw children.
+					if(parent_prop_value not in values): continue
+
+					# Drawing children.
+					childrens_box = layout.box()
+					for child_prop_name in prop_hierarchy[parent_prop_name]:
+						add_prop(childrens_box, prop_owner, child_prop_name)
+					
+				# Marking child props as done drawing. (Regardless of whether they were actually drawn or not, since if the parent is disabled, we don't want to draw them.)
+				for parent in prop_hierarchy.keys():
+					for child in prop_hierarchy[parent]:
+						props_done.append(child)
+
+			# Drawing properties without hierarchy
+			for prop_id in sorted(prop_owner.keys()):
+				if prop_id.startswith("_"): continue
+				if prop_id in props_done: continue
+
+				add_prop(layout, prop_owner, prop_id)
 
 		# Add character properties to the UI, if any.
 		char_bone = get_char_bone(rig)
