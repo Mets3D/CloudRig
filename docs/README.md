@@ -27,6 +27,7 @@ This shows the type of rig element applied to this bone, in this case "cloud_lim
 
 For more information, see the wiki:
 - [CloudRig Types](../../../wiki/CloudRig-Types)
+- [Generator Parameters](../../../wiki/Generator-Parameters)
 - [Custom Properties](../../../wiki/Custom-Properties)
 - [Organizing Bones](../../../wiki/Organizing-Bones)
 
