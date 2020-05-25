@@ -26,9 +26,9 @@ In order to customize a rig element, try selecting the "UpperArm.L" bone in pose
 This shows the type of rig element applied to this bone, in this case "cloud_limbs". Below that, all of the parameters you can use to customize that rig element. After changing the parameters, simply press Generate again to update the rig.
 
 For more information, see the wiki:
-- [CloudRig Types](../wiki/CloudRig-Types)
-- [Custom Properties](../wiki/Custom-Properties)
-- [Organizing Bones](../wiki/Organizing-Bones)
+- [CloudRig Types](../../../wiki/CloudRig-Types)
+- [Custom Properties](../../../wiki/Custom-Properties)
+- [Organizing Bones](../../../wiki/Organizing-Bones)
 
 # Rig UI
 Once generated, select your generated rig, and press the N key to bring up the Sidebar. You should see a CloudRig tab, which contains the rig UI. This is where the animators will be able to find rig settings and a layer selector.  
