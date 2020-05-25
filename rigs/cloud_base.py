@@ -78,21 +78,24 @@ class CloudBaseRig(BaseRig, CloudUtilities):
 		self.bones.parent = parent.name if parent else ""
 
 		# Root bone
-		self.root_bone = self.bone_infos.bone(
-			name				= "root"
-			,bone_group			= self.generator.root_group
-			,layers				= self.generator_params.cloudrig_parameters.root_layers[:]
-			,head				= Vector((0, 0, 0))
-			,tail				= Vector((0, self.scale*5, 0))
-			,bbone_width		= 1/3
-			,custom_shape		= self.load_widget("Root")
-			,custom_shape_scale = 1.5
-		)
-		self.register_parent(self.root_bone, "Root")
-		if self.generator_params.cloudrig_parameters.double_root:
-			self.root_parent = self.create_parent_bone(self.root_bone)
-			self.root_parent.bone_group = self.generator.root_parent_group
-			self.root_parent.layers = self.generator_params.cloudrig_parameters.root_parent_layers[:]
+		self.root_bone = None
+		if self.generator_params.cloudrig_parameters.create_root:
+			self.root_bone = self.bone_infos.bone(
+				name				= "root"
+				,bone_group			= self.generator.root_group
+				,layers				= self.generator_params.cloudrig_parameters.root_layers[:]
+				,head				= Vector((0, 0, 0))
+				,tail				= Vector((0, self.scale*5, 0))
+				,bbone_width		= 1/3
+				,custom_shape		= self.load_widget("Root")
+				,custom_shape_scale = 1.5
+			)
+			self.register_parent(self.root_bone, "Root")
+		
+			if self.generator_params.cloudrig_parameters.double_root:
+				self.root_parent = self.create_parent_bone(self.root_bone)
+				self.root_parent.bone_group = self.generator.root_parent_group
+				self.root_parent.layers = self.generator_params.cloudrig_parameters.root_parent_layers[:]
 
 		for k in self.obj.data.keys():
 			if k in ['_RNA_UI', 'rig_id']: continue

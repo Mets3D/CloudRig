@@ -414,7 +414,9 @@ class CloudGenerator(Generator):
 		bpy.ops.object.mode_set(mode='OBJECT')
 		bpy.ops.object.mode_set(mode='EDIT')
 
-		self._Generator__create_root_bone()
+		self.root_bone = None
+		if self.params.cloudrig_parameters.create_root:
+			self._Generator__create_root_bone()
 
 		self.invoke_generate_bones()
 
@@ -426,7 +428,8 @@ class CloudGenerator(Generator):
 
 		self.invoke_parent_bones()
 
-		self._Generator__parent_bones_to_root()
+		if self.root_bone:
+			self._Generator__parent_bones_to_root()
 
 		t.tick("Parent bones: ")
 
@@ -444,7 +447,7 @@ class CloudGenerator(Generator):
 
 		# Rigify automatically parents bones that have no parent to the root bone.
 		# This is fine, but we want to undo this when the bone has an Armature constraint, since such bones should never have a parent.
-		# NOTE: This could be done via self.generator.disable_auto_parent(bone_name), but I prefer doing it this way.
+		# NOTE: This could be done via self.generator.disable_auto_parent(bone_name).
 		for eb in obj.data.edit_bones:
 			pb = obj.pose.bones.get(eb.name)
 			for c in pb.constraints:
@@ -458,6 +461,11 @@ class CloudGenerator(Generator):
 		bpy.ops.object.mode_set(mode='OBJECT')
 
 		self.invoke_rig_bones()
+
+		# Refresh constraints... without this, some armature constraints think they have an error when they don't.
+		for pb in obj.pose.bones:
+			for c in pb.constraints:
+				c.influence = c.influence
 
 		t.tick("Rig bones: ")
 
